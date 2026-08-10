@@ -7,6 +7,7 @@ from obsidianizer.config import Settings
 from obsidianizer.events import EventType
 from obsidianizer.llm import LLMClient
 from obsidianizer.md_processor import MdProcessor
+from obsidianizer.manifest import read_manifest
 from obsidianizer.pipeline import run as run_pipeline
 from obsidianizer.registry import ProcessorRegistry
 
@@ -122,3 +123,75 @@ def test_broken_listener_does_not_kill_batch(tmp_path):
     report = _runner(source, target, on_event=boom)
     assert report.failed == []
     assert report.processed == 2
+
+
+def test_cancel_stops_between_files(tmp_path):
+    source, target = _prepare(tmp_path)
+    events = []
+
+    checks = {"calls": 0}
+
+    def cancel_check():
+        checks["calls"] += 1
+        return checks["calls"] > 1  # allow the first file, then stop
+
+    report = _runner(source, target, on_event=events.append, cancel_check=cancel_check)
+    kinds = [e.type for e in events]
+
+    assert report.cancelled is True
+    assert report.processed == 1
+    # the second file is never started
+    assert kinds.count(EventType.FILE_STARTED) == 1
+    assert kinds.count(EventType.FILE_DONE) == 1
+    assert kinds.count(EventType.FILE_SKIPPED) == 0
+    # FINISHED arrives exactly once, marked as cancelled
+    assert kinds.count(EventType.FINISHED) == 1
+    assert "отменено" in events[-1].message
+    assert report.critical_error == ""
+
+    # ownership of the produced file is preserved; _index is not published
+    manifest = read_manifest(target)
+    assert any("chatgpt" in p for p in manifest)
+    assert not any("deepseek" in p for p in manifest)
+    assert not (target / "_index.md").exists()
+
+
+def test_critical_error_still_emits_finished_once(tmp_path, monkeypatch):
+    source, target = _prepare(tmp_path)
+    reg = ProcessorRegistry()
+    reg.register(".md", MdProcessor)
+    settings = Settings()
+    settings.source = source
+    settings.target = target
+    settings.llm_enabled = False
+
+    def boom(root):
+        raise RuntimeError("scan exploded")
+
+    monkeypatch.setattr(reg, "scan", boom)
+
+    events = []
+    report = run_pipeline(reg, settings, None, on_event=events.append)
+    kinds = [e.type for e in events]
+
+    assert report.critical_error == "scan exploded"
+    assert report.cancelled is False
+    assert report.processed == 0
+    assert kinds == [EventType.FINISHED]  # exactly one event, and it is FINISHED
+
+
+def test_finished_single_in_all_paths(tmp_path):
+    # normal completion
+    source, target = _prepare(tmp_path / "n1")
+    events = []
+    _runner(source, target, on_event=events.append)
+    assert [e.type for e in events].count(EventType.FINISHED) == 1
+
+    # completion with a per-file error
+    source2, target2 = _prepare(tmp_path / "n2")
+    bad = source2 / "deepseek" / "broken.md"
+    bad.write_bytes(b"\xff\xfe\x00 not valid utf8 body")
+    events2 = []
+    report = _runner(source2, target2, on_event=events2.append)
+    assert report.failed
+    assert [e.type for e in events2].count(EventType.FINISHED) == 1
