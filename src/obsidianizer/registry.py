@@ -17,8 +17,6 @@ class ProcessorRegistry:
         ext = extension.lower()
         if not ext.startswith("."):
             ext = "." + ext
-        if not getattr(processor_cls, "extensions", frozenset()):
-            processor_cls = processor_cls  # placeholder for linters
         self._processors[ext] = processor_cls()
 
     def processor_for(self, extension: str) -> Processor | None:
