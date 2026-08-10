@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidianizer</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>OBSIDIANIZER</h1>
+    <span id="version" class="dim">v–</span>
+  </header>
+
+  <section class="panel">
+    <div class="row">
+      <label for="source">Источник:</label>
+      <input id="source" type="text" spellcheck="false" placeholder="D:\raw">
+      <button id="btnSource" class="pick" title="Выбрать папку">Выбрать</button>
+    </div>
+    <div class="row">
+      <label for="target">Результат:</label>
+      <input id="target" type="text" spellcheck="false" placeholder="D:\processed">
+      <button id="btnTarget" class="pick" title="Выбрать папку">Выбрать</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <label class="check"><input type="checkbox" id="llm" checked> Использовать Ollama</label>
+    <div class="row">
+      <label for="model">Модель:</label>
+      <input id="model" type="text" spellcheck="false" placeholder="deepseek-r1:14b">
+    </div>
+    <div class="row opts">
+      <label class="check"><input type="checkbox" id="dry"> Только просмотр</label>
+      <label class="check"><input type="checkbox" id="prune"> Удалить старые результаты</label>
+    </div>
+  </section>
+
+  <section class="actions">
+    <button id="btnRun" class="primary">ОБРАБОТАТЬ</button>
+    <button id="btnStop" disabled>Стоп</button>
+    <button id="btnOpen" class="ghost">Открыть результат</button>
+  </section>
+
+  <section id="progressSection" class="panel hidden">
+    <div class="progress-track"><div id="bar" class="progress-fill"></div></div>
+    <div class="progress-meta">
+      <span id="progText" class="mono">0 / 0</span>
+      <span id="currentFile" class="mono dim">&nbsp;</span>
+    </div>
+  </section>
+
+  <section class="panel log-panel">
+    <div id="log" class="log"></div>
+  </section>
+
+  <footer id="status" class="status">Готово. Выберите папки и нажмите «Обработать».</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

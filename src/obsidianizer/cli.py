@@ -52,6 +52,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--version", action="version", version=f"obsidianizer {__version__}")
     p.add_argument("--verbose", action="store_true", help="подробный лог")
+
+    sub = p.add_subparsers(dest="command", metavar="{ui}")
+    ui = sub.add_parser("ui", help="запустить графический интерфейс")
+    ui.add_argument("--source", help="папка-источник (стартовое значение в окне)")
+    ui.add_argument("--target", help="папка-результат (стартовое значение в окне)")
     return p
 
 
@@ -59,8 +64,27 @@ def _log_format() -> str:
     return "%(asctime)s [%(levelname)s] %(message)s"
 
 
+def _run_ui(args: argparse.Namespace) -> int:
+    try:
+        import webview  # noqa: F401 - dependency check only
+    except ImportError:
+        print(
+            "Графический интерфейс требует установки extra 'ui'.\n"
+            "Установите его командой:  pip install -e '.[ui]'",
+            file=sys.stderr,
+        )
+        return 2
+    from .ui import launch
+
+    launch(initial_source=args.source, initial_target=args.target)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "ui":
+        return _run_ui(args)
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format=_log_format(),
