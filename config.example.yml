@@ -1,0 +1,42 @@
+# Obsidianizer — local configuration template.
+# Copy this file to config.yml and adjust. CLI arguments take precedence.
+# config.yml is git-ignored; never commit real paths.
+
+# Source folder with raw files (default: ./raw)
+source: ./raw
+
+# Target folder with processed, Obsidian-ready files (default: ./processed)
+target: ./processed
+
+# LLM enrichment (optional). When unavailable, files are still processed
+# with metadata only.
+ollama:
+  endpoint: http://localhost:11434
+  model: deepseek-r1:14b
+  timeout: 180
+  # Maximum characters of file content sent to the model (from the top).
+  limit_chars: 6000
+  temperature: 0.2
+  num_ctx: 8192
+  prompt: |
+    Ты анализируешь содержимое файла заметок.
+
+    Выполни два действия:
+    1. Напиши краткое саммари (1-2 предложения) — о чём материал, что обсуждалось.
+    2. Предложи 3-5 тегов (ключевых слов), отражающих тематику.
+
+    Ответ формулируй на русском языке. Названия технологий, библиотек и продуктов
+    оставляй в оригинальном написании.
+
+    Формат ответа строго:
+
+    SUMMARY:
+    <саммари>
+
+    TAGS:
+    тег1, тег2, тег3
+
+    Содержимое:
+    ---
+    {content}
+    ---

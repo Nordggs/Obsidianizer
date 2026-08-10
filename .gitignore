@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+
+# Test & tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+raw/
+processed/
+*.log
+
+# Local configuration (never commit real config)
+config.yml
+
+# Ownership manifest and generated indexes
+.obsidianizer-manifest.json
