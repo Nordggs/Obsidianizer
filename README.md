@@ -80,11 +80,18 @@ obsidianizer --source ./raw --target ./processed --prune
 
 ## Graphical interface (primary)
 
-The desktop GUI is the main way to work with Obsidianizer:
+The desktop GUI is the main way to work with Obsidianizer. No package
+installation is needed — launch it straight from the repo root:
 
 ```bash
-pip install -e '.[ui]'
-obsidianizer ui
+# Windows: double-click Obsidianizer.bat (uses .venv if present), or:
+python Obsidianizer.py
+```
+
+Diagnostics without opening a window:
+
+```bash
+python Obsidianizer.py --check
 ```
 
 Pick the source and target folders with the native pickers, toggle Ollama,
@@ -102,6 +109,7 @@ apply. CLI arguments always win.
 ## Project layout
 
 ```
+Obsidianizer.py / .bat   launch entry points (double-click to start the GUI)
 src/obsidianizer/   package (importable, installable)
 tests/              pytest suite (safety-critical paths first)
 docs/               architecture + processor contract + development

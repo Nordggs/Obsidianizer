@@ -87,6 +87,7 @@ scan → extract → enrich → emit → manifest
 ## Структура проекта
 
 ```
+Obsidianizer.py/.bat  корневой лаунчер (двойной клик → GUI, установка не нужна)
 src/obsidianizer/    пакет (src layout — устанавливаемый, импортируемый)
   cli.py             точка входа; разбор аргументов изолирован здесь
   config.py          приоритет: CLI > config.yml > дефолты

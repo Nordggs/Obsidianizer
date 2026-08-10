@@ -11,6 +11,9 @@
 - Guaranteed single `FINISHED` in every path (normal, per-file error, cancel,
   fatal run-level error). `Report.cancelled` only on user cancel;
   `Report.critical_error` records fatal errors.
+- Root launcher `Obsidianizer.py` / `Obsidianizer.bat`: double-click starts
+  the GUI straight from the repo root — no package install required;
+  `Obsidianizer.py --check` prints diagnostics without opening a window.
 
 ## [0.2.0] - Unreleased
 

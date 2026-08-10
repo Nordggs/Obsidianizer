@@ -83,6 +83,7 @@ attempt to "smartly" resolve an overlap — refuse to run.
 ## Project structure
 
 ```
+Obsidianizer.py/.bat  root launcher (double-click → GUI, no install needed)
 src/obsidianizer/    package (src layout — installable, importable)
   cli.py             entry point; argument parsing is isolated here
   config.py          precedence: CLI > config.yml > defaults
