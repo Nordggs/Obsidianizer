@@ -78,6 +78,22 @@ obsidianizer --source ./raw --target ./processed --prune
 --prune         delete Obsidianizer-owned files no longer produced
 ```
 
+## Graphical interface (primary)
+
+The desktop GUI is the main way to work with Obsidianizer:
+
+```bash
+pip install -e '.[ui]'
+obsidianizer ui
+```
+
+Pick the source and target folders with the native pickers, toggle Ollama,
+choose a model, optionally enable dry-run / prune, then press **Обработать**.
+The window shows a progress bar, the current file, a color-coded log and a
+final summary. **Стоп** stops the batch after the current file finishes —
+an in-flight Ollama request is never interrupted. The CLI remains available
+for automation.
+
 ## Config
 
 `config.yml` is read if present; otherwise defaults from `config.example.yml`

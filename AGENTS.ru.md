@@ -101,7 +101,8 @@ src/obsidianizer/    пакет (src layout — устанавливаемый, 
   index.py           генератор _index.md
   models.py          датаклассы
   events.py          единый контракт событий (EventType, Event); ядро эмитит через on_event
-  ui.py              планируемая оболочка GUI; импортирует events; без знания о markdown/файлах
+  ui.py              GUI-фронтенд (pywebview); импортирует events; без знания о markdown/файлах
+  web/               ресурсы GUI (app.html, app.js, app.css) — тёмная тема
 tests/               pytest; фикстуры в tests/fixtures/
 docs/                architecture, processors, development
 assets/              плейсхолдер для будущих ресурсов GUI (.exe, иконки)

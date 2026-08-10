@@ -97,7 +97,8 @@ src/obsidianizer/    package (src layout — installable, importable)
   index.py           _index.md generator
   models.py          dataclasses
   events.py          single event contract (EventType, Event); core emits via on_event
-  ui.py              planned GUI shell; imports events; no markdown/file knowledge
+  ui.py              GUI frontend (pywebview); imports events; no markdown/file knowledge
+  web/               GUI assets (app.html, app.js, app.css) — dark theme
 tests/               pytest; fixtures under tests/fixtures/
 docs/                architecture, processors, development
 assets/              placeholder for future GUI assets (.exe, icons)

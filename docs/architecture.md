@@ -119,10 +119,11 @@ Output for identical inputs is identical: metadata extraction is regular-
 expression based, LLM output is the only non-deterministic ingredient, and only
 when explicitly enabled.
 
-## UI layer (planned)
+## UI layer
 
-The desktop GUI is a later milestone. Its contract is fixed now so the core
-never has to change when the GUI arrives.
+The desktop GUI is the primary user interface. It is a *frontend only*: every
+operation goes through the same core the CLI uses. The GUI knows nothing about
+Markdown/file types; it renders the event contract below.
 
 ```
                     ┌──────────────────────┐
@@ -176,3 +177,26 @@ The same `Event` renders differently per frontend:
 
 Future frontends only subscribe to these events; the core pipeline does not
 change.
+
+### Stop semantics
+
+`pipeline.run` accepts an optional `cancel_check: Callable[[], bool]`. It is
+polled **between files only** — never inside a file and never during an LLM
+call. The current file is always allowed to finish (an Ollama request may take
+up to 180 s); the UI announces "Остановка… текущий файл будет завершён" instead
+of promising an instant stop.
+
+On cancel:
+
+- `Report.cancelled` is set to `True` (only ever from this path);
+- ownership of already-written files is preserved via the manifest (written
+  only when at least one file was produced);
+- `--prune` is skipped and `_index.md` is not published (an unfinished scan
+  must not delete anything or leave a partial navigation index);
+- `FINISHED` is still emitted exactly once, with an "отменено…" summary.
+
+A fatal, run-level error (any exception outside a single-file handler) sets
+`Report.critical_error` and keeps `Report.cancelled` as `False`; `FINISHED` is
+still emitted exactly once ("критическая ошибка: …"). In every path — normal
+completion, per-file errors, cancel, fatal error — `FINISHED` arrives exactly
+once.

@@ -1,5 +1,17 @@
 # Obsidianizer
 
+## [0.3.0] - Unreleased
+
+### Added
+- Desktop GUI (`obsidianizer ui`, pywebview): source/target pickers, Ollama
+  toggle + model, dry-run/prune switches, progress bar, current file, color
+  log, final summary, open-target button. Pure frontend over the same core.
+- Honest stop: `pipeline.run` gains `cancel_check` (polled between files only;
+  the current file — including a long Ollama call — is allowed to finish).
+- Guaranteed single `FINISHED` in every path (normal, per-file error, cancel,
+  fatal run-level error). `Report.cancelled` only on user cancel;
+  `Report.critical_error` records fatal errors.
+
 ## [0.2.0] - Unreleased
 
 ### Added
