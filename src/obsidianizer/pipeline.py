@@ -12,10 +12,12 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from . import enrich as enrich_mod
 from .config import Settings
 from .emit import atomic_write, copy_media, write_note
+from .events import Event, EventType
 from .index import build_index, build_index_from_dir
 from .llm import LLMClient
 from .manifest import prune as manifest_prune
@@ -26,6 +28,26 @@ from .registry import ProcessorRegistry
 logger = logging.getLogger("obsidianizer.pipeline")
 
 _HASH_RE = re.compile(r"^source_hash:\s*(\w+)$", re.MULTILINE)
+
+EventCallback = Callable[[Event], None] | None
+
+
+def _make_emitter(on_event: EventCallback, total: int) -> Callable[..., None]:
+    """Return a safe emitter bound to the batch total.
+
+    A broken listener must never stop processing, so exceptions raised by the
+    callback are swallowed and logged.
+    """
+
+    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "") -> None:
+        if on_event is None:
+            return
+        try:
+            on_event(Event(type=type_, path=path, index=index, total=total, message=message))
+        except Exception:  # noqa: BLE001 - listener errors must not kill the batch
+            logger.debug("Ошибка обработчика событий", exc_info=True)
+
+    return emit
 
 
 @dataclass
@@ -59,6 +81,7 @@ def run(
     *,
     dry_run: bool = False,
     prune: bool = False,
+    on_event: EventCallback = None,
 ) -> Report:
     source_root = settings.source.resolve()
     target_root = settings.target.resolve()
@@ -67,9 +90,12 @@ def run(
     index_records: list[dict] = []
 
     sources = registry.scan(source_root)
-    logger.info("Найдено %d файлов для обработки", len(sources))
+    total = len(sources)
+    logger.info("Найдено %d файлов для обработки", total)
+    emit = _make_emitter(on_event, total)
+    emit(EventType.SCAN_STARTED, path=str(source_root))
 
-    for sf in sources:
+    for index, sf in enumerate(sources, start=1):
         try:
             out_rel = sf.rel_path
             out_path = target_root / sf.rel_path
@@ -78,7 +104,12 @@ def run(
             if has_matching_hash(out_path, current_hash):
                 report.skipped += 1
                 current.add(out_rel)
+                emit(EventType.FILE_SKIPPED, path=out_rel, index=index)
                 continue
+
+            emit(EventType.FILE_STARTED, path=out_rel, index=index)
+            if llm is not None and settings.llm_enabled:
+                emit(EventType.LLM_STARTED, path=out_rel, index=index)
 
             proc = _process_one(registry, llm, sf, current_hash, settings.llm_enabled)
             index_records.append(
@@ -99,8 +130,10 @@ def run(
                     current.add(copied)
             report.processed += 1
             report.created.append(out_rel)
+            emit(EventType.FILE_DONE, path=out_rel, index=index)
         except Exception as exc:  # noqa: BLE001 - one bad file must not kill the batch
             report.failed.append(f"{sf.rel_path}: {exc}")
+            emit(EventType.FILE_ERROR, path=sf.rel_path, index=index, message=str(exc))
             logger.error("Ошибка обработки %s: %s", sf.rel_path, exc)
 
     # Generated navigation index: for real runs compiled from the produced
@@ -121,6 +154,13 @@ def run(
         if prune:
             report.pruned = manifest_prune(old, frozenset(current), target_root)
         write_manifest(target_root, current)
+
+    emit(
+        EventType.FINISHED,
+        index=report.processed,
+        message=f"обработано={report.processed}, пропущено={report.skipped}, "
+        f"ошибок={len(report.failed)}",
+    )
 
     return report
 

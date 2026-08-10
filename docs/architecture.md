@@ -1,5 +1,7 @@
 # Obsidianizer Architecture
 
+> [Русский](architecture.ru.md) | **English**
+
 This document is the architecture contract for Obsidianizer. The pipeline shown
 below is the fixed backbone; file types plug in as processors.
 
@@ -116,3 +118,61 @@ re-enriched, re-emitted.
 Output for identical inputs is identical: metadata extraction is regular-
 expression based, LLM output is the only non-deterministic ingredient, and only
 when explicitly enabled.
+
+## UI layer (planned)
+
+The desktop GUI is a later milestone. Its contract is fixed now so the core
+never has to change when the GUI arrives.
+
+```
+                    ┌──────────────────────┐
+                    │         UI           │
+                    │  source / target     │
+                    │  Ollama / model      │
+                    │  options             │
+                    │  progress / log      │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │         CLI          │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    CORE PIPELINE     │
+                    └──────────────────────┘
+```
+
+- CLI and UI are two interchangeable frontends for the same core.
+- The GUI is the primary user interface; the CLI is the automation interface.
+- The core knows nothing about UI; the UI knows nothing about Markdown/file
+  types. Communication goes through the event contract below.
+
+### Event contract (`events.py`)
+
+`events.py` is the single source of truth. The core emits through an optional
+`on_event` callback on `pipeline.run`; listeners (CLI, GUI) render as they
+like.
+
+```python
+Event(type=EventType, path=..., index=..., total=..., message=...)
+```
+
+| Event         | Meaning                                      |
+|---------------|----------------------------------------------|
+| `SCAN_STARTED`| batch discovered; `path` = source root       |
+| `FILE_STARTED`| processing a file; `index`/`total` progress  |
+| `LLM_STARTED` | LLM call began for the current file          |
+| `FILE_DONE`   | file processed successfully                  |
+| `FILE_SKIPPED`| skipped: unchanged via `source_hash`         |
+| `FILE_ERROR`  | file failed; `message` = error text          |
+| `FINISHED`    | batch over; `message` = summary counts       |
+
+The same `Event` renders differently per frontend:
+
+- GUI: `✓ Обработан 17 из 120`
+- CLI: `[17/120] ✓ filename.md`
+
+Future frontends only subscribe to these events; the core pipeline does not
+change.
