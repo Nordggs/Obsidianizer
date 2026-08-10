@@ -1,5 +1,16 @@
 # Obsidianizer
 
+## [0.2.0] - Unreleased
+
+### Added
+- Bilingual documentation (RU + EN): `README.ru.md`, `AGENTS.ru.md`,
+  `CHANGELOG.ru.md`, `docs/*.ru.md`; bilingual policy in `AGENTS.md`.
+- Event contract (`events.py`): `SCAN_STARTED`, `FILE_STARTED`, `LLM_STARTED`,
+  `FILE_DONE`, `FILE_SKIPPED`, `FILE_ERROR`, `FINISHED`. `pipeline.run` accepts
+  an optional `on_event` callback; core stays presentation-agnostic.
+- Placeholder for the future GUI shell (`ui.py`) and `assets/` directory.
+- Architecture docs: "UI layer" section with the event protocol.
+
 ## [0.1.0] - Unreleased
 
 ### Added

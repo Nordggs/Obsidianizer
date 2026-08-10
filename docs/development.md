@@ -1,5 +1,7 @@
 # Development
 
+> [Русский](development.ru.md) | **English**
+
 ## Environment
 
 Requirements: Python 3.10+ (developed on 3.14), git.

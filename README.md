@@ -1,5 +1,7 @@
 # Obsidianizer
 
+| [Русский](README.ru.md) | **English** |
+
 Local preprocessor that structures raw materials and prepares them for
 [Obsidian](https://obsidian.md).
 
@@ -87,6 +89,7 @@ apply. CLI arguments always win.
 src/obsidianizer/   package (importable, installable)
 tests/              pytest suite (safety-critical paths first)
 docs/               architecture + processor contract + development
+assets/             placeholder for future GUI assets (.exe, icons)
 ```
 
 ## License

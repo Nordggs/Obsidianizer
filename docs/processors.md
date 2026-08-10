@@ -1,5 +1,7 @@
 # Processors
 
+> [Русский](processors.ru.md) | **English**
+
 Processors are the only file-type-specific code in Obsidianizer. The core
 pipeline (`scan → extract → enrich → emit`) never contains type-specific logic;
 it only talks to the `Processor` interface.

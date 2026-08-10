@@ -96,9 +96,20 @@ src/obsidianizer/    package (src layout — installable, importable)
   manifest.py        ownership journal + prune
   index.py           _index.md generator
   models.py          dataclasses
+  events.py          single event contract (EventType, Event); core emits via on_event
+  ui.py              planned GUI shell; imports events; no markdown/file knowledge
 tests/               pytest; fixtures under tests/fixtures/
 docs/                architecture, processors, development
+assets/              placeholder for future GUI assets (.exe, icons)
 ```
+
+## Bilingual documentation
+
+User-facing documentation must be maintained in both English and Russian.
+English files use the standard filename; Russian versions use the `.ru.md`
+suffix. `README.md` is the GitHub entry point; `AGENTS.md` is the technical
+contract for coding agents; `AGENTS.ru.md` is the Russian copy for humans.
+The program never reads documentation files.
 
 ## Commands
 
