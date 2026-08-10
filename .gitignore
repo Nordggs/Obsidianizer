@@ -21,6 +21,7 @@ htmlcov/
 raw/
 processed/
 *.log
+obsidianizer.log
 
 # Local configuration (never commit real config)
 config.yml

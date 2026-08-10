@@ -89,6 +89,40 @@ def test_can_run_without_window(tmp_path):  # noqa: ARG001
     # Windowless bridge: _on_event must not raise even with window=None.
     source, target = _prepare(tmp_path)
     app = _app(source, target)
-    assert app.window is None
+    assert app._window is None
     report = app.run_now(app.settings)
     assert report.processed == 2
+
+
+class _FakeWindow:
+    """Minimal window stand-in: pywebview 6 returns a tuple from the dialog."""
+
+    def __init__(self, result) -> None:
+        self.result = result
+
+    def create_file_dialog(self, _dialog_type):  # noqa: ARG002
+        return self.result
+
+
+def test_choose_folder_unpacks_tuple_path():
+    app = UIApp()
+    app._window = _FakeWindow(("D:\\raw",))
+    assert app.choose_folder() == "D:\\raw"
+
+
+def test_choose_folder_handles_list_path():
+    app = UIApp()
+    app._window = _FakeWindow(["D:\\raw"])
+    assert app.choose_folder() == "D:\\raw"
+
+
+def test_choose_folder_returns_none_on_cancel():
+    app = UIApp()
+    app._window = _FakeWindow(None)
+    assert app.choose_folder() is None
+
+
+def test_choose_folder_none_without_window():
+    app = UIApp()
+    assert app._window is None
+    assert app.choose_folder() is None

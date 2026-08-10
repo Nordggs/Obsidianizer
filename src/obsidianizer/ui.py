@@ -11,9 +11,9 @@ Layout of the bridge:
   forwards each ``Event`` to ``window.pushEvent(...)`` in the UI.
 - A ``logging.Handler`` forwards log lines to ``window.pushLog(...)``.
 
-The bridge is headless-testable: without a webview ``window`` attribute
-(``self.window`` is ``None``) events accumulate in ``self.events`` and no
-``evaluate_js`` call is attempted.
+The bridge is headless-testable: without a webview window (``self._window``
+is ``None``) events accumulate in ``self.events`` and no ``evaluate_js``
+call is attempted.
 
 Stop semantics are honest: ``cancel()`` only sets a flag that ``pipeline.run``
 polls *between files*. The current file (including a long Ollama call) is
@@ -39,6 +39,9 @@ from .pipeline import run as run_pipeline
 from .registry import ProcessorRegistry
 
 RESOURCES = Path(__file__).resolve().parent / "web"
+LOG_FILE = Path(__file__).resolve().parents[2] / "obsidianizer.log"
+
+logger = logging.getLogger("obsidianizer.ui")
 
 
 class _UiLogHandler(logging.Handler):
@@ -66,7 +69,12 @@ class UIApp:
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or Settings.load()
-        self.window = None  # pywebview attaches the window here automatically
+        # pywebview 6 does NOT attach the window to js_api automatically;
+        # ``launch()`` binds it explicitly. Kept private: the pywebview JS-API
+        # generator walks js_api attributes recursively, and a public Window
+        # reference would drive it into WebView2 COM objects (recursion, noise).
+        # Stays None in headless tests.
+        self._window = None
         self.events: list[Event] = []
         self._cancel = False
         self._busy = False
@@ -74,9 +82,9 @@ class UIApp:
     # ── helpers ────────────────────────────────────────────────────────────
 
     def _push(self, js: str) -> None:
-        if self.window is not None:
+        if self._window is not None:
             try:
-                self.window.evaluate_js(js)
+                self._window.evaluate_js(js)
             except Exception:  # noqa: BLE001 - UI round-trips must not raise
                 pass
 
@@ -110,14 +118,14 @@ class UIApp:
 
     def choose_folder(self) -> str | None:
         """Open a native folder picker; returns the chosen path or None."""
-        if self.window is None:
+        if self._window is None:
             return None
         import webview
 
-        result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        result = self._window.create_file_dialog(webview.FileDialog.FOLDER)
         if not result:
             return None
-        if isinstance(result, list):
+        if isinstance(result, (list, tuple)):
             return str(result[0])
         return str(result)
 
@@ -130,6 +138,7 @@ class UIApp:
             return {"ok": False, "error": str(exc)}
         self.settings.source = src
         self.settings.target = tgt
+        logger.info("Paths set: source=%s target=%s", src, tgt)
         return {"ok": True}
 
     def set_llm(self, enabled: bool, model: str) -> None:
@@ -160,6 +169,14 @@ class UIApp:
         s.target = self.settings.target
         s.llm_enabled = self.settings.llm_enabled
         s.ollama = dict(self.settings.ollama)
+        logger.info(
+            "Run started: source=%s target=%s llm=%s dry_run=%s prune=%s",
+            s.source,
+            s.target,
+            s.llm_enabled,
+            bool(opts.get("dry_run")),
+            bool(opts.get("prune")),
+        )
         threading.Thread(
             target=self._run_worker,
             args=(s, bool(opts.get("dry_run")), bool(opts.get("prune"))),
@@ -222,6 +239,14 @@ class UIApp:
     def _on_event(self, event: Event) -> None:
         self.events.append(event)
         self._push_event(event)
+        if event.type is EventType.SCAN_STARTED:
+            logger.info("Scan started: %d files", event.total)
+        elif event.type is EventType.FILE_STARTED:
+            logger.info("Processing: %d/%d %s", event.index, event.total, event.path)
+        elif event.type is EventType.FILE_ERROR:
+            logger.error("File error: %s: %s", event.path, event.message)
+        elif event.type is EventType.FINISHED:
+            logger.info("Run finished: %s", event.message)
 
     @property
     def is_busy(self) -> bool:
@@ -238,9 +263,21 @@ def launch(initial_source: str | None = None, initial_target: str | None = None)
     if initial_target:
         app.settings.target = Path(initial_target)
 
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if not any(getattr(h, "_obsidianizer_log", False) for h in root.handlers):
+        file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+        file_handler._obsidianizer_log = True
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
+        )
+        root.addHandler(file_handler)
+
     handler = _UiLogHandler(lambda msg: app._log(msg))
     handler.setLevel(logging.INFO)
-    logging.getLogger().addHandler(handler)
+    root.addHandler(handler)
+    logger.info("GUI started: v%s", __version__)
 
     window = webview.create_window(
         "Obsidianizer",
@@ -251,4 +288,5 @@ def launch(initial_source: str | None = None, initial_target: str | None = None)
         min_size=(720, 560),
         background_color="#1e1e1e",
     )
+    app._window = window  # pywebview 6 does not set js_api.window automatically
     webview.start(debug=False, http_server=True)
