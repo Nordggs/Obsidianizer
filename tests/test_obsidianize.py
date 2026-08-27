@@ -1347,6 +1347,32 @@ def test_manifest_parses_multiline_json(tmp_path):
     assert data["base"] == ""
 
 
+def test_no_recursive_keeps_folder_aggregates(tmp_path):
+    """--no-recursive must keep subfolder aggregates in the Folders table.
+
+    The tree is trimmed to the root card only, but folder_stats must still
+    see the full subtree, otherwise Files/Size/Updated render as 0 / 0 B / empty.
+    """
+
+    root = _make_equipment(tmp_path)
+    _touch(root / "Арх" / "вложенный.pdf")
+    size = (root / "Арх" / "вложенный.pdf").stat().st_size
+
+    summary = update_cards(root, ObsidianizeConfig(force=True), recursive=False)
+    assert summary.scanned == 1  # only the root card was processed
+    card = (root / "Оборудование.md").read_text(encoding="utf-8")
+
+    # Folders row for Арх must carry real aggregates, not 0 / 0 B
+    row = [l for l in card.splitlines() if l.startswith("| 📁 [[Арх/Арх")]
+    assert row, f"Арх row missing in card:\n{card}"
+    assert f"| 1 | {format_size(size)} |" in row[0], row[0]
+
+    # and the subfolder card was NOT regenerated (--no-recursive contract)
+    assert not (root / "Арх" / "Арх.md").exists() or card_is_ours(
+        (root / "Арх" / "Арх.md").read_text(encoding="utf-8")
+    )
+
+
 def test_nav_includes_images_when_images_present(tmp_path):
     root = _make_equipment(tmp_path)
     _touch(root / "фото.png")

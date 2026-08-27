@@ -1274,9 +1274,13 @@ def update_cards(
 
     cfg = cfg or ObsidianizeConfig()
     tree = scan_tree(root, cfg)
-    if not recursive:
-        tree = {rel: folder for rel, folder in tree.items() if rel == ""}
+    # Aggregates must be computed on the FULL subtree: with --no-recursive the
+    # tree is trimmed to the root entry only, and folder_stats would silently
+    # lose every subfolder aggregate (Folders table renders 0 / 0 B / empty).
     stats = folder_stats(tree, cfg)
+    if not recursive:
+        # Trim AFTER stats: only the iteration is scoped, the aggregates stay.
+        tree = {rel: folder for rel, folder in tree.items() if rel == ""}
     summary = UpdateSummary(scanned=len(tree))
     for rel, folder in tree.items():
         card = card_path_for(folder)

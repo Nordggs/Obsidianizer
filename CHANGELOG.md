@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.3.6] - 2026-08-28
+
+### Fixed
+- `--no-recursive` (Templater hotkey) zeroed the Folders table: the tree was
+  trimmed to the root entry BEFORE `folder_stats`, so every subfolder row
+  rendered `0 / 0 B / empty` while a GUI (recursive) run showed real values.
+  Stats are now computed on the full subtree; the trim only scopes the
+  card-writing loop. Regression test pins real aggregates and the
+  "only the root card is written" contract.
+
 ## [0.3.5] - 2026-08-28
 
 ### Fixed
