@@ -1031,11 +1031,31 @@ def folder_stats(
 # --------------------------------------------------------------------------
 
 
+def _card_rel_key(folder: FolderScan, rel: str) -> str:
+    """Normalize a file rel-path to the card-folder basis.
+
+    Scan rel-paths are relative to the scan root, which varies between runs
+    (GUI scans a project root, the Templater hotkey scans the card folder
+    itself). Keying fingerprints and manifests by the card-folder-relative
+    path makes both basis-independent. Falls back to the raw rel when the
+    prefix does not match (defensive; should not happen for real subtrees).
+    """
+
+    prefix = (folder.rel + "/") if folder.rel else (folder.path.name + "/")
+    return rel[len(prefix):] if rel.startswith(prefix) else rel
+
+
 def folder_fingerprint(folder: FolderScan) -> str:
     """sha1 over sorted file entries (rel, size, mtime), subfolders and the
-    presence of the AI-review file (so the card's review link stays fresh)."""
+    presence of the AI-review file (so the card's review link stays fresh).
 
-    items = [f"F:{f.rel}\x00{f.size}\x00{f.mtime_ns}" for f in folder.files]
+    File paths are keyed in the card-folder basis, so the fingerprint is
+    identical no matter which root the tree was scanned from."""
+
+    items = [
+        f"F:{_card_rel_key(folder, f.rel)}\x00{f.size}\x00{f.mtime_ns}"
+        for f in folder.files
+    ]
     items += [f"D:{s}" for s in folder.subfolders]
     items.append("R:1" if review_file_path(folder).is_file() else "R:0")
     items.sort()
@@ -1047,7 +1067,9 @@ def folder_fingerprint(folder: FolderScan) -> str:
 # --------------------------------------------------------------------------
 
 
-_MANIFEST_RE = re.compile(r"<!-- obsidianizer-manifest: (\{.*?\}) -->")
+_MANIFEST_RE = re.compile(
+    r"<!-- obsidianizer-manifest: (\{.*?\}) -->", re.DOTALL
+)
 
 
 def _notes_user_hash(notes_prev: str | None) -> str:
@@ -1067,8 +1089,12 @@ def _notes_user_hash(notes_prev: str | None) -> str:
 
 
 def _manifest_payload(folder: FolderScan, notes_prev: str | None) -> dict:
+    # ``base`` pins the basis the file keys were written against (the rel of
+    # the card folder from the update root), so card_diff can always align
+    # legacy/future manifests scanned from a different root.
     return {
-        "files": {f.rel: f.size for f in folder.files},
+        "base": folder.rel,
+        "files": {_card_rel_key(folder, f.rel): f.size for f in folder.files},
         "folders": list(folder.subfolders),
         "notes": _notes_user_hash(notes_prev),
     }
@@ -1085,6 +1111,24 @@ def _parse_manifest(content: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _align_legacy_manifest_keys(
+    folder: FolderScan, old_files: dict
+) -> dict:
+    """Deterministically align legacy manifest keys (no ``base`` field) to
+    the card-folder basis.
+
+    Rule (no heuristics): if at least one key carries the scan-root prefix
+    (``folder.rel + "/"``, or the card folder's own name for a root card),
+    the manifest was written from a higher root — strip that prefix from
+    every key. Otherwise the keys are already card-relative.
+    """
+
+    prefix = (folder.rel + "/") if folder.rel else (folder.path.name + "/")
+    if prefix and any(k.startswith(prefix) for k in old_files):
+        return {k[len(prefix):]: v for k, v in old_files.items()}
+    return dict(old_files)
+
+
 def card_diff(
     prev_card: str | None,
     folder: FolderScan,
@@ -1094,13 +1138,22 @@ def card_diff(
 
     Returns None when the old card has no parsable manifest (e.g. a foreign
     note or a pre-manifest version) — the caller then just reports "stale".
+    Both sides are compared in the card-folder basis: scan keys via
+    :func:`_card_rel_key`, manifest keys via ``base`` (new manifests) or the
+    deterministic legacy-prefix rule.
     """
 
     old = _parse_manifest(prev_card or "")
     if old is None:
         return None
-    cur_files = {f.rel: f.size for f in folder.files}
-    old_files = old.get("files") or {}
+    cur_files = {_card_rel_key(folder, f.rel): f.size for f in folder.files}
+    old_raw = old.get("files") or {}
+    if "base" in old:
+        # New manifest: keys are already card-relative (written via
+        # _card_rel_key); ``base`` only records the update root.
+        old_files = dict(old_raw)
+    else:
+        old_files = _align_legacy_manifest_keys(folder, old_raw)
     added = sorted(set(cur_files) - set(old_files))
     removed = sorted(set(old_files) - set(cur_files))
     changed = sorted(

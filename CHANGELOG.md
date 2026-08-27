@@ -1,5 +1,27 @@
 # Obsidianizer
 
+## [0.3.5] - 2026-08-28
+
+### Fixed
+- Scanner ↔ Templater basis desync: manifest file keys and the folder
+  fingerprint silently depended on the scan root. A card updated from its
+  own folder (Templater hotkey) and then scanned from the project root
+  produced «добавлен/удалён» for every file and a permanent stale status.
+  Fix, both sides now compare in the card-folder basis:
+  - `folder_fingerprint` keys files card-relatively (basis-independent;
+    existing cards become stale once and regenerate on the next update);
+  - `_manifest_payload` writes card-relative keys plus a `base` field
+    (the card rel from the update root, for diagnostics);
+  - `card_diff` aligns legacy manifests (no `base`) with a deterministic
+    prefix rule: if any stored key carries the scan-root prefix, strip it
+    from every key — no intersection counting.
+- `_MANIFEST_RE` gained `re.DOTALL` so a multiline JSON dump can never
+  silently break manifest parsing (defensive; current dumps are single-line).
+
+### Added
+- `obs_scan` logs every stale-card diff to `obsidianizer.log` (scan root,
+  folder rel, added/removed/changed counters) for post-mortem checks.
+
 ## [0.3.4] - 2026-08-27
 
 ### Fixed

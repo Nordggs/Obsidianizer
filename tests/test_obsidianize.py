@@ -1264,6 +1264,89 @@ def test_manifest_written_and_diff_detected(tmp_path):
     assert any("удалён" in line for line in format_changes(diff5))
 
 
+def _card_with_manifest(manifest_obj: dict) -> str:
+    import json as _json
+
+    return (
+        "---\nobsidianizer: true\n---\n\n# Карточка\n\n"
+        "<!-- obsidianizer-manifest: "
+        + _json.dumps(manifest_obj, ensure_ascii=False, sort_keys=True)
+        + " -->\n"
+    )
+
+
+def test_fingerprint_basis_independent(tmp_path):
+    """One folder scanned from different roots must give the same fingerprint."""
+    from obsidianizer.obsidianize import folder_fingerprint
+
+    root = _make_equipment(tmp_path)
+    _touch(root / "Арх" / "вложенный.pdf")
+    fp_from_root = folder_fingerprint(scan_tree(root)["Арх"])
+    fp_from_self = folder_fingerprint(scan_tree(root / "Арх")[""])
+    assert fp_from_root == fp_from_self
+
+
+def test_card_diff_cross_basis(tmp_path):
+    """Manifest from one scan root must diff cleanly against a scan from
+    another root — no phantom added/removed for unchanged files."""
+    from obsidianizer.obsidianize import card_diff
+
+    root = _make_equipment(tmp_path)
+    _touch(root / "Арх" / "вложенный.pdf")
+    size = (root / "Арх" / "вложенный.pdf").stat().st_size
+    tree = scan_tree(root)
+    folder = tree["Арх"]
+
+    # legacy manifest written from the project root (keys carry the prefix)
+    legacy_from_root = {
+        "files": {f"Арх/вложенный.pdf": size},
+        "folders": [],
+        "notes": "",
+    }
+    d = card_diff(_card_with_manifest(legacy_from_root), folder, "")
+    assert d["added"] == [] and d["removed"] == []
+
+    # legacy manifest written from the card folder itself (keys without prefix)
+    legacy_from_self = {
+        "files": {"вложенный.pdf": size},
+        "folders": [],
+        "notes": "",
+    }
+    d2 = card_diff(_card_with_manifest(legacy_from_self), folder, "")
+    assert d2["added"] == [] and d2["removed"] == []
+
+    # new manifest with base: keys are card-relative, diff is direct
+    new_manifest = {
+        "base": "Арх",
+        "files": {"вложенный.pdf": size},
+        "folders": [],
+        "notes": "",
+    }
+    d3 = card_diff(_card_with_manifest(new_manifest), folder, "")
+    assert d3["added"] == [] and d3["removed"] == []
+
+    # a real file change is still detected across bases
+    _touch(root / "Арх" / "новый.dwg")
+    d4 = card_diff(_card_with_manifest(legacy_from_root), scan_tree(root)["Арх"], "")
+    assert d4["added"] == ["новый.dwg"]
+
+
+def test_manifest_parses_multiline_json(tmp_path):
+    """DOTALL: a manifest dumped with indent=2 must still be parsed."""
+    from obsidianizer.obsidianize import _parse_manifest
+
+    multiline = (
+        "---\nobsidianizer: true\n---\n\n"
+        "<!-- obsidianizer-manifest: "
+        '{\n  "base": "",\n  "files": {"a.txt": 1},\n  "folders": [],\n  "notes": ""\n}'
+        " -->\n"
+    )
+    data = _parse_manifest(multiline)
+    assert data is not None
+    assert data["files"] == {"a.txt": 1}
+    assert data["base"] == ""
+
+
 def test_nav_includes_images_when_images_present(tmp_path):
     root = _make_equipment(tmp_path)
     _touch(root / "фото.png")

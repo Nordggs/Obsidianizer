@@ -371,6 +371,7 @@ class UIApp:
         try:
             cfg = ObsidianizeConfig(template=self.settings.obsidianize_template)
             tree = scan_tree(root, cfg)
+            logger.info("Obs scan: root=%s folders=%d", root, len(tree))
             folders = []
             for rel, folder in tree.items():
                 counts = {cat: 0 for cat in ("drafting", "tables", "docs", "images", "other")}
@@ -403,6 +404,17 @@ class UIApp:
                     changes = format_changes(diff) if diff else ["карточка устарела"]
                     if not changes:
                         changes = ["изменилось содержимое проекта"]
+                    logger.info(
+                        "Obs scan diff: rel=%s status=%s added=%d removed=%d "
+                        "changed=%d folders_changed=%s notes_changed=%s",
+                        rel,
+                        status,
+                        len(diff["added"]) if diff else -1,
+                        len(diff["removed"]) if diff else -1,
+                        len(diff["changed"]) if diff else -1,
+                        diff.get("folders_changed") if diff else None,
+                        diff.get("notes_changed") if diff else None,
+                    )
 
                 folders.append(
                     {
