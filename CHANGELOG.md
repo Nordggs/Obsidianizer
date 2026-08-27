@@ -1,5 +1,18 @@
 # Obsidianizer
 
+## [0.3.2] - 2026-08-27
+
+### Added
+- Folder Obsidianizer backend for v5.12 GUI parity: automatic vault root
+  detection (`_find_vault_root` walks up to `.obsidian`) when neither
+  vault_root nor gallery_prefix is set; `set_obsidianize_gallery_prefix`
+  bridge method; `obs_obsidianize` passes `adopt` and `gallery_prefix`.
+- Smarter scan (`obs_scan`): per-folder `changes` list produced from the
+  card's hidden manifest diff (`card_diff` / `format_changes` — added /
+  removed / changed files, folder structure, project data), `adoptable`
+  flag for foreign notes without a notes file, and a one-line summary
+  (checked / unchanged / need update).
+
 ## [0.3.1] - 2026-08-27
 
 ### Added

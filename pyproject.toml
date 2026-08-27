@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "obsidianizer"
-version = "0.3.1"
+version = "0.3.2"
 description = "Local preprocessor that structures raw materials (Markdown today, more later) and prepares them for Obsidian."
 readme = "README.md"
 requires-python = ">=3.10"

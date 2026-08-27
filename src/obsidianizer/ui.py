@@ -146,6 +146,19 @@ def _nearest_existing_dir(path: Path) -> Path:
     return p
 
 
+def _find_vault_root(path: Path) -> str:
+    """Walk up from ``path`` until a vault marker (.obsidian) is found."""
+
+    cur = path.resolve()
+    while True:
+        if (cur / ".obsidian").is_dir():
+            return str(cur)
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return ""
+
+
 class UIApp:
     """Bridge between the web UI and the core pipeline (headless-testable)."""
 
@@ -219,6 +232,7 @@ class UIApp:
             "dry_run": self.settings.dry_run,
             "obsidianize_dir": self.settings.obsidianize_dir,
             "obsidianize_vault_root": self.settings.obsidianize_vault_root,
+            "obsidianize_gallery_prefix": self.settings.obsidianize_gallery_prefix,
             "obsidianize_template": self.settings.obsidianize_template,
         }
 
@@ -315,6 +329,13 @@ class UIApp:
         self._save_settings()
         return {"ok": True}
 
+    def set_obsidianize_gallery_prefix(self, prefix: str) -> dict:
+        """Remember the fallback vault-path prefix for the img-gallery block
+        (used when the working tree is outside the vault / vault_root empty)."""
+        self.settings.obsidianize_gallery_prefix = str(prefix).strip().strip("/")
+        self._save_settings()
+        return {"ok": True}
+
     def set_obsidianize_template(self, template: str) -> dict:
         """Remember the card template (github | classic)."""
         if template not in ("github", "classic"):
@@ -324,8 +345,22 @@ class UIApp:
         return {"ok": True}
 
     def obs_scan(self, path: str = "") -> dict:
-        """Read-only scan: folder tree + card statuses. Writes nothing."""
-        from .obsidianize import ObsidianizeConfig, card_path_for, card_status, scan_tree
+        """Read-only scan: folder tree + card statuses + change details.
+
+        Writes nothing. For every folder with an existing card the response
+        carries ``changes`` — a short human-readable list (добавлен/удалён/
+        изменён файл, структура папок, данные проекта) produced by comparing
+        the card's hidden manifest with the current state.
+        """
+        from .obsidianize import (
+            ObsidianizeConfig,
+            card_diff,
+            card_path_for,
+            card_status,
+            format_changes,
+            notes_file_path,
+            scan_tree,
+        )
 
         path = str(path or "").strip() or str(self.settings.obsidianize_dir).strip()
         if not path:
@@ -345,6 +380,30 @@ class UIApp:
                     known |= exts
                     counts[cat] = sum(1 for f in folder.files if f.ext in exts)
                 counts["other"] = sum(1 for f in folder.files if f.ext not in known and f.ext != "md")
+
+                card_p = card_path_for(folder)
+                notes_prev: str | None = None
+                notes_p = notes_file_path(folder)
+                if notes_p.exists():
+                    try:
+                        notes_prev = notes_p.read_text(encoding="utf-8")
+                    except OSError:
+                        notes_prev = None
+
+                status = card_status(card_p, folder, template=cfg.template, notes_prev=notes_prev)
+
+                changes: list[str] = []
+                if status == "stale" and card_p.is_file():
+                    try:
+                        diff = card_diff(
+                            card_p.read_text(encoding="utf-8"), folder, notes_prev
+                        )
+                    except OSError:
+                        diff = None
+                    changes = format_changes(diff) if diff else ["карточка устарела"]
+                    if not changes:
+                        changes = ["изменилось содержимое проекта"]
+
                 folders.append(
                     {
                         "rel": rel,
@@ -353,12 +412,22 @@ class UIApp:
                         "subfolders": len(folder.subfolders),
                         "images": len(folder.images),
                         "categories": counts,
-                        "card": card_status(
-                            card_path_for(folder), folder, template=cfg.template
-                        ),
+                        "card": status,
+                        "changes": changes,
+                        "adoptable": status == "conflict" and not notes_p.exists(),
                     }
                 )
-            return {"ok": True, "root": str(root), "folders": folders}
+            changed_n = sum(1 for f in folders if f["card"] in ("stale", "missing"))
+            return {
+                "ok": True,
+                "root": str(root),
+                "folders": folders,
+                "summary": (
+                    f"Проверено: {len(folders)} · "
+                    f"без изменений: {len(folders) - changed_n} · "
+                    f"требуют обновления: {changed_n}"
+                ),
+            }
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
@@ -380,10 +449,22 @@ class UIApp:
             return {"ok": False, "error": f"Папка не существует: {root}"}
         from .obsidianize import ObsidianizeConfig
 
+        vault_root = str(opts.get("vault_root") or self.settings.obsidianize_vault_root)
+        gallery_prefix = str(
+            opts.get("gallery_prefix") or self.settings.obsidianize_gallery_prefix
+        )
+        # If the scanned folder lives inside an Obsidian vault and neither
+        # vault_root nor gallery_prefix is set, detect the vault root so the
+        # Gallery section appears the same way as with the hotkey update.
+        if not vault_root and not gallery_prefix:
+            vault_root = _find_vault_root(root)
+
         cfg = ObsidianizeConfig(
             force=bool(opts.get("force")),
+            adopt=bool(opts.get("adopt")),
             img_gallery=bool(opts.get("gallery", True)),
-            vault_root=str(opts.get("vault_root") or self.settings.obsidianize_vault_root),
+            vault_root=vault_root,
+            gallery_prefix=gallery_prefix,
             template=str(opts.get("template") or self.settings.obsidianize_template),
         )
         self.settings.obsidianize_dir = str(root)
