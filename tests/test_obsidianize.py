@@ -473,7 +473,14 @@ def test_build_card_subfolder_has_parent_link(tmp_path):
     card = build_card(tree["Арх"], None, ObsidianizeConfig(template="classic"), parent_rel="Оборудование")
     # Вверх живёт строкой в таблице Folders, а не в шапке
     assert "[[../Оборудование|⬆ Up]]" not in card.split("## Folders")[0]
-    assert "| ⬆ [[../Оборудование|Up]] |  |  |  |" in card
+    # alias-пайп обязан быть экранирован (\|), иначе markdown-таблица режется
+    assert "| ⬆ [[../Оборудование\\|Up]] |  |  |  |" in card
+    # структурная проверка: ровно 4 ячейки после маскировки экранированного пайпа
+    for line in card.splitlines():
+        if line.startswith("| ⬆"):
+            normalized = line.replace("\\|", "\x00")
+            cells = normalized.strip().strip("|").split("|")
+            assert len(cells) == 4, f"Up-строка не 4 ячейки: {line!r}"
 
 
 def test_build_card_root_has_no_parent_link(tmp_path):

@@ -710,7 +710,7 @@ def _render_dashboard(
             # Parent is the scanned root
             parent_name = folder.path.parent.name
             link = ".."
-        parts.append(f"| ⬆ [[{link}|Up]] |  |  |  |")
+        parts.append(f"| ⬆ [[{link}\\|Up]] |  |  |  |")
     subs = st.get("subfolders") or {}
     if folder.subfolders:
         for sub in folder.subfolders:

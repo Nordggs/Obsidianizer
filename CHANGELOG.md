@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.3.4] - 2026-08-27
+
+### Fixed
+- The "⬆ Up" row in the Folders table rendered a raw alias pipe
+  (`[[../X|Up]]`), which the Markdown table parser treated as a cell
+  separator — the row split into 6 cells and broke the table. The pipe is
+  now escaped (`[[../X\|Up]]`), matching the folder-row pattern; the table
+  keeps exactly 4 cells. Test extended with a structural cell-count check;
+  the root card (no Up row) is covered by the existing test.
+
 ## [0.3.3] - 2026-08-27
 
 ### Added
