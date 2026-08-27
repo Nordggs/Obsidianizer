@@ -1,8 +1,15 @@
 # Obsidianizer
 
-## [0.4.0] - Unreleased
+## [0.3.0] - 2026-08-27
 
 ### Added
+- Stable recovery point after a catastrophic `git stash` + `reset --hard`
+  (full 3-tab GUI restored, 288 tests green). The card core
+  (`obsidianize.py`) carries the v5.11/v5.12 structure with
+  `RENDER_VERSION = 8` (Folders / Files / About / Gallery / Images / Notes).
+- Recovery safety nets: branches `recovery-pre-v5.11` (pre-v5.11 state) and
+  `recovery-current-v5.11` (state with v5.11/v5.12 CLI/UI bits), plus
+  `backup-before-recovery` on the base commit; tagged `v0.3.0`.
 - Two-stage output: `processed/` (import) and `enriched/` (import + LLM).
 - Persistent GUI state: `config.yml` is the single store for paths, model,
   Ollama toggle and prune / dry-run flags. `Settings.save()` merges into the
