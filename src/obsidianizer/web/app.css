@@ -567,6 +567,40 @@ nav.tabs .tab {
   font-size: 13px;
   cursor: pointer;
 }
+nav.tabs .tab-help {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+nav.tabs .tab svg.tab-ico {
+  width: 14px;
+  height: 17px;
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+#tabHelpIcon { margin-right: 6px; }
+#tabHelpIcon svg.tab-ico {
+  width: 13px;
+  height: 16px;
+  vertical-align: -3px;
+  margin-right: 0;
+}
+
+/* ── Help modal ─────────────────────────────────────────────────────────── */
+
+.help-box { width: 600px; }
+.help-body {
+  padding: 14px 18px;
+  max-height: 60vh;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.help-body p { margin: 0 0 10px; }
+.help-body ul { margin: 0; padding-left: 20px; }
+.help-body li { margin-bottom: 8px; }
+.help-body b { color: var(--fg); }
+.help-body i { color: var(--dim); }
 
 /* ── Folder Obsidianizer table ──────────────────────────────────────────── */
 

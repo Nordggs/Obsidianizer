@@ -1,5 +1,19 @@
 # Obsidianizer
 
+## [0.4.0] - 2026-08-28
+
+### Added
+- Context-sensitive Help: a "?" button pinned to the right of the tab bar
+  opens a plain-language reference for the **active** tab (Obsidianize /
+  Чат-обработка / AI-анализ). The icon next to the "?" follows the current
+  tab; the modal is closable via ×, backdrop click or Esc and is draggable.
+- The Obsidianize tab got the Obsidian crystal mark (inline SVG, purple
+  gradient) instead of the generic folder emoji; the chat 💬 and robot 🤖
+  marks stay.
+
+First minor release: the 0.3.x line (recovery → fixes → docs) is complete,
+feature development continues on 0.4.x.
+
 ## [0.3.9] - 2026-08-28
 
 ### Added

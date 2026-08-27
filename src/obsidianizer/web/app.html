@@ -13,9 +13,27 @@
   </header>
 
   <nav class="tabs">
-    <button id="tabNavObs" class="tab active" data-page="obsidianize">📁 Obsidianize</button>
+    <button id="tabNavObs" class="tab active" data-page="obsidianize">
+      <svg class="tab-ico" viewBox="0 0 24 28" aria-hidden="true">
+        <defs>
+          <linearGradient id="obsGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a78bfa"/>
+            <stop offset="1" stop-color="#6d28d9"/>
+          </linearGradient>
+        </defs>
+        <path d="M12 1 L21 6.5 L21 15.2 L12 21 L3 15.2 L3 6.5 Z" fill="url(#obsGrad)"/>
+        <path d="M12 1 L21 6.5 L16 10.8 L7.2 7.6 Z" fill="#c4b5fd" opacity="0.9"/>
+        <path d="M7.2 7.6 L16 10.8 L12 21 Z" fill="#8b5cf6"/>
+        <path d="M3 6.5 L7.2 7.6 L12 21 L3 15.2 Z" fill="#5b21b6"/>
+        <path d="M12 1 L7.2 7.6 L3 6.5 Z" fill="#ddd6fe"/>
+      </svg>
+      Obsidianize
+    </button>
     <button id="tabNavChat" class="tab" data-page="chat">💬 Чат-обработка</button>
     <button id="tabNavAi" class="tab" data-page="ai">🤖 AI-анализ</button>
+    <button id="tabNavHelp" class="tab tab-help" title="Справка по текущей вкладке">
+      <span id="tabHelpIcon"></span><span class="help-q">?</span>
+    </button>
   </nav>
 
   <section id="page-obsidianize" class="tab-page active">
@@ -238,6 +256,21 @@
         <button id="btnTopicManageRefresh" class="ghost">Обновить список</button>
         <span class="spacer"></span>
         <button id="btnTopicManageClose2">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal hidden">
+    <div class="modal-box help-box">
+      <div class="modal-head">
+        <span id="helpModalHead">Справка</span>
+        <button id="btnHelpClose" class="modal-close" title="Закрыть">×</button>
+      </div>
+      <div id="helpBody" class="help-body"></div>
+      <div class="modal-actions">
+        <span class="dim">Подробные инструкции — в README и docs/obsidianize</span>
+        <span class="spacer"></span>
+        <button id="btnHelpOk" class="primary">Понятно</button>
       </div>
     </div>
   </div>
