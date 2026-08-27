@@ -1,5 +1,18 @@
 # Obsidianizer
 
+## [0.3.8] - 2026-08-28
+
+### Documentation release
+- README (EN+RU): new «Common situations» subsection in Folder Obsidianizer —
+  plain-language answers (no code, no flags) to the questions every new user
+  hits: a folder without a card, an accidental Obsidian-created note
+  (Ctrl+click) and how adoption turns it into the notes file, the never-
+  overwritten notes promise, honest stale marking after notes edits, no
+  update pressure, and zero writes until an explicit run.
+- `docs/obsidianize.md` + `.ru.md`: the same scenarios woven into the user
+  flow sections with the actual status vocabulary (missing / conflict /
+  stale / ok).
+
 ## [0.3.7] - 2026-08-28
 
 ### Documentation release

@@ -182,6 +182,37 @@ only user-editable layer (client, address, designer, comments…). Obsidianizer
 never rewrites the notes; editing them marks the card stale so the next
 update rebuilds the rendered part with fresh About data.
 
+### Common situations
+
+**The folder has no card yet — just files.**
+No problem: run Obsidianize — the card and the notes file will appear
+automatically. Until then nothing is blocked, the files work as usual.
+
+**I accidentally created a note in Obsidian (say, Ctrl+click on a folder),
+then ran Obsidianizer.**
+Nothing is lost. The program sees "this note is not mine" and never touches
+it without your permission — the scan table will hint what to do. Turn on
+"Принять существующую заметку как заметки" (or simply refresh the card with
+the hotkey — it is already enabled there): your note becomes the notes file,
+and a fresh card appears in its place.
+
+**Will the program ever overwrite my notes?**
+No. The `<folder>_заметки.md` file is your personal territory: the program
+creates it once and never rewrites it afterwards, no matter what happens.
+
+**I changed the project fields in the notes (client, designer…).**
+Edit the notes — the next update will honestly mark the card as
+"needs update" and pick up the new data. No phantom "file added/removed"
+lines for unchanged files.
+
+**Do I have to update right away?**
+No. A card is just a convenient dashboard; update whenever you like, even a
+month later. Changed cards will be flagged in the scan table.
+
+**I work in Obsidian and never ran Obsidianizer.**
+Your files stay untouched: the program writes nothing until you run it
+yourself.
+
 Full card structure, templates and the user flow live in
 [docs/obsidianize.md](docs/obsidianize.md) (RU: `docs/obsidianize.ru.md`).
 

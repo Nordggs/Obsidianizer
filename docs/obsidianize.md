@@ -124,6 +124,40 @@ rendered by Obsidian) — see [Technical notes](#technical-notes).
 5. **Update later**: press the Templater hotkey on a card (one card), or run
    Obsidianize from the GUI (whole tree). Unchanged cards are skipped.
 
+### Common situations
+
+**The folder has no card yet — just files.**
+Run Obsidianize: the card and the notes file are created automatically. The
+scan table shows such a folder as "missing". Until then, working with the
+files is not restricted in any way.
+
+**I created a note in Obsidian (say, Ctrl+click on a folder), and
+Obsidianizer sees it as foreign.**
+A note created by Obsidian itself has no card marker, so the program never
+touches it without permission — status "conflict". In the GUI, turn on
+"Принять существующую заметку как заметки": the note is renamed into
+`<folder>_заметки.md` (content preserved 1:1) and a fresh card appears in its
+place. The Templater hotkey and the Shell command do this automatically —
+adoption is always enabled there.
+
+**Will the program overwrite my notes?**
+No. `<folder>_заметки.md` is created once and never rewritten afterwards.
+Even foreign-note adoption only fires while the notes file does not exist.
+
+**I changed the project fields in the notes.**
+The card is honestly marked stale, and the next update rebuilds the About
+section with the new data. The file sections stay accurate: no phantom
+"added/removed" lines for unchanged files.
+
+**Can I skip updating for now?**
+Yes: a card is a dashboard, not a mandatory ritual. Unrefreshed cards are
+flagged in the scan table and wait their turn.
+
+**I never ran Obsidianizer at all.**
+Then the program has written nothing: all your files are in their original
+state. There are no background processes — everything happens only on an
+explicit launch.
+
 ## Refreshing a card from Obsidian
 
 ### Templater hotkey (primary)
