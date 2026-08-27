@@ -803,6 +803,21 @@
     const rows = r.folders.map(function (f) {
       const c = f.categories || {};
       const st = OBS_STATUS[f.card] || ["—", "s-missing"];
+      let changesHtml = "";
+      if (f.card === "stale" && (f.changes || []).length) {
+        changesHtml =
+          "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>" +
+          "⚠ " + f.changes.map(escHtml).join("<br>⚠ ") +
+          "</td></tr>";
+      } else if (f.card === "stale") {
+        changesHtml =
+          "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>⚠ есть изменения</td></tr>";
+      } else if (f.card === "conflict" && f.adoptable) {
+        changesHtml =
+          "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>" +
+          "чужая заметка — отметь «Принять существующую заметку как заметки» и запусти Obsidianize" +
+          "</td></tr>";
+      }
       return "<tr><td class='mono'>" + escHtml(f.rel || "·") + "</td>" +
         "<td>" + f.files + "</td>" +
         "<td>" + (c.drafting || 0) + "</td>" +
@@ -811,12 +826,12 @@
         "<td>" + (c.images || 0) + "</td>" +
         "<td>" + (c.other || 0) + "</td>" +
         "<td>" + f.subfolders + "</td>" +
-        "<td class='" + st[1] + "'>" + st[0] + "</td></tr>";
+        "<td class='" + st[1] + "'>" + st[0] + "</td></tr>" + changesHtml;
     }).join("");
     box.innerHTML = "<table class='obs-table'><thead><tr>" +
       "<th>Папка</th><th>Файлов</th><th>📐</th><th>📊</th><th>📄</th><th>🖼️</th><th>📦</th><th>Подпапок</th><th>Карточка</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
-    setStatus("Obsidianize: " + r.folders.length + " папок · " + r.root, "ok");
+    setStatus("Obsidianize: " + (r.summary || (r.folders.length + " папок")) + " · " + r.root, "ok");
   }
 
   function runObsScan() {
@@ -836,7 +851,9 @@
       path: path,
       recursive: $("obsRecursive").checked,
       gallery: $("obsGallery").checked,
+      adopt: $("obsAdopt").checked,
       vault_root: $("obsVaultRoot").value.trim(),
+      gallery_prefix: $("obsGalleryPrefix").value.trim(),
       template: $("obsTemplate").value,
     }).then(function (r) {
       if (!r || r.ok === false) {
@@ -1085,6 +1102,7 @@
       $("pruneAi").checked = !!d.prune_enriched;
       $("obsDir").value = d.obsidianize_dir || "";
       $("obsVaultRoot").value = d.obsidianize_vault_root || "";
+      $("obsGalleryPrefix").value = d.obsidianize_gallery_prefix || "";
       $("obsTemplate").value = d.obsidianize_template || "github";
       $("aiDir").value = d.obsidianize_dir || "";
       toggleAiDetails();
@@ -1100,6 +1118,9 @@
     });
     $("obsVaultRoot").addEventListener("change", function () {
       api.set_obsidianize_vault_root($("obsVaultRoot").value.trim());
+    });
+    $("obsGalleryPrefix").addEventListener("change", function () {
+      api.set_obsidianize_gallery_prefix($("obsGalleryPrefix").value.trim());
     });
     $("obsTemplate").addEventListener("change", function () {
       api.set_obsidianize_template($("obsTemplate").value);

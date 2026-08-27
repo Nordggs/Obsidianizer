@@ -30,9 +30,14 @@
         <input id="obsVaultRoot" type="text" spellcheck="false" placeholder="необязательно">
         <button id="btnObsVaultRoot" class="pick" title="Выбрать корень хранилища">Выбрать</button>
       </div>
+      <div class="row">
+        <label for="obsGalleryPrefix" title="Запасной базовый путь галереи, когда проекты вне Vault и «Корень Obsidian» не задан. Пример: PROJECT/OBSIDIAN/Objects">Базовый путь галереи (для проектов вне Vault):</label>
+        <input id="obsGalleryPrefix" type="text" spellcheck="false" placeholder="PROJECT/OBSIDIAN/Objects">
+      </div>
       <div class="row opts">
         <label class="check"><input type="checkbox" id="obsRecursive" checked> Вложенные папки</label>
         <label class="check"><input type="checkbox" id="obsGallery" checked> Галерея</label>
+        <label class="check"><input type="checkbox" id="obsAdopt" title="Если существует чужая заметка с именем папки (без маркера) — переименовать её в <имя>_заметки.md, сохранив содержимое, и создать карточку">Принять существующую заметку как заметки</label>
         <span class="field-label">Шаблон карточки:</span>
         <select id="obsTemplate" title="github — Project Dashboard (README-стиль) | classic — старый формат таблиц">
           <option value="github">github (Project Dashboard)</option>

@@ -1,5 +1,5 @@
 """Obsidianizer — local preprocessor that prepares raw materials for Obsidian."""
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 __all__ = ["__version__"]

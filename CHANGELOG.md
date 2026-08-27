@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.3.3] - 2026-08-27
+
+### Added
+- Folder Obsidianizer UI (v5.12): «Базовый путь галереи (для проектов вне
+  Vault)» input with persistence, «Принять существующую заметку как
+  заметки» checkbox (adopt), ⚠ change rows under stale folders in the scan
+  table (from `obs_scan` `changes`), a hint row for adoptable foreign
+  notes, and a one-line scan summary in the status bar. Values restore from
+  `defaults()` and persist on change.
+
 ## [0.3.2] - 2026-08-27
 
 ### Added
