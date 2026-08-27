@@ -266,18 +266,19 @@ pytest                  # safety-critical tests run from the repo root
 
 - `obsidianize.py` is the pure core: `scan_tree` (read-only, excludes
   `*_заметки.md` and `*_обзор.md` as derived artifacts at the classification
-  level), `build_card` (single Project Dashboard v2 structure for both
+  level), `build_card` (single Project Dashboard v5 structure for both
   templates), `update_cards` (atomic `.tmp`→`replace`, no overwrite of foreign
   notes without `--force`, hash-based freshness + `obsidianizer_version`
   migration), `card_is_ours` marker (`obsidianizer: true`). CLI docs:
   `docs/obsidianize.md` + `.ru.md`.
-- **Templates**: `cfg.template` (`github` default, `classic`) — **same v2
-  structure**, difference only: `github` adds `cssclasses: [github-dashboard]`,
-  `classic` omits it. Old `_render_classic`/`_render_github` removed; single
-  `_render_dashboard` produces the new GitHub-page-like layout. Template is
-  recorded in frontmatter (`obsidianizer_template`); a mismatch marks the card
-  `stale` (migration on next run — all user frontmatter keys, table comments,
-  and working notes preserved).
+- **Templates**: `cfg.template` (`github` default, `classic`) — **same v5
+  structure** (RENDER_VERSION = 8; sections: nav, `Folders` with the `⬆ Up`
+  row, `Files` single table with Type/Opens-with, `About`, `Gallery`,
+  `Images`, `AI Review`, `Notes`), difference only: `github` adds
+  `cssclasses: [github-dashboard]`, `classic` omits it. Template is recorded
+  in frontmatter (`obsidianizer_template`); a mismatch marks the card `stale`
+  (migration on next run — all user frontmatter keys, table comments, and
+  working notes preserved).
 - **Frontmatter preservation (critical rule)**: user frontmatter is the source
   of truth — generator carries over **every** user key (standard, unknown,
   multi-line lists like `tags:\n  - a`), only refreshes
@@ -310,15 +311,26 @@ pytest                  # safety-critical tests run from the repo root
   README, and the snapshot footer. Sizes are aggregates only — never per-file.
   `format_size` (1024-base) and `format_rel_date` (today/yesterday/N days ago)
   live in `obsidianize.py`.
-- **Version migration**: `obsidianizer_version: 2` in frontmatter; bumping
-  triggers automatic migration of all existing cards on the next
-  `update_cards` run (preserving all user data). Old `_card_block` and
-  `CATEGORY_TITLES` removed; `DISPLAY_KEYS`/`IGNORED_CARD_KEYS` removed.
+- **Version migration**: `obsidianizer_version: 8` in frontmatter (RENDER_VERSION
+  constant); bumping triggers automatic migration of all existing cards on the
+  next `update_cards` run (preserving all user data).
+- **Basis independence (critical)**: scans may come from different roots (GUI
+  scans a project root, the Templater hotkey scans the card folder itself), so
+  everything is keyed in the card-folder basis: `folder_fingerprint` hashes
+  card-relative paths; the manifest stores card-relative keys plus a `base`
+  field; `card_diff` aligns legacy manifests (no `base`) with a deterministic
+  prefix rule — if any stored key carries the scan-root prefix, strip it from
+  every key (no intersection counting). `_MANIFEST_RE` has `re.DOTALL` so a
+  multiline JSON dump can never silently break parsing.
+- **Scoped updates**: `--no-recursive` trims the tree to the root entry only
+  AFTER `folder_stats` — the Folders table keeps real subfolder aggregates and
+  is identical to a recursive GUI run; only the writing loop is scoped.
 - GUI tab 1 calls `obs_scan()` / `obs_obsidianize()`; the worker thread emits
   `OBS_SCAN_STARTED` / `OBS_FOLDER_DONE` / `OBS_FINISHED` / `OBS_ERROR`
   events (via `_on_event`, so headless tests accumulate them in `app.events`).
   Template is persisted via `Settings.obsidianize_template` +
-  `set_obsidianize_template()`; `obs_scan` passes it to `card_status`.
+  `set_obsidianize_template()`; `obs_scan` passes it to `card_status` and
+  logs stale-card diffs (root, rel, counters) to `obsidianizer.log`.
 - GUI tab 3 calls `review_run({path, rels, include_text})`; uses the chat
   model (`ollama.chat_model`, falls back to the main one) with the
   `ollama.folders_prompt` system prompt; writes `<folder>_обзор.md` next to
@@ -326,10 +338,11 @@ pytest                  # safety-critical tests run from the repo root
   `""` means the root folder — never filter it out as falsy.
 - Tests must never write `config.yml` in the repo root: always set
   `app.settings.config_path = tmp_path / "config.yml"` in UI tests.
-- Golden tests check the new v2 structure for both `classic` and `github`
-  templates (4-column tree table, nav, language bar, README sections,
-  embedded review/notes, footer). Migration tests: manual block → notes file,
-  version bump, review appear/disappear, notes never overwritten.
+- Golden tests check the v5 structure for both `classic` and `github`
+  templates (Folders/Files/About/Gallery/Images sections, escaped `\|Up` row
+  with exactly 4 cells, basis-independent fingerprint, cross-basis
+  `card_diff`, notes embed, footer). Migration tests: manual block → notes
+  file, version bump, review appear/disappear, notes never overwritten.
 
 ## Committing
 

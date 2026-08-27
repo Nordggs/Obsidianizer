@@ -1,5 +1,34 @@
 # Obsidianizer
 
+## [0.3.7] - 2026-08-28
+
+### Documentation release
+- README (EN+RU): new «Folder Obsidianizer» and «Obsidian integration
+  (Templater hotkey)» sections — what project cards are, where the
+  `_заметки.md` user layer lives, the 4-step hotkey setup (template
+  location, `cli.bat` path, hotkey, self-diagnostics Notice), the `folders`
+  CLI block with every flag, and the 3-tab GUI description (Obsidianize /
+  Чат-обработка / AI-анализ).
+- `docs/obsidianize.md` + `.ru.md` fully rewritten for the current
+  RENDER_VERSION=8 card (Folders / Files / About / Gallery / Images /
+  AI Review / Notes semantics, `⬆ Up` escaped row, Gallery vs Images rules,
+  files-table sorting), a zero-to-fragrant user flow, the Templater and
+  Shell commands refresh paths, and a technical appendix (manifest `base`,
+  card-folder basis, deterministic legacy alignment, `--no-recursive`
+  aggregates, `obsidianizer.log` scan diffs).
+- `obsidian/obsidianizer-refresh.md` actualized: `--rel` in both hotkey
+  variants, self-diagnostics Notice, explicit "replace the cli path"
+  instruction, updated in-card section list.
+- `AGENTS.md`: Folder Obsidianizer section synced with the current renderer
+  (v5 structure, RENDER_VERSION = 8, basis independence, scoped-update
+  aggregates, test coverage).
+
+Release summary: v0.3.4 fixed the broken `⬆ Up` table row, v0.3.5 fixed the
+Scanner ↔ Templater basis desync (no more phantom «добавлен/удалён»), v0.3.6
+fixed `--no-recursive` zeroing the Folders table. 12 test-vault cards rebuilt
+and verified (all `version: 8`, manifest `base` present, Up rows 4-cell,
+no zero aggregates).
+
 ## [0.3.6] - 2026-08-28
 
 ### Fixed

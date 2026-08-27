@@ -1,14 +1,14 @@
 # Folder Obsidianizer (`obsidianizer folders`)
 
-Creates "live" Markdown catalog cards for any folder: every folder gets a
+Creates "live" Markdown project cards for any folder: every folder gets a
 `<folder name>.md` card that looks like a small local GitHub repository
-(header, nav, repository tree, README, AI review, embedded working notes).
+(header, navigation, subfolder table, file table, project card, gallery,
+AI review, embedded working notes).
 
-Two templates with **the same structure**:
+Two templates, **the same structure**:
 
-- **`github`** (default) — *Project Dashboard v2*: adds
-  `cssclasses: [github-dashboard]` so the bundled CSS snippet can style the
-  card as a GitHub page (optional).
+- **`github`** (default) — adds `cssclasses: [github-dashboard]` so the
+  bundled CSS snippet can style the card as a GitHub page (optional).
 - **`classic`** — identical structure, but without `cssclasses` (plain
   Markdown, works without the snippet).
 
@@ -18,154 +18,204 @@ it:
 | Data | Where it lives | What the generator does |
 |---|---|---|
 | Project files (facts) | the folder itself | scanned read-only |
-| User frontmatter keys (клиент, телефон, карта, …) | card frontmatter | **never overwritten**, defaults only for missing standard fields |
-| Working notes | separate `<folder>_заметки.md` | created once, **never replaced**, embedded via `![[…_заметки]]` |
-| AI review | separate `<folder>_обзор.md` | embedded when present |
+| User fields (клиент, источник, дизайнер, комментарий, …) | `<folder>_заметки.md` frontmatter | **never overwritten**; edited notes mark the card stale so the next update renders fresh About data |
+| Working notes body | `<folder>_заметки.md` | created once, **never replaced**, embedded via `![[…_заметки]]` |
+| AI review | `<folder>_обзор.md` | embedded when present |
 
 **Core contract — the folder is fully read-only**: the scanner only reads
 names, sizes, dates and extensions. The only files ever created or modified
-are the `.md` cards and the derived notes files (`*_заметки.md`,
-`*_обзор.md` are never treated as user project files). Source files are
-never renamed, moved, deleted or converted.
+are the `.md` cards and the derived files (`*_заметки.md`, `*_обзор.md` are
+never treated as user project files). Source files are never renamed, moved,
+deleted or converted.
 
-## Card contents (v2 — both templates)
+## Card structure (renderer version 8)
 
 ```markdown
 ---
-дата_начала: 2026-03-16
-...                          # ALL user keys preserved (incl. unknown, multi-line lists)
 obsidianizer: true           # marker of our card
-obsidianizer_hash: a1b2c3…   # folder fingerprint (freshness)
+obsidianizer_hash: a1b2c3…   # folder fingerprint (freshness; basis-independent)
 obsidianizer_template: github
-obsidianizer_version: 2      # renderer version (bump → auto migration)
+obsidianizer_version: 8      # renderer version (bump → auto migration)
 cssclasses: [github-dashboard]   # github template only
 ---
 
-# 🏗️ <Folder Name>
+# <Folder Name>
 
-> <comment from frontmatter>              (or "Автоматическая карточка каталога")
-> ◉ Local project · N файлов · 52.2 MB · M папок     (compact meta line)
-[[../Parent|↑ Родитель]]                 (sub-folders only)
+Автоматическая карточка каталога
 
-[[#📂 Code|Code]] · [[#🤖 AI Review|AI Review]] · [[#✍️ Рабочие заметки|Notes]]   (nav)
+Local project · N файлов · M папок · SIZE
+Updated DD Mon YYYY
 
-<div class="github-langbar">…</div>       (proportional category bar, flex-grow)
+[[#Folders|Folders]] | [[#Files|Files]] | [[#About|About]] | [[#Gallery|Gallery]]
+| [[#Images|Images]] | [[#AI Review|AI Review]] | [[#Notes|Notes]]
 
-## 📂 Code                                (repository tree, 4 columns)
-| Файл | Комментарий | Изменено | Размер |
-| 📁 [[Sub/Sub|Sub]] · N файлов |  | сегодня | 1.2 MB |
-| 📐 Чертежи · 2 файла |  | вчера | 3.4 MB |     (categories as virtual rows)
+## Folders
+| Name | Files | Size | Updated |
+| ⬆ [[../Parent\|Up]] |  |  |  |        (sub-folder cards only)
+| 📁 [[Sub/Sub\|Sub]] | 3 | 1.2 MB | сегодня |
 
-## 📖 README
+## Files
+| File | Type | Opens with | Modified | Size | Comment |
+| 📊 [[report.xlsx]] | XLSX | Excel | 18.01.2026 | 1.5 MB |  |
 
-### 📋 О проекте                          (non-empty fields only; user keys too)
-| Поле | Значение |
-| Клиент | ООО Ромашка |
+## About                                     (only with user fields present)
+> [!info] 📋 Карточка проекта
+> - **Клиент**: ООО Ромашка
+> - **Дизайнер**: Татьяна
 
-### 📐 Чертежи                            (category headers have no extensions)
-_2 файла · 3.4 MB · изменено вчера_
-| Файл | Комментарий | Изменено | Размер |
-
-### 🖼️ Галерея проекта                    (only with --vault-root)
-    img-gallery block
-
-## 🤖 AI Review                           (only when <Folder>_обзор.md exists)
-![[Folder_обзор]]
-
-## ✍️ Рабочие заметки
-![[Folder_заметки]]                       (embedded; the file itself is user-owned)
-
-_Обновлено: DD.MM.YYYY HH:mm_
+## Gallery                                   (direct images + known vault path)
+```img-gallery
+path: <vault-relative path to the folder>
+type: vertical
+columns: 4
 ```
 
-- Sizes and latest-change info are **aggregates only** (folders/categories);
-  the meta line shows the subtree totals.
-- The repository tree covers folders + categories; category tables in README
-  show only direct files.
+## Images                                    (direct images of THIS folder only)
+> [!example]- Images · N изображений · SIZE
+> ![фото.png](./фото.png)
 
-## GitHub look (CSS snippet, optional)
+## AI Review                                 (only when <Folder>_обзор.md exists)
+![[Folder_обзор]]
 
-The `github` template emits `cssclasses: [github-dashboard]` in the
-frontmatter. To make the card actually *look* like a GitHub page, install the
-bundled snippet once:
+## Notes
+![[Folder_заметки]]                          (embedded; user-owned file)
 
-1. Copy `obsidian/github-dashboard.css` into your vault's snippet folder:
-   `<vault>/.obsidian/snippets/github-dashboard.css`.
-2. Obsidian → Settings → Appearance → **CSS snippets** → toggle
-   `github-dashboard` on.
+<footer class="repo-meta">Updated DD.MM.YYYY HH:mm · N файлов · M папок · SIZE</footer>
+<!-- obsidianizer-manifest: {"base": …, "files": {…}, "folders": […], "notes": "…"} -->
+```
 
-The snippet styles: repo header, compact meta line, nav pills, the category
-"language bar" (GitHub colors), the `📂 Code` tree in a file-list frame,
-GitHub-style tables (monospace names, muted date/size columns, hover), muted
-meta lines and framed embedded notes/review blocks. Without the snippet the
-cards stay plain Markdown — nothing breaks.
+Section semantics:
 
-- Links are **relative** (`[[file.xlsx]]`), so the folder can be moved
-  between directories and vaults without breaking links.
-- Sub-folder cards carry `[[../Parent|↑ Родитель]]`.
-- Table comments survive updates; user frontmatter keys (unknown ones
-  included) are carried over untouched.
-- A card is recognized by `obsidianizer: true`. A foreign note named like the
-  folder is **never overwritten** (use `--force`).
-- Re-running without changes writes nothing (compared via
-  `obsidianizer_hash`).
+- **Folders** — physical subfolders with real aggregates (file count, subtree
+  size, latest change). The first row is the `⬆ Up` link (sub-folder cards
+  only; the alias pipe is escaped `\|` so the table keeps 4 cells).
+- **Files** — one GitHub-style table of the folder's direct files, sorted by
+  extension then name. `Opens with` is a per-extension label (Obsidian,
+  AutoCAD, Excel, Word, Revit, SketchUp, CAD, `—`).
+- **About** — a plain Obsidian callout projected from the notes frontmatter
+  (readable in PDF export and non-Obsidian viewers). Hidden when no user
+  fields are set.
+- **Gallery** — an interactive `img-gallery` block, generated only for direct
+  images when a vault path is known (`--vault-root`, or `--gallery-prefix`
+  for projects outside the vault, or an auto-detected vault root in the GUI).
+- **Images** — an archive callout of the folder's **direct images only**
+  (not recursive). Nested folders have their own cards with their own
+  Images section. Relative, URL-encoded links (`./подпапка/фото%20файл.png`)
+  work in any viewer.
+- **AI Review** — embed of `<folder>_обзор.md` (AI-анализ tab) when present.
+- **Notes** — embed of the user-owned `<folder>_заметки.md`.
+
+The trailing HTML comment is the hidden change-detection manifest (never
+rendered by Obsidian) — see [Technical notes](#technical-notes).
+
+## User flow (from zero)
+
+1. **Open the GUI** (`Obsidianizer.bat`) → tab **📁 Obsidianize**.
+2. Pick the folder, leave «Вложенные папки» on, choose the template, press
+   **✨ Obsidianize**. Every folder of the tree gets a card and a notes file.
+3. **🔍 Просканировать** shows a status table: card state per folder (ok /
+   stale / missing / conflict), a one-line summary, and ⚠ change rows
+   (добавлен/удалён/изменён файл, структура папок, данные проекта) for stale
+   cards. If a foreign note occupies the card name, the row suggests turning
+   on **«Принять существующую заметку как заметки»** (`--adopt`).
+4. **Edit user data** in `<folder>_заметки.md` (клиент, источник, дизайнер,
+   комментарий…). The card is not rewritten — the next scan/update picks the
+   changes up.
+5. **Update later**: press the Templater hotkey on a card (one card), or run
+   Obsidianize from the GUI (whole tree). Unchanged cards are skipped.
+
+## Refreshing a card from Obsidian
+
+### Templater hotkey (primary)
+
+1. Copy `obsidian/templater/Obsidianizer Update.md` into your Templater
+   templates folder.
+2. Replace the `cli` path inside with the path to your
+   `obsidianizer-cli.bat` (repo root).
+3. Bind a hotkey (e.g. `Alt+3`) → Settings → Hotkeys → "Obsidianizer Update".
+
+The template runs the CLI against the open note's folder only:
+
+```
+obsidianizer-cli.bat folders --path "<folder>" --no-recursive --adopt
+    --vault-root "<vault>" --rel "<vault-relative folder>"
+```
+
+`--no-recursive` writes **only this folder's card** (siblings untouched) while
+still computing real subfolder aggregates; `--rel` keeps the `⬆ Up` link
+correct; `--adopt` converts a foreign note into the notes file once. On
+success a Notice reports self-diagnostics: `Gallery ✓/✗ · Images ✓/✗`.
+
+### Option 2 — "Shell commands" plugin
+
+Create a command (Settings → Shell commands → New command):
+
+- Name: `Obsidianizer: обновить карточку`
+- Command:
+  `"C:\path\to\obsidianizer-cli.bat" folders --path "{{folder_path}}" --no-recursive --adopt --vault-root "{{vault_path}}"`
+
+Run it from the command palette or bind a hotkey. Both variants are
+documented in [obsidian/obsidianizer-refresh.md](../obsidian/obsidianizer-refresh.md).
 
 ## CLI
 
 ```bash
-obsidianizer folders --path "D:\Projects\DemoProject"            # create/refresh cards
-obsidianizer folders --path "D:\Projects\DemoProject" --dry-run  # report only
-obsidianizer folders --path "D:\Projects\DemoProject" --force    # overwrite a foreign note
-obsidianizer folders --path "D:\Projects\DemoProject" --no-recursive
-obsidianizer folders --path "D:\Projects\DemoProject" --no-gallery
-obsidianizer folders --path "D:\Projects\DemoProject" --vault-root "D:\Obsidian\Vault"
-obsidianizer folders --path "D:\Projects\DemoProject" --template classic  # same structure, no cssclasses
+obsidianizer folders --path "D:\Projects\DemoProject"                 # full tree
+obsidianizer folders --path "D:\Projects\DemoProject" --dry-run       # report only
+obsidianizer folders --path "D:\Projects\DemoProject" --force         # rebuild all cards
+obsidianizer folders --path "D:\Projects\DemoProject" --no-recursive  # root card only
+obsidianizer folders --path "D:\Projects\DemoProject" --no-gallery    # no Gallery block
+obsidianizer folders --path "D:\Projects\DemoProject" \
+    --vault-root "D:\Obsidian\Vault"                              # vault paths for Gallery
+obsidianizer folders --path "D:\Projects\DemoProject" \
+    --gallery-prefix "PROJECT/OBSIDIAN/Objects"             # projects outside the vault
+obsidianizer folders --path "D:\Projects\DemoProject" --template classic
+obsidianizer folders --path "D:\Projects\DemoProject" --adopt         # adopt foreign notes
 ```
 
-## Refreshing a card from Obsidian
+## GitHub look (CSS snippet, optional)
 
-### Option 1 — "Shell commands" plugin (recommended)
+The `github` template emits `cssclasses: [github-dashboard]`. To make cards
+look like a GitHub page, install the bundled snippet once:
 
-1. Install the **Shell commands** plugin.
-2. Create a command (Settings → Shell commands → New command):
-   - Name: `Obsidianizer: обновить карточку`
-   - Command: `obsidianizer folders --path "{{folder_path}}"`
-3. Run it from the command palette (or bind a hotkey) — the current folder
-   card and all sub-folder cards are refreshed.
+1. Copy `obsidian/github-dashboard.css` into
+   `<vault>/.obsidian/snippets/github-dashboard.css`.
+2. Obsidian → Settings → Appearance → **CSS snippets** → toggle
+   `github-dashboard` on.
 
-### Option 2 — Templater wrapper (button/script inside a note)
-
-```js
-<%*
-// Refresh the Folder Obsidianizer card for the current folder.
-// Requires the "Shell commands" plugin with command id = obsidianizer-update
-// (command: obsidianizer folders --path "{{folder_path}}").
-const tFile = tp.file.find_tfile(tp.file.path(true));
-if (!tFile) return;
-const vaultRoot = app.vault.adapter.getBasePath ? app.vault.adapter.getBasePath() : "";
-const folderAbs = vaultRoot + "/" + tFile.parent.path;
-app.openUrl("obsidian://shellcommands?execute=obsidianizer-update");
-new Notice("Обновление карточки: " + folderAbs);
-%>
-```
-
-> In the Shell commands plugin the command id is set manually in the "Id"
-> field (e.g. `obsidianizer-update`) — put the same id into the script.
+Without the snippet the cards stay plain Markdown — nothing breaks.
 
 ## Behaviour notes
 
-- A card is regenerated when file names/sizes/dates in the folder change,
-  when the `<folder>_обзор.md` review appears/disappears, when the card
-  template differs from `--template`, or when `obsidianizer_version` is older
-  than the renderer's (migration; frontmatter keys and table comments are
-  preserved).
-- Working notes: `<folder>_заметки.md` is created once — as a template, or
-  with the old in-card manual block migrated into it (the block is consulted
-  as a migration source only while the notes file does not exist). Existing
-  notes files are **never overwritten**.
-- `*_заметки.md` and `*_обзор.md` are derived obsidianizer artifacts: never
-  scanned into project stats/tables, whatever `include_md` says.
-- Hidden folders and `.obsidian`, `.git`, `node_modules`, `__pycache__` are
-  skipped; `.md` files are not catalogued (cards are a separate layer).
-- The `img-gallery` block is generated only with `--vault-root` (its path must
-  be vault-relative); images are always listed in a table.
+- A card is regenerated when file names/sizes/dates change, when the
+  `<folder>_обзор.md` review appears/disappears, when user notes fields
+  change, when the template differs from `--template`, or when
+  `obsidianizer_version` is older than the renderer's (migration).
+- `<folder>_заметки.md` is created once (as a template, or with the old
+  in-card manual block migrated into it) and is **never overwritten** after
+  that. A foreign note occupying the card name is skipped (conflict) unless
+  `--force` / `--adopt` is used.
+- `--no-recursive` writes only the root card but computes aggregates over the
+  **full subtree** — the Folders table shows real values, identical to a
+  recursive GUI run (GUI and hotkey produce the same card).
+- `*_заметки.md`, `*_обзор.md` and cards are derived artifacts: never scanned
+  into project stats/tables. Hidden folders and `.obsidian`, `.git`,
+  `node_modules`, `__pycache__` are skipped.
+- Re-running without changes writes nothing (fingerprint comparison).
+
+## Technical notes
+
+Change detection must work no matter which root a scan was made from (GUI
+scans a project root, the Templater hotkey scans the card folder itself), so
+everything is keyed in the **card-folder basis**:
+
+- `folder_fingerprint` hashes card-relative paths (`F:<rel>·<size>·<mtime>`,
+  subfolders, review presence) — identical for the same folder scanned from
+  any root.
+- The manifest stores card-relative file keys plus a `base` field (the card
+  folder's rel from the update root, for diagnostics).
+- `card_diff` aligns legacy manifests (no `base`) with a deterministic
+  prefix rule: if any stored key carries the scan-root prefix, the prefix is
+  stripped from every key — no heuristics.
+- `obs_scan` logs every stale-card diff (root, folder rel, added/removed/
+  changed counters) to `obsidianizer.log` for post-mortem checks.

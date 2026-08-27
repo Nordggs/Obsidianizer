@@ -103,6 +103,35 @@ obsidianizer ai --target ./processed --enriched ./enriched --prune-enriched
 --prune-enriched  on the AI stage, delete orphaned enriched files + their media
 ```
 
+The `folders` subcommand builds project cards (see
+[Folder Obsidianizer](#folder-obsidianizer)):
+
+```bash
+# full tree
+obsidianizer folders --path "D:\Projects\DemoProject" --force
+
+# single card only (the Templater hotkey does exactly this)
+obsidianizer folders --path "<folder>" --no-recursive --adopt \
+    --vault-root "<vault>" --rel "<folder-relative-to-vault>"
+```
+
+```
+folders options
+--path DIR            folder to scan (required)
+--no-recursive        write only this folder's card; subfolder cards untouched
+--adopt               a foreign note named <folder>.md is renamed (1:1) into
+                      <folder>_заметки.md, then a fresh card is created
+--vault-root DIR      Obsidian vault root — enables the Gallery block
+--gallery-prefix TXT  fallback vault path prefix for the gallery when the
+                      project lives outside the vault
+--rel TXT             vault-relative path of the scanned folder (keeps the
+                      "⬆ Up" link correct on single-card updates)
+--template NAME       github (Project Dashboard) | classic
+--force               rebuild even when nothing changed; overwrite a foreign
+                      note only together with --adopt semantics
+--dry-run             scan and report, write nothing
+```
+
 ## Graphical interface (primary)
 
 The desktop GUI is the main way to work with Obsidianizer. No package
@@ -119,18 +148,60 @@ Diagnostics without opening a window:
 python Obsidianizer.py --check
 ```
 
-Pick source, processed (`Результат обработки`) and enriched (`AI-результат`)
-folders with the native pickers, toggle Ollama, choose a model, optionally
-enable dry-run / prune / `Удалять сироты из AI-результата`, then press
-**Обработать** — this is a pure import, the LLM is never called. AI work is
-always an explicit action: the per-chat **AI-постобработка** button,
-**Объединить в тему…** to merge the selected chats into one
-`enriched/topics/<Name>.md` note (the model names it, and an unchanged chat
-set skips the call), or **Авто-группировка** to cluster the whole processed
-collection into topics automatically. The window shows a progress bar, the
-current file, a color-coded log and a final summary. **Стоп** stops the batch
-after the current file finishes — an in-flight Ollama request is never
-interrupted. The CLI remains available for automation.
+The window has three tabs:
+
+- **📁 Obsidianize** — folder project cards (see below);
+- **💬 Чат-обработка** — the raw → processed → enriched pipeline described
+  below: pick source/processed/enriched folders, toggle Ollama, press
+  **Обработать** (pure import, the LLM is never called). AI work is always an
+  explicit action: the per-chat **AI-постобработка** button,
+  **Объединить в тему…** to merge the selected chats into one
+  `enriched/topics/<Name>.md` note (the model names it, and an unchanged chat
+  set skips the call), or **Авто-группировка** to cluster the whole processed
+  collection into topics automatically;
+- **🤖 AI-анализ** — local LLM review of a folder's contents, written next to
+  the card as `<folder>_обзор.md` and embedded into the card's AI Review
+  section.
+
+The window shows a progress bar, the current file, a color-coded log and a
+final summary. **Стоп** stops the batch after the current file finishes — an
+in-flight Ollama request is never interrupted. The CLI remains available for
+automation.
+
+## Folder Obsidianizer
+
+The Obsidianize tab (or `obsidianizer folders`) generates a GitHub-style
+**project card** for every folder of a working tree: `<folder>.md` next to
+the folder's files. Sections: navigation, `Folders` (subfolder table with
+real aggregates), `Files` (one table: type, opens-with, modified, size,
+comment), `About` (project fields), `Gallery`, `Images`, `AI Review`,
+`Notes`.
+
+Every card comes with a paired **`<folder>_заметки.md`** notes file — the
+only user-editable layer (client, address, designer, comments…). Obsidianizer
+never rewrites the notes; editing them marks the card stale so the next
+update rebuilds the rendered part with fresh About data.
+
+Full card structure, templates and the user flow live in
+[docs/obsidianize.md](docs/obsidianize.md) (RU: `docs/obsidianize.ru.md`).
+
+## Obsidian integration (Templater hotkey)
+
+One hotkey refreshes the card of the folder you are standing in:
+
+1. Copy `obsidian/templater/Obsidianizer Update.md` into your Templater
+   templates folder (Settings → Templater → Template folder location).
+2. Inside the template, replace the `cli` path with the path to your
+   `obsidianizer-cli.bat` (repo root; adjust if you moved the repo).
+3. Bind a hotkey (e.g. `Alt+3`) in Settings → Hotkeys →
+   "Obsidianizer Update".
+
+On success you get a Notice with self-diagnostics: `Gallery ✓/✗ · Images ✓/✗`.
+The template runs the CLI against the note's folder only (`--no-recursive`)
+with `--adopt --vault-root --rel`, so a single press updates exactly one card
+and never touches sibling cards. The same result is available without
+Templater via the "Shell commands" plugin — both variants are described in
+[obsidian/obsidianizer-refresh.md](obsidian/obsidianizer-refresh.md).
 
 ## Config
 
