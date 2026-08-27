@@ -790,9 +790,11 @@
   function renderObsScan(r) {
     const box = $("obsResult");
     $("obsResultSection").classList.remove("hidden");
+    $("obsSplitter").classList.remove("hidden");
+    applyObsResultHeight();
     if (!r || r.ok === false) {
       box.innerHTML = "";
-      setStatus(((r && r.error) || "ошибка сканирования"), "err");
+      setStatus(((r && r.error) || "Ошибка сканирования"), "err");
       return;
     }
     if (!r.folders || r.folders.length === 0) {
@@ -837,15 +839,59 @@
   function runObsScan() {
     if (!api) return;
     const path = $("obsDir").value.trim();
-    if (!path) { setStatus("Укажите папку для сканирования", "err"); return; }
+    if (!path) { setStatus("Выберите папку для сканирования", "err"); return; }
     api.obs_scan(path).then(renderObsScan);
   }
+
+  function applyObsResultHeight() {
+    const box = $("obsResult");
+    if (!box) return;
+    const saved = localStorage.getItem("obsResultH");
+    if (saved) box.style.maxHeight = saved;
+  }
+
+  function initObsSplitter() {
+    const sp = $("obsSplitter");
+    if (!sp) return;
+    sp.addEventListener("pointerdown", function (e) {
+      const box = $("obsResult");
+      if (!box || $("obsResultSection").classList.contains("hidden")) return;
+      e.preventDefault();
+      sp.setPointerCapture(e.pointerId);
+      sp.classList.add("dragging");
+      document.body.classList.add("dragging-splitter");
+      sp._startY = e.clientY;
+      sp._startH = box.getBoundingClientRect().height;
+    });
+    sp.addEventListener("pointermove", function (e) {
+      if (!sp.classList.contains("dragging")) return;
+      const box = $("obsResult");
+      if (!box) return;
+      const max = Math.max(window.innerHeight * 0.8, 240);
+      const h = Math.min(Math.max(sp._startH + (e.clientY - sp._startY), 120), max);
+      box.style.maxHeight = h + "px";
+    });
+    function endDrag() {
+      if (!sp.classList.contains("dragging")) return;
+      sp.classList.remove("dragging");
+      document.body.classList.remove("dragging-splitter");
+      const box = $("obsResult");
+      if (box) {
+        const h = box.getBoundingClientRect().height;
+        if (h > 0) localStorage.setItem("obsResultH", Math.round(h) + "px");
+      }
+    }
+    sp.addEventListener("pointerup", endDrag);
+    sp.addEventListener("pointercancel", endDrag);
+  }
+
 
   function runObs() {
     if (!api) return;
     const path = $("obsDir").value.trim();
     if (!path) { setStatus("Укажите папку для Obsidianize", "err"); return; }
     $("obsResultSection").classList.add("hidden");
+    $("obsSplitter").classList.add("hidden");
     setStatus("Obsidianize: запуск…", null);
     api.obs_obsidianize({
       path: path,
@@ -1111,6 +1157,7 @@
     $("tabNavObs").addEventListener("click", function () { showTab("obsidianize"); });
     $("tabNavChat").addEventListener("click", function () { showTab("chat"); });
     $("tabNavAi").addEventListener("click", function () { showTab("ai"); });
+    initObsSplitter();
     $("btnObsDir").addEventListener("click", function () { pickFolderObs("obsidianize"); });
     $("btnObsVaultRoot").addEventListener("click", function () { pickFolderObs("vault_root"); });
     $("obsDir").addEventListener("change", function () {

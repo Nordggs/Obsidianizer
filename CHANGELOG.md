@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.3.9] - 2026-08-28
+
+### Added
+- Draggable divider between the Obsidianize scan table and the log: with
+  hundreds of cards the table no longer pushes the processing results off
+  screen — pull the divider up/down to resize the table area (120 px … 80%
+  of the window), the chosen height persists across GUI restarts.
+- The scan table scrolls internally and keeps its header row visible
+  (sticky header) while scrolling long lists.
+
 ## [0.3.8] - 2026-08-28
 
 ### Documentation release

@@ -571,6 +571,12 @@ nav.tabs .tab {
 /* ── Folder Obsidianizer table ──────────────────────────────────────────── */
 
 .obs-result { overflow-x: auto; }
+/* vertical scroll with a draggable limit: the scan table must not push the
+   log off-screen when there are hundreds of cards */
+#obsResultSection .obs-result {
+  max-height: 55vh;
+  overflow-y: auto;
+}
 .obs-table {
   width: 100%;
   border-collapse: collapse;
@@ -582,10 +588,29 @@ nav.tabs .tab {
   border-bottom: 1px solid var(--panel-border);
   white-space: nowrap;
 }
-.obs-table th {
+#obsResultSection .obs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
   color: var(--dim);
   font-weight: 500;
 }
+
+/* draggable divider between the scan table and the log */
+.splitter {
+  height: 8px;
+  margin: 2px 16px 0;
+  border-radius: 4px;
+  background: var(--panel-border);
+  opacity: 0.55;
+  cursor: row-resize;
+  user-select: none;
+}
+.splitter:hover, .splitter.dragging { opacity: 1; background: var(--ok); }
+.splitter.hidden { display: none; }
+body.dragging-splitter { user-select: none; }
+
 .obs-table td.mono { font-family: var(--mono); max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
 .obs-table .s-ok { color: var(--ok); }
 .obs-table .s-stale { color: var(--warn); }
