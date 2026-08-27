@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.3.1] - 2026-08-27
+
+### Added
+- `obsidianizer folders` flags `--adopt`, `--gallery-prefix`, `--rel`
+  (v5.12 infrastructure): adopt a foreign note into `<имя>_заметки.md`
+  (1:1 rename), fallback vault path prefix for the `img-gallery` block when
+  the project lives outside the vault, and the vault-relative root path for
+  the "⬆ Up" link on local single-card updates. Unblocks the Obsidian
+  Templater hotkey, which already passes these flags.
+
 ## [0.3.0] - 2026-08-27
 
 ### Added

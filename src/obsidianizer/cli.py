@@ -101,6 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="перезаписывать чужую заметку с именем папки (без маркера obsidianizer)",
     )
     folders.add_argument(
+        "--adopt",
+        action="store_true",
+        help="переименовать чужую заметку в <имя>_заметки.md (содержимое 1:1), "
+        "затем создать карточку",
+    )
+    folders.add_argument(
         "--no-recursive",
         action="store_true",
         help="создать карточку только для самой папки, без подпапок",
@@ -113,6 +119,18 @@ def build_parser() -> argparse.ArgumentParser:
     folders.add_argument(
         "--vault-root",
         help="корень Obsidian vault — нужен для img-gallery (путь в блоке)",
+    )
+    folders.add_argument(
+        "--gallery-prefix",
+        default="",
+        help="префикс пути vault для img-gallery, когда рабочая папка вне vault "
+        "(например: PROJECT/OBSIDIAN/Objects)",
+    )
+    folders.add_argument(
+        "--rel",
+        default="",
+        help="vault-relative путь сканируемой папки (для ссылки «Вверх» при "
+        "локальном обновлении из Obsidian)",
     )
     folders.add_argument(
         "--template",
@@ -137,8 +155,11 @@ def _run_folders(args: argparse.Namespace) -> int:
         return 1
     cfg = ObsidianizeConfig(
         force=args.force,
+        adopt=getattr(args, "adopt", False),
         img_gallery=not args.no_gallery,
         vault_root=args.vault_root or "",
+        gallery_prefix=getattr(args, "gallery_prefix", "") or "",
+        rel_root=getattr(args, "rel", "") or "",
         template=args.template,
     )
     try:

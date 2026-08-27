@@ -195,6 +195,7 @@ class Settings:
     # Folder Obsidianizer tab (persisted GUI state)
     obsidianize_dir: str = ""
     obsidianize_vault_root: str = ""
+    obsidianize_gallery_prefix: str = ""  # fallback vault path prefix for img-gallery
     obsidianize_template: str = "github"  # github (Project Dashboard) | classic
     # Where ``save()`` writes (when given); falls back to CWD config.yml.
     # ``load()`` pins this to the file it actually read.
@@ -257,6 +258,8 @@ class Settings:
             s.obsidianize_dir = str(data["obsidianize_dir"])
         if "obsidianize_vault_root" in data:
             s.obsidianize_vault_root = str(data["obsidianize_vault_root"])
+        if "obsidianize_gallery_prefix" in data:
+            s.obsidianize_gallery_prefix = str(data["obsidianize_gallery_prefix"])
         if "obsidianize_template" in data:
             s.obsidianize_template = str(data["obsidianize_template"])
         if "ollama" in data and isinstance(data["ollama"], dict):
@@ -291,6 +294,7 @@ class Settings:
         data["dry_run"] = bool(self.dry_run)
         data["obsidianize_dir"] = str(self.obsidianize_dir)
         data["obsidianize_vault_root"] = str(self.obsidianize_vault_root)
+        data["obsidianize_gallery_prefix"] = str(self.obsidianize_gallery_prefix)
         data["obsidianize_template"] = str(self.obsidianize_template)
         existing_ollama = data.get("ollama")
         merged_ollama = dict(existing_ollama) if isinstance(existing_ollama, dict) else {}
