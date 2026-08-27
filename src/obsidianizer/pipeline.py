@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import enrich as enrich_mod
-from .config import Settings
+from .config import PROCESS_VERSION, Settings
 from .emit import atomic_write, copy_media, write_note
 from .events import Event, EventType
 from .index import build_index, build_index_from_dir
@@ -28,6 +28,7 @@ from .registry import ProcessorRegistry
 logger = logging.getLogger("obsidianizer.pipeline")
 
 _HASH_RE = re.compile(r"^source_hash:\s*(\w+)$", re.MULTILINE)
+_VERSION_RE = re.compile(r"^process_version:\s*(\S+)$", re.MULTILINE)
 
 EventCallback = Callable[[Event], None] | None
 
@@ -65,7 +66,13 @@ def source_hash_of(path: Path) -> str:
     return hashlib.sha1(path.read_bytes()).hexdigest()
 
 
-def has_matching_hash(out_path: Path, current_hash: str) -> bool:
+def has_matching_hash(
+    out_path: Path, current_hash: str, process_version: int | None = None
+) -> bool:
+    """True when the produced note matches both the raw content hash and the
+    current format version. A version bump forces a rewrite even though the
+    ``source_hash`` did not change."""
+
     if not out_path.exists():
         return False
     try:
@@ -73,7 +80,13 @@ def has_matching_hash(out_path: Path, current_hash: str) -> bool:
     except OSError:
         return False
     m = _HASH_RE.search(text)
-    return bool(m) and m.group(1) == current_hash
+    if not m or m.group(1) != current_hash:
+        return False
+    if process_version is not None:
+        v = _VERSION_RE.search(text)
+        if not v or v.group(1) != str(process_version):
+            return False
+    return True
 
 
 CancelCheck = Callable[[], bool] | None
@@ -142,7 +155,7 @@ def run(
                 out_path = target_root / sf.rel_path
                 current_hash = source_hash_of(sf.abs_path)
 
-                if has_matching_hash(out_path, current_hash):
+                if has_matching_hash(out_path, current_hash, PROCESS_VERSION):
                     report.skipped += 1
                     current.add(out_rel)
                     emit(EventType.FILE_SKIPPED, path=out_rel, index=index)
@@ -228,6 +241,7 @@ def _process_one(
         raise ValueError(f"нет процессора для расширения {sf.ext}")
 
     meta = processor.parse(sf)
+    meta["process_version"] = PROCESS_VERSION
     body = processor.body(sf)
     refs = processor.media_refs(sf)
 
@@ -247,5 +261,6 @@ def _process_one(
     )
     frontmatter = enrich_mod.build_frontmatter(meta, summary, tags, current_hash)
     card = enrich_mod.build_card(meta, summary, tags)
-    proc.final_md = enrich_mod.compose(frontmatter, card, body)  # type: ignore[attr-defined]
+    navigation = enrich_mod.build_navigation(meta)
+    proc.final_md = enrich_mod.compose(frontmatter, card, body, navigation)  # type: ignore[attr-defined]
     return proc

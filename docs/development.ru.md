@@ -29,7 +29,8 @@ pytest
 | `test_manifest.py`     | prune только своих файлов; атомарная запись манифеста |
 | `test_md_processor.py` | разбор метаданных; сохранение тела                |
 | `test_registry.py`     | диспетчеризация расширений; неизвестные расширения |
-| `test_config.py`       | приоритет CLI > config > дефолты                   |
+| `test_config.py`       | приоритет CLI > config > дефолты; roundtrip save/load + merge |
+| `test_ui.py`           | GUI-мост: персистентность настроек, выбор папок по полям |
 | `test_pipeline.py`     | инкрементальность; деградация LLM                 |
 
 ## Фикстуры

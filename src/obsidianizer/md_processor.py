@@ -13,8 +13,6 @@ import re
 from .base import Processor
 from .models import SourceFile
 
-_TS = r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}"
-
 
 class MdProcessor(Processor):
     extensions = frozenset({".md"})
@@ -36,10 +34,18 @@ class MdProcessor(Processor):
         r"<!--\s*hash:\s*(\w+)\s+title:\s*([\w-]+)\s+chat_order:\s*(\d+)\s*-->"
     )
     _RE_BRANCH = re.compile(r"🌿\s*Альтернативная ветвь")
-    _RE_MESSAGE_TS = re.compile(
-        r"^####\s+(?:👤\s*Вы|🤖\s*AI)\s*\(" + _TS + r"\)", re.MULTILINE
+    _RE_SCHEMA = re.compile(r"^\s*<!--\s*schema_version:\s*(\d+)\s*-->", re.MULTILINE)
+    # Strict message headers only: "#### 👤 Вы (ts)", "#### 🤖 AI", etc. Other
+    # "#### "-prefixed lines inside copied text are never treated as messages.
+    _RE_MESSAGE = re.compile(
+        r"^####\s+(?P<who>👤|🤖)\s*(?P<name>Вы|AI)?\s*(?:\((?P<ts>[^()]*)\))?\s*$",
+        re.MULTILINE,
     )
     _RE_MEDIA = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+    _RE_CODE_BLOCK = re.compile(r"^\s*```", re.MULTILINE)
+    _RE_LINK = re.compile(r"https?://[^\s\)\]\}>\"']+")
+    _RE_QUOTE = re.compile(r"^\s*>", re.MULTILINE)
+    _RE_FILE_MARKER = re.compile(r"\[Файл:\s*[^\]]*\]|📎")
 
     def parse(self, src: SourceFile) -> dict:
         text = src.abs_path.read_text(encoding="utf-8")
@@ -67,6 +73,12 @@ class MdProcessor(Processor):
         att = self._RE_ATTACHMENTS.search(text)
         if att:
             meta["attachments"] = int(att.group(1))
+        else:
+            counted = len(self._RE_MEDIA.findall(text)) + len(
+                self._RE_FILE_MARKER.findall(text)
+            )
+            if counted:
+                meta["attachments"] = counted
 
         h = self._RE_HASH.search(text)
         if h:
@@ -76,10 +88,34 @@ class MdProcessor(Processor):
                 int(h.group(3)),
             )
 
-        stamps = [m.group(0) for m in self._RE_MESSAGE_TS.finditer(text)]
-        if stamps:
-            meta["first_ts"] = self._ts(stamps[0])
-            meta["last_ts"] = self._ts(stamps[-1])
+        sv = self._first(self._RE_SCHEMA, text)
+        if sv:
+            meta["schema_version"] = int(sv)
+
+        roles: list[str] = []
+        index: list[dict] = []
+        for m in self._RE_MESSAGE.finditer(text):
+            role = "user" if m.group("who") == "👤" else "assistant"
+            ts = (m.group("ts") or "").strip()
+            roles.append(role)
+            index.append({"role": role, "ts": ts})
+        if index:
+            meta["roles"] = sorted(set(roles))
+            meta["message_index"] = index
+            if index[0]["ts"]:
+                meta["first_ts"] = index[0]["ts"]
+            if index[-1]["ts"]:
+                meta["last_ts"] = index[-1]["ts"]
+
+        blocks = len(self._RE_CODE_BLOCK.findall(text)) // 2
+        if blocks:
+            meta["code_blocks"] = blocks
+        links = self._RE_LINK.findall(text)
+        if links:
+            meta["links"] = len(set(links))
+        quotes = len(self._RE_QUOTE.findall(text))
+        if quotes:
+            meta["quotes"] = quotes
 
         if not meta["service"] and src.rel_dir:
             meta["service"] = src.rel_dir.split("/", 1)[0].lower()
@@ -106,8 +142,3 @@ class MdProcessor(Processor):
     def _first(pattern: re.Pattern, text: str) -> str | None:
         m = pattern.search(text)
         return m.group(1).strip() if m else None
-
-    @staticmethod
-    def _ts(line: str) -> str:
-        m = re.search(_TS, line)
-        return m.group(0) if m else ""

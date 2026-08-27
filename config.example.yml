@@ -6,18 +6,50 @@
 source: ./raw
 
 # Target folder with processed, Obsidian-ready files (default: ./processed)
+# Stage 1 output: import only, never modified by the AI stage.
 target: ./processed
+
+# AI-enriched vault (default: ./enriched). Stage 2 output: import + LLM
+# summaries/tags/topic/type plus topic notes (enriched/topics/*.md) built from
+# several chats at once. Pointing Obsidian here gives the final knowledge base.
+# Must not be inside `target`.
+enriched: ./enriched
+
+# Persistent GUI state. The UI reads these on startup and writes them back on
+# every confirmed change, on run and on window close — so the app restores
+# exactly the state it was closed in. CLI flags still take precedence.
+llm_enabled: true            # use Ollama for summary/tags/topic/type
+prune: false                 # delete stale Obsidianizer-owned files in processed
+prune_enriched: false        # delete orphaned AI results (ai_hash-marked) + media
+dry_run: false               # preview only: compute and report, write nothing
 
 # LLM enrichment (optional). When unavailable, files are still processed
 # with metadata only.
 ollama:
   endpoint: http://localhost:11434
   model: deepseek-r1:14b
+  # Model for the AI chat / archive search (analyst over search results).
+  # The import model above stays as-is; qwen2.5 answers chat queries more reliably.
+  chat_model: qwen2.5:latest
+  # Embedding model for the semantic search layer (incremental index under
+  # enriched/.obsidianizer/). Requires `ollama pull nomic-embed-text`.
+  embed_model: nomic-embed-text:latest
+  # How many candidate chats the search returns (the chat prompt sees the top 10).
+  search_top_k: 30
+  # The top-K chats whose FULL texts are attached to the chat prompt as a
+  # fallback, capped by search_full_chars (distributed evenly across them).
+  search_full_k: 3
+  search_full_chars: 9000
+  # Max fragment length (best matching chunk) shown per candidate in the prompt.
+  search_frag_chars: 600
   timeout: 180
   # Maximum characters of file content sent to the model (from the top).
   limit_chars: 6000
   temperature: 0.2
   num_ctx: 8192
+  # Both prompt templates are edited in the GUI via the "Изменить…" button
+  # (and on the CLI they live here). {content} is the single substitution
+  # point for the file/chat body — keep it.
   prompt: |
     Ты анализируешь содержимое файла заметок.
 
@@ -35,6 +67,83 @@ ollama:
 
     TAGS:
     тег1, тег2, тег3
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  ai_prompt: |
+    Проанализируй диалог.
+
+    SUMMARY:
+    Кратко (3–5 предложений) опиши тему разговора, главные выводы и принятые
+    решения. Если есть незавершённые задачи или следующие шаги — укажи их.
+    Не пересказывай разговор по порядку и не выдумывай информацию.
+
+    TAGS:
+    Дай 3–7 коротких тегов по теме разговора.
+
+    TOPIC:
+    Короткая тема разговора (2–4 слова).
+
+    TYPE:
+    Один из: обсуждение, вопрос, планирование, обучение, отладка, проект, идея, другое.
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  # Topic-analysis prompt: several chats merged into one topic note
+  # (enriched/topics/<Name>.md via "Объединить в тему…"). {content} is the
+  # whole assembled group of chats.
+  topic_prompt: |
+    Проанализируй несколько разговоров, объединённых в один файл
+    (каждый помечен заголовком «## Файл»). Составь по всей группе единую справку.
+
+    NAME:
+    Короткое название темы (2–5 слов, на русском, без кавычек и спецсимволов).
+
+    SUMMARY:
+    3–5 предложений: что обсуждалось во всех разговорах вместе и главные выводы.
+
+    DECISIONS:
+    - Список решений, принятых в этих разговорах. Каждый пункт с новой строки
+      с «- ». Если решений нет — напиши «- Нет».
+
+    KEY_FACTS:
+    - Список ключевых фактов и договорённостей. Каждый пункт с новой строки
+      с «- ». Если фактов нет — напиши «- Нет».
+
+    ARTIFACTS:
+    - Список артефактов: файлы, скрипты, функции и объекты, о которых шла речь.
+      Каждый пункт с новой строки с «- ». Если артефактов нет — напиши «- Нет».
+
+    Не выдумывай информацию — используй только то, что есть в разговорах.
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  # Topic-map prompt: auto-grouping of the whole processed collection into
+  # topics by title ("Авто-группировка"). {content} is the list of chat cards
+  # with 1-based indices.
+  map_prompt: |
+    Ниже список чатов с номерами. Сгруппируй их в темы по содержанию.
+
+    Каждый чат относится только к одной теме. Чаты, которые не подходят ни к
+    одной теме, не включай ни в какую. Названия тем формулируй коротко (2–5 слов,
+    на русском). Если уже есть «Уже выделенные темы» — используй те же названия,
+    когда тема совпадает.
+
+    Формат ответа строго, по одному блоку на тему:
+
+    TOPIC:
+    <название темы>
+
+    IDS:
+    <номера чатов через запятую>
+
+    Не выдумывай номера — используй только те, что есть в списке.
 
     Содержимое:
     ---

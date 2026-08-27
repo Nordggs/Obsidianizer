@@ -1,5 +1,7 @@
 """Enrichment — compose YAML frontmatter, a human-readable card, and the
-preserved original body into the final note."""
+preserved original body into the final note. The card may carry an optional
+AI-derived topic and conversation type alongside summary/tags.
+"""
 
 from __future__ import annotations
 
@@ -20,14 +22,22 @@ def build_frontmatter(
     data["date"] = date_from_meta(meta)
     data["tags"] = tags or []
     data["summary"] = summary or ""
+    # The message index lives in the note body, not in the YAML block.
     data.pop("content_hash", None)
+    data.pop("message_index", None)
     block = yaml.dump(
         data, allow_unicode=True, default_flow_style=False, sort_keys=False
     ).strip()
     return f"---\n{block}\n---\n"
 
 
-def build_card(meta: dict, summary: str, tags: list[str]) -> str:
+def build_card(
+    meta: dict,
+    summary: str,
+    tags: list[str],
+    topic: str = "",
+    ai_type: str = "",
+) -> str:
     lines: list[str] = []
     title = str(meta.get("title") or "")
     if title:
@@ -38,6 +48,12 @@ def build_card(meta: dict, summary: str, tags: list[str]) -> str:
     if summary:
         lines.append("")
         lines.append(f"**📌 Резюме:** {summary}")
+    if topic:
+        lines.append("")
+        lines.append(f"**🎯 Тема:** {topic}")
+    if ai_type:
+        lines.append("")
+        lines.append(f"**🧭 Тип:** {ai_type}")
     if tags:
         lines.append("")
         lines.append("**🏷 Теги:** " + " ".join(f"`{t}`" for t in tags))
@@ -70,8 +86,50 @@ def build_card(meta: dict, summary: str, tags: list[str]) -> str:
     return "\n".join(lines)
 
 
-def compose(frontmatter: str, card: str, body: str) -> str:
-    parts = [frontmatter.rstrip("\n"), "", card.strip(), "", "---", "", body.strip(), ""]
+def build_navigation(meta: dict) -> str:
+    """Compact navigation index: counts summary + message timeline.
+
+    Only counts and roles — the full conversation stays below in the
+    verbatim body, so nothing is duplicated.
+    """
+
+    lines: list[str] = ["## Навигация", ""]
+    msgs = meta.get("messages") or {}
+    parts: list[str] = []
+    if isinstance(msgs, dict) and msgs.get("total"):
+        parts.append(f"{msgs['total']} сообщений")
+    if meta.get("code_blocks"):
+        parts.append(f"{meta['code_blocks']} блоков кода")
+    if meta.get("links"):
+        parts.append(f"{meta['links']} ссылок")
+    if meta.get("quotes"):
+        parts.append(f"{meta['quotes']} цитат")
+    if meta.get("attachments") is not None:
+        parts.append(f"{meta['attachments']} вложений")
+    if meta.get("branches") and meta["branches"] != 1:
+        parts.append(f"{meta['branches']} ветвей")
+    if parts:
+        lines.append("- " + " · ".join(parts))
+
+    index = meta.get("message_index") or []
+    if index:
+        lines += ["", "### Сообщения", ""]
+        for i, item in enumerate(index, start=1):
+            role = "user" if item.get("role") == "user" else "assistant"
+            icon = "👤" if role == "user" else "🤖"
+            name = "Вы" if role == "user" else "AI"
+            ts = str(item.get("ts") or "").strip()
+            suffix = f" — {ts}" if ts else ""
+            lines.append(f"{i}. {icon} {name}{suffix}")
+
+    return "\n".join(lines).rstrip()
+
+
+def compose(frontmatter: str, card: str, body: str, navigation: str = "") -> str:
+    parts = [frontmatter.rstrip("\n"), "", card.strip()]
+    if navigation and navigation.strip():
+        parts += ["", navigation.strip()]
+    parts += ["", "---", "", body.strip(), ""]
     return "\n".join(parts)
 
 

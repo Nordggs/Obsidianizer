@@ -64,3 +64,50 @@ def test_service_fallback_to_folder():
         meta = PROC.parse(src)
         assert meta["service"] == "qwen"
         assert meta["branches"] == 1
+
+
+def test_parses_structural_metadata():
+    meta = PROC.parse(_src("deepseek/deepseek_09_nextcloudobsidian_d78923c8.md"))
+    assert meta["schema_version"] == 2
+    assert meta["roles"] == ["assistant", "user"]
+    assert len(meta["message_index"]) == 4
+    assert meta["message_index"][0] == {"role": "user", "ts": "2026-07-01 12:00"}
+    assert meta["message_index"][-1] == {"role": "assistant", "ts": "2026-07-01 12:06"}
+    assert meta["first_ts"] == "2026-07-01 12:00"
+    assert meta["last_ts"] == "2026-07-01 12:06"
+    assert meta["links"] == 1  # the "Оригинал:" URL
+    assert meta["attachments"] == 2  # header value wins
+
+
+def test_message_index_ignores_noise_and_counts_blocks():
+    from pathlib import Path as P
+    import tempfile
+
+    body = (
+        "# Тема\n\n"
+        "#### 👤 Вы (2026-07-01 12:00)\n"
+        "hello\n\n"
+        "#### 🤖 AI\n"
+        "```python\n"
+        "print(1)\n"
+        "```\n"
+        "> цитата\n"
+        "> > вложенная\n\n"
+        "#### UI:\n"
+        "не сообщение\n\n"
+        "#### 👤 Вы (2026-07-01 12:01)\n"
+        "https://example.com/а\n"
+        "https://example.com/а\n"
+    )
+    with tempfile.TemporaryDirectory() as d:
+        f = P(d) / "t.md"
+        f.write_text(body, encoding="utf-8")
+        src = SourceFile(abs_path=f, rel_path="t.md", ext=".md")
+        meta = PROC.parse(src)
+        assert [m["role"] for m in meta["message_index"]] == ["user", "assistant", "user"]
+        assert meta["roles"] == ["assistant", "user"]
+        assert meta["code_blocks"] == 1
+        assert meta["quotes"] == 2
+        assert meta["links"] == 1  # deduplicated
+        assert meta["first_ts"] == "2026-07-01 12:00"
+        assert meta["last_ts"] == "2026-07-01 12:01"

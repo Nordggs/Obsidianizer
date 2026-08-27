@@ -12,48 +12,229 @@
     <span id="version" class="dim">v–</span>
   </header>
 
-  <section class="panel">
-    <div class="row">
-      <label for="source">Источник:</label>
-      <input id="source" type="text" spellcheck="false" placeholder="D:\raw">
-      <button id="btnSource" class="pick" title="Выбрать папку">Выбрать</button>
-    </div>
-    <div class="row">
-      <label for="target">Результат:</label>
-      <input id="target" type="text" spellcheck="false" placeholder="D:\processed">
-      <button id="btnTarget" class="pick" title="Выбрать папку">Выбрать</button>
-    </div>
+  <nav class="tabs">
+    <button id="tabNavObs" class="tab active" data-page="obsidianize">📁 Obsidianize</button>
+    <button id="tabNavChat" class="tab" data-page="chat">💬 Чат-обработка</button>
+    <button id="tabNavAi" class="tab" data-page="ai">🤖 AI-анализ</button>
+  </nav>
+
+  <section id="page-obsidianize" class="tab-page active">
+    <section class="panel">
+      <div class="row">
+        <label for="obsDir">Папка:</label>
+        <input id="obsDir" type="text" spellcheck="false" placeholder="D:\Projects\DemoProject">
+        <button id="btnObsDir" class="pick" title="Выбрать папку">Выбрать</button>
+      </div>
+      <div class="row">
+        <label for="obsVaultRoot">Корень Obsidian (для галереи):</label>
+        <input id="obsVaultRoot" type="text" spellcheck="false" placeholder="необязательно">
+        <button id="btnObsVaultRoot" class="pick" title="Выбрать корень хранилища">Выбрать</button>
+      </div>
+      <div class="row opts">
+        <label class="check"><input type="checkbox" id="obsRecursive" checked> Вложенные папки</label>
+        <label class="check"><input type="checkbox" id="obsGallery" checked> Галерея</label>
+        <span class="field-label">Шаблон карточки:</span>
+        <select id="obsTemplate" title="github — Project Dashboard (README-стиль) | classic — старый формат таблиц">
+          <option value="github">github (Project Dashboard)</option>
+          <option value="classic">classic</option>
+        </select>
+      </div>
+      <p class="ai-note">Исходные файлы не изменяются: создаются/обновляются только карточки <span class="mono">.md</span>.</p>
+    </section>
+
+    <section class="actions">
+      <button id="btnObsScan" class="ghost" title="Только прочитать папку и показать статус карточек (ничего не пишет)">🔍 Просканировать</button>
+      <button id="btnObsRun" class="primary" title="Создать/обновить карточки для каждой папки (исходники не трогаются)">✨ Obsidianize</button>
+      <button id="btnObsOpen" class="ghost" title="Открыть папку в проводнике">Открыть папку</button>
+    </section>
+
+    <section id="obsResultSection" class="panel hidden">
+      <div class="stage-label">Карточки</div>
+      <div id="obsResult" class="obs-result"></div>
+    </section>
   </section>
 
-  <section class="panel">
-    <label class="check"><input type="checkbox" id="llm" checked> Использовать Ollama</label>
-    <div class="row">
-      <label for="model">Модель:</label>
-      <input id="model" type="text" spellcheck="false" placeholder="deepseek-r1:14b">
-    </div>
-    <div class="row opts">
-      <label class="check"><input type="checkbox" id="dry"> Только просмотр</label>
-      <label class="check"><input type="checkbox" id="prune"> Удалить старые результаты</label>
-    </div>
+  <section id="page-chat" class="tab-page">
+    <section class="panel">
+      <div class="row">
+        <label for="source">Источник:</label>
+        <input id="source" type="text" spellcheck="false" placeholder="D:\raw">
+        <button id="btnSource" class="pick" title="Выбрать папку">Выбрать</button>
+      </div>
+      <div class="row">
+        <label for="target">Результат обработки:</label>
+        <input id="target" type="text" spellcheck="false" placeholder="D:\processed">
+        <button id="btnTarget" class="pick" title="Выбрать папку">Выбрать</button>
+      </div>
+      <div class="row">
+        <label for="enriched">AI-результат:</label>
+        <input id="enriched" type="text" spellcheck="false" placeholder="D:\enriched">
+        <button id="btnEnriched" class="pick" title="Выбрать папку">Выбрать</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ai-row">
+        <label class="check"><input type="checkbox" id="ai" checked> AI-постобработка</label>
+      </div>
+      <div id="aiDetails" class="ai-details">
+        <div class="row">
+          <label for="model">Модель:</label>
+          <div class="model-wrap">
+            <input id="model" type="text" spellcheck="false" placeholder="deepseek-r1:14b">
+            <button id="btnModelDropdown" class="drop-btn" title="Показать все модели">▼</button>
+            <div id="modelDropdown" class="dropdown hidden"></div>
+          </div>
+          <button id="btnRefreshModels" class="pick" title="Получить список моделей из Ollama">Обновить</button>
+          <span class="field-label">Модель чата:</span>
+          <input id="chatModel" type="text" spellcheck="false" placeholder="qwen2.5:latest"
+            title="Модель для AI-чата и поиска по коллекции (импорт использует модель выше)">
+        </div>
+        <div class="row">
+          <span class="field-label">Промпт:</span>
+          <button id="btnPrompt" class="ghost" title="Посмотреть и изменить промпты импорта, AI-постобработки и объединения в тему">Изменить…</button>
+          <span class="ai-note">Локальная модель через Ollama</span>
+        </div>
+        <div class="row">
+          <button id="btnTopic" class="pick" title="Объединить несколько выбранных чатов в одну тему (enriched/topics)">Объединить в тему…</button>
+          <button id="btnTopics" class="pick" title="Список тем: перегенерация, переименование, удаление, чаты без темы">Темы…</button>
+          <button id="btnGroupAll" class="pick" title="Автоматически сгруппировать все обработанные чаты в темы (без выбора)">Авто-группировка</button>
+        </div>
+      </div>
+      <div class="row opts">
+        <label class="check"><input type="checkbox" id="dry"> Только просмотр</label>
+        <label class="check"><input type="checkbox" id="prune"> Удалить старые результаты</label>
+        <label class="check"><input type="checkbox" id="pruneAi"> Удалять сироты из AI-результата</label>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button id="btnRun" class="primary">ОБРАБОТАТЬ<span id="runSub" class="btn-sub">Только импорт</span></button>
+      <button id="btnStop" disabled>Стоп</button>
+      <button id="btnAi" class="ghost" title="AI-постобработка: processed → enriched (без повторного импорта)">AI-постобработка<span class="btn-sub">Только повторный AI-прогон</span></button>
+      <button id="btnChat" class="ghost" title="Спросить локальную модель по своей коллекции">AI-чат</button>
+      <button id="btnOpen" class="ghost" title="Открыть папку результата обработки (processed)">Открыть результат</button>
+      <button id="btnOpenEnriched" class="ghost" title="Открыть AI-результат (enriched)">Открыть AI-результат</button>
+    </section>
+
+    <section id="progressSection" class="panel hidden">
+      <div class="stage-label">Импорт</div>
+      <div class="progress-track"><div id="bar" class="progress-fill"></div></div>
+      <div class="progress-meta">
+        <span id="progText" class="mono">0 / 0</span>
+        <span id="currentFile" class="mono dim">&nbsp;</span>
+      </div>
+    </section>
+
+    <section id="aiProgressSection" class="panel hidden">
+      <div id="aiStageLabel" class="stage-label">AI-постобработка</div>
+      <div class="progress-track"><div id="aiBar" class="progress-fill ai-fill"></div></div>
+      <div class="progress-meta">
+        <span id="aiProgText" class="mono">0 / 0</span>
+        <span id="aiCurrentFile" class="mono dim">&nbsp;</span>
+      </div>
+    </section>
   </section>
 
-  <section class="actions">
-    <button id="btnRun" class="primary">ОБРАБОТАТЬ</button>
-    <button id="btnStop" disabled>Стоп</button>
-    <button id="btnOpen" class="ghost">Открыть результат</button>
-  </section>
+  <section id="page-ai" class="tab-page">
+    <section class="panel">
+      <div class="row">
+        <label for="aiDir">Папка:</label>
+        <input id="aiDir" type="text" spellcheck="false" placeholder="D:\Projects\DemoProject">
+        <button id="btnAiDir" class="pick" title="Выбрать папку">Выбрать</button>
+      </div>
+      <div class="row opts">
+        <label class="check"><input type="checkbox" id="aiIncludeText" checked>
+          Включать содержимое текстовых файлов (.txt, .md)</label>
+      </div>
+      <p class="ai-note">Модель — чат-модель (qwen2.5). Результат: <span class="mono">&lt;папка&gt;_обзор.md</span>
+        рядом с карточкой проекта. Исходные файлы не изменяются.</p>
+    </section>
 
-  <section id="progressSection" class="panel hidden">
-    <div class="progress-track"><div id="bar" class="progress-fill"></div></div>
-    <div class="progress-meta">
-      <span id="progText" class="mono">0 / 0</span>
-      <span id="currentFile" class="mono dim">&nbsp;</span>
-    </div>
+    <section class="actions">
+      <button id="btnAiScan" class="ghost" title="Показать список папок с карточками">🔍 Показать папки</button>
+      <button id="btnAiRun" class="primary" title="Сформировать обзоры выбранных папок чат-моделью">🤖 Сформировать обзоры</button>
+      <button id="btnAiOpen" class="ghost" title="Открыть папку в проводнике">Открыть папку</button>
+    </section>
+
+    <section id="aiFoldersSection" class="panel hidden">
+      <div class="stage-label">Папки</div>
+      <div id="aiFolderList" class="topic-list review-list"></div>
+      <div class="row opts review-opts">
+        <button id="btnAiCheckAll" class="ghost">Выбрать все</button>
+        <button id="btnAiCheckNone" class="ghost">Снять все</button>
+        <span id="aiFolderCount" class="dim">Выбрано: 0</span>
+      </div>
+    </section>
+
+    <section id="aiReviewSection" class="panel hidden">
+      <div class="stage-label">Сформированные обзоры</div>
+      <div id="aiReviewList" class="obs-result"></div>
+    </section>
   </section>
 
   <section class="panel log-panel">
     <div id="log" class="log"></div>
   </section>
+
+  <div id="promptModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <span>Промпты</span>
+        <button id="btnPromptClose" class="modal-close" title="Закрыть">×</button>
+      </div>
+      <div class="tabs">
+        <button id="tabImport" class="tab active">Импорт</button>
+        <button id="tabAi" class="tab">AI-постобработка</button>
+        <button id="tabTopic" class="tab">Объединение в тему</button>
+        <button id="tabMap" class="tab">Карта тем</button>
+      </div>
+      <textarea id="promptText" spellcheck="false"></textarea>
+      <div class="modal-actions">
+        <button id="btnPromptReset" class="ghost">Восстановить стандартный</button>
+        <span class="spacer"></span>
+        <button id="btnPromptCancel">Отмена</button>
+        <button id="btnPromptSave" class="primary">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topicModal" class="modal hidden">
+    <div class="modal-box topic-box">
+      <div class="modal-head">
+        <span id="topicModalHead">Объединить чаты в тему</span>
+        <button id="btnTopicClose" class="modal-close" title="Закрыть">×</button>
+      </div>
+      <input id="topicFilter" type="text" spellcheck="false" placeholder="Поиск по названию…">
+      <div id="topicList" class="topic-list"></div>
+      <div class="modal-actions">
+        <span id="topicCount" class="dim">Выбрано: 0</span>
+        <span class="spacer"></span>
+        <button id="btnTopicCancel">Отмена</button>
+        <button id="btnTopicCreate" class="primary" disabled>Создать справку</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topicManageModal" class="modal hidden">
+    <div class="modal-box topic-manage-box">
+      <div class="modal-head">
+        <span>Темы</span>
+        <button id="btnTopicManageClose" class="modal-close" title="Закрыть">×</button>
+      </div>
+      <div id="topicManageList" class="topic-list"></div>
+      <div class="topic-orphans">
+        <span id="topicOrphansCount" class="dim">Чаты без темы: –</span>
+        <span class="spacer"></span>
+        <button id="btnTopicOrphansCreate" class="pick" title="Объединить свободные чаты в новую тему">Создать тему из них…</button>
+      </div>
+      <div class="modal-actions">
+        <button id="btnTopicManageRefresh" class="ghost">Обновить список</button>
+        <span class="spacer"></span>
+        <button id="btnTopicManageClose2">Закрыть</button>
+      </div>
+    </div>
+  </div>
 
   <footer id="status" class="status">Готово. Выберите папки и нажмите «Обработать».</footer>
 

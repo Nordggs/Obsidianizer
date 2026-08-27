@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from obsidianizer.config import Settings
+from obsidianizer.config import PROCESS_VERSION, Settings
 from obsidianizer.llm import LLMClient
 from obsidianizer.md_processor import MdProcessor
 from obsidianizer.manifest import read_manifest
@@ -146,3 +146,37 @@ def test_dry_run_writes_nothing(tmp_path):
     report = _runner(source, target, dry_run=True)
     assert report.processed == 2
     assert target.exists() is False
+
+
+def test_navigation_section_written(tmp_path):
+    source, target = _prepare(tmp_path)
+    _runner(source, target)
+    note = target / "deepseek" / "deepseek_09_nextcloudobsidian_d78923c8.md"
+    text = note.read_text(encoding="utf-8")
+    assert "## Навигация" in text
+    assert "### Сообщения" in text
+    assert "1. 👤 Вы — 2026-07-01 12:00" in text
+    # structural counters are in the frontmatter, the index is not
+    assert f"process_version: {PROCESS_VERSION}" in text
+    assert "roles:" in text
+    assert "links:" in text
+    assert "message_index" not in text.split("---")[1]
+    # the verbatim body still follows the card separator unchanged
+    assert "#### 👤 Вы (2026-07-01 12:00)" in text
+    assert "Мне нужен контроль версий для чертежей DWG" in text
+
+
+def test_older_format_version_is_reprocessed(tmp_path):
+    source, target = _prepare(tmp_path)
+    assert _runner(source, target).processed == 2
+
+    note = target / "deepseek" / "deepseek_09_nextcloudobsidian_d78923c8.md"
+    stale = note.read_text(encoding="utf-8").replace(
+        f"process_version: {PROCESS_VERSION}", "process_version: 1"
+    )
+    note.write_text(stale, encoding="utf-8")
+
+    report = _runner(source, target)
+    assert report.processed == 1  # only the stale note is rewritten
+    assert report.skipped == 1  # the fresh note stays untouched
+    assert f"process_version: {PROCESS_VERSION}" in note.read_text(encoding="utf-8")

@@ -1,0 +1,163 @@
+/* github-dashboard — GitHub-style Project Dashboard cards for Folder Obsidianizer.
+ *
+ * Установка (один раз):
+ *   1. Скопируйте этот файл в папку сниппетов вашего vault:
+ *      <vault>/.obsidian/snippets/github-dashboard.css
+ *   2. Настройки → Внешний вид → CSS-сниппеты → включите "github-dashboard".
+ *
+ * Сниппет активируется только для карточек с frontmatter:
+ *   cssclasses: [github-dashboard]
+ * (генерируется автоматически github-шаблоном). Без включения сниппета
+ * карточки выглядят как обычный Markdown — ничего не ломается.
+ *
+ * Правило переносимости: стилизуем ТОЛЬКО то, что генерирует Obsidianizer
+ * (заголовки, таблицы, footer), плюс стабильные элементы самого Obsidian
+ * (.inline-title). Никакой привязки к конкретной теме или плагинам.
+ */
+
+/* ── Inline title Obsidian ────────────────────────────────────────────── */
+/* Имя заметки над контентом дублирует наш h1 и выглядит гигантским в темах.
+   Скрываем его только внутри наших карточек. */
+.github-dashboard .inline-title {
+  display: none !important;
+}
+
+/* ── Repo header (h1 + plain markdown) ──────────────────────────────── */
+.github-dashboard h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--text-normal);
+  letter-spacing: -0.01em;
+  margin: 0.3em 0 0.4em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* ── Section headers ─────────────────────────────────────────────────── */
+.github-dashboard h2 {
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 1.6em 0 0.5em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.github-dashboard h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1.2em 0 0.4em;
+}
+
+.github-dashboard h4 {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1.2em 0 0.3em;
+}
+
+/* ── Tables: GitHub file-list style ──────────────────────────────────── */
+/* Первая таблица после "## Code" — каталог репозитория, в рамке. */
+.github-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.5em 0 1.2em;
+}
+
+.github-dashboard table th {
+  text-align: left;
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 5px 12px;
+}
+
+.github-dashboard table td {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 5px 12px;
+  vertical-align: top;
+}
+
+.github-dashboard table td:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42em;
+}
+
+.github-dashboard table td:nth-child(3),
+.github-dashboard table td:nth-child(4) {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.github-dashboard table td:last-child {
+  text-align: right;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.github-dashboard table tr:hover td {
+  background: var(--background-modifier-hover);
+}
+
+/* Каталог Code (первая таблица после h2) — рамка как file list на GitHub */
+.github-dashboard h2 + table {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.github-dashboard h2 + table th {
+  border-top: none;
+}
+
+.github-dashboard h2 + table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Мета-строки категорий и футер (_…_ italic) ─────────────────────── */
+.github-dashboard em {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.github-dashboard footer.repo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.5em;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ── Встроенные заметки и обзор (![[…]]) ────────────────────────────── */
+.github-dashboard .markdown-embed {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 0 12px 8px;
+  margin: 0.4em 0 1em;
+  background: var(--background-secondary);
+}
+
+.github-dashboard .markdown-embed-content > .markdown-preview-view {
+  padding: 0;
+}
+
+/* ── Наследие прошлых версий (v3/v4) — на случай старых карточек ─────── */
+.github-dashboard .callout[data-callout="abstract"],
+.github-dashboard .github-tree,
+.github-dashboard .tree-row,
+.github-dashboard .github-langbar,
+.github-dashboard .langbar-legend {
+  /* старые декоративные блоки больше не генерируются; если остались в
+     неотмигрированной карточке — просто не мешают */
+}

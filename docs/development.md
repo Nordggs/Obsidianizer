@@ -29,7 +29,8 @@ The suite is organized around safety first:
 | `test_manifest.py`       | prune only owned files; atomic manifest writes  |
 | `test_md_processor.py`   | metadata parsing; body preservation             |
 | `test_registry.py`       | extension dispatch; unknown extensions          |
-| `test_config.py`         | precedence CLI > config > defaults              |
+| `test_config.py`         | precedence CLI > config > defaults; save/load roundtrip + merge |
+| `test_ui.py`             | GUI bridge: settings persistence, per-field folder pickers |
 | `test_pipeline.py`       | incrementality; LLM degradation                |
 
 ## Fixtures

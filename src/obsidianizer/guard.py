@@ -1,10 +1,12 @@
 """Path-overlap guard.
 
-Rejects dangerous source/target combinations before any work happens:
-    - source == target
-    - target is inside source
-    - source is inside target
+Rejects dangerous layout combinations before any work happens:
+    - first == second
+    - second is inside first
+    - first is inside second
 
+Used for every adjacent stage pair (source/target for the import stage,
+target/enriched for the AI stage, source/enriched as a belt-and-braces both).
 Refusal is hard: the tool exits rather than trying to "figure it out".
 Comparisons use Path.resolve() and case normalization, so the checks behave
 correctly on Windows.
@@ -17,7 +19,7 @@ from pathlib import Path
 
 
 class GuardError(Exception):
-    """Raised when the source/target layout is unsafe."""
+    """Raised when a path pair layout is unsafe."""
 
 
 def _normalized(path: Path) -> str:
@@ -33,28 +35,28 @@ def _is_within(child_norm: str, parent_norm: str) -> bool:
     return child_norm.startswith(parent_norm + sep)
 
 
-def check(source: Path, target: Path) -> None:
-    """Validate source/target. Raises GuardError on any overlap."""
+def check(first: Path, second: Path) -> None:
+    """Validate a stage pair. Raises GuardError on any overlap."""
 
-    src = _normalized(source)
-    tgt = _normalized(target)
+    a = _normalized(first)
+    b = _normalized(second)
 
-    if src == tgt:
+    if a == b:
         raise GuardError(
-            f"source и target совпадают: {source}\n"
-            "Запуск запрещён — Obsidianizer уничтожил бы собственный вход."
+            f"Первый и второй путь совпадают: {first}\n"
+            "Запуск запрещён — этап уничтожил бы собственный вход."
         )
-    if _is_within(tgt, src):
+    if _is_within(b, a):
         raise GuardError(
-            f"target находится внутри source:\n"
-            f"  source: {source}\n"
-            f"  target: {target}\n"
+            f"Второй путь находится внутри первого:\n"
+            f"  первый: {first}\n"
+            f"  второй: {second}\n"
             "Запуск запрещён — предусмотренные результаты были бы видны как новые входные данные."
         )
-    if _is_within(src, tgt):
+    if _is_within(a, b):
         raise GuardError(
-            f"source находится внутри target:\n"
-            f"  source: {source}\n"
-            f"  target: {target}\n"
-            "Запуск запрещён — обработчик стал бы сканировать собственные результаты."
+            f"Первый путь находится внутри второго:\n"
+            f"  первый: {first}\n"
+            f"  второй: {second}\n"
+            "Запуск запрещён — этап стал бы сканировать собственные результаты."
         )
