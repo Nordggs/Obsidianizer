@@ -260,6 +260,9 @@ button.ghost:hover { background: #2a3444; }
 .log .dim   { color: var(--muted); }
 
 .status {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   padding: 8px 16px;
   border-top: 1px solid var(--panel-border);
   background: var(--panel);
@@ -585,13 +588,7 @@ button.ghost.danger:hover {   background: #2a1a1e; }
 /* ── app tabs (top navigation) ──────────────────────────────────────────── */
 
 .tab-page { display: none; }
-.tab-page.active {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
+.tab-page.active { display: block; overflow-anchor: none; }
 
 nav.tabs {
   padding: 8px 16px 0;
@@ -639,6 +636,33 @@ nav.tabs .tab svg.tab-ico {
 .help-body b { color: var(--fg); }
 .help-body i { color: var(--dim); }
 
+/* ── scrollbars (Chromium/WebView2) — AI Chat Exporter palette ──────────── */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0b0f17; }
+::-webkit-scrollbar-thumb {
+  background: #2a3444;
+  border-radius: 6px;
+  border: 2px solid #0b0f17;
+}
+::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+::-webkit-scrollbar-corner { background: #0b0f17; }
+
+/* ── select (template picker) — keep it inside the palette ──────────────── */
+
+select {
+  background: var(--inner);
+  color: var(--fg);
+  border: 1px solid #2a3444;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+select:focus { outline: none; border-color: var(--accent); }
+select option { background: #121826; color: var(--fg); }
+
 /* ── Folder Obsidianizer table ──────────────────────────────────────────── */
 
 .obs-result { overflow-x: auto; }
@@ -677,6 +701,8 @@ nav.tabs .tab svg.tab-ico {
   opacity: 0.55;
   cursor: row-resize;
   user-select: none;
+  touch-action: none;
+  flex-shrink: 0;
 }
 .splitter:hover, .splitter.dragging { opacity: 1; background: var(--accent); }
 .splitter.hidden { display: none; }

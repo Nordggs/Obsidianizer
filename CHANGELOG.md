@@ -1,5 +1,24 @@
 # Obsidianizer
 
+## [0.4.3] - 2026-08-28
+
+### Fixed
+- The card-table resize divider broke after v0.4.2 (the tab became a
+  flex column with its own scroll, and Chromium scroll anchoring shifted
+  content mid-drag). The page returned to whole-window scrolling (settings,
+  table and log scroll together, as requested) and the divider now uses an
+  absolute cursor-position calculation, immune to scrolling.
+- The status footer (version + scan summary) stays pinned via
+  `position: sticky; bottom: 0` — visible on every tab while the whole
+  window scrolls.
+
+### Changed
+- Scrollbars re-themed to the AI Chat Exporter palette (dark track
+  `#0b0f17`, thumb `#2a3444` → `#4a5568` on hover) — applies to every
+  scrollable area including the card table, log and modals.
+- The template dropdown (`github/classic`) is dark-themed too
+  (`select` + `option`), no more default white OS rendering.
+
 ## [0.4.2] - 2026-08-28
 
 ### Changed

@@ -962,8 +962,11 @@
       if (!sp.classList.contains("dragging")) return;
       const box = $("obsResult");
       if (!box) return;
+      // absolute cursor position relative to the table top — immune to
+      // container scrolling / scroll anchoring while dragging
+      const top = box.getBoundingClientRect().top;
       const max = Math.max(window.innerHeight * 0.8, 240);
-      const h = Math.min(Math.max(sp._startH + (e.clientY - sp._startY), 120), max);
+      const h = Math.min(Math.max(e.clientY - top, 120), max);
       box.style.maxHeight = h + "px";
     });
     function endDrag() {
