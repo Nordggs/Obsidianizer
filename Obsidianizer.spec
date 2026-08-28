@@ -21,7 +21,7 @@ a = Analysis(
     datas=datas + [("src/obsidianizer/web", "obsidianizer/web")],
     hiddenimports=hiddenimports,
     hookspath=[],
-    runtime_hooks=[],
+    runtime_hooks=["runtime_hook_clr.py"],
     excludes=["playwright", "PyQt5", "tkinter"],
     noarchive=False,
 )
