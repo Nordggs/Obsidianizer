@@ -346,6 +346,12 @@ class UIApp:
         self._save_settings()
         return {"ok": True}
 
+    def set_int_vault(self, path: str) -> dict:
+        """Remember the Integration vault folder (persisted in settings)."""
+        self.settings.obsidianize_dir = str(path).strip()
+        self._save_settings()
+        return {"ok": True}
+
     def obs_scan(self, path: str = "") -> dict:
         """Read-only scan: folder tree + card statuses + change details.
 

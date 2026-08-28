@@ -105,6 +105,7 @@
     <div class="int-row">
       <label for="intVault">Vault:</label>
       <input id="intVault" type="text" spellcheck="false" placeholder="D:\Obsidian\MyVault">
+      <button id="btnIntBrowse" class="pick">Обзор</button>
       <button id="btnIntCheck" class="pick">Проверить</button>
     </div>
     <ul id="intStatusList" class="int-status">
@@ -240,7 +241,10 @@
 
       // ── Integration tab ──────────────────────────────────────────────────
 
-      const api = (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
+      let api = null;
+      function initHelpApi() { api = window.pywebview.api; }
+      if (window.pywebview) { initHelpApi(); }
+      else { window.addEventListener("pywebviewready", initHelpApi); }
       let intRepairPending = false;
 
       function renderStatus(s) {
@@ -258,6 +262,15 @@
         document.getElementById("stCli").textContent =
           "Obsidianizer CLI: " + mark(s.cli_exists) + (s.cli_path ? "  (" + s.cli_path + ")" : "");
         document.getElementById("stCli").className = s.cli_exists ? "ok" : "err";
+      }
+
+      function browseIntVault() {
+        if (!api || !api.choose_folder) return;
+        api.choose_folder("obsidianize").then(function (path) {
+          if (!path) return;
+          $("intVault").value = path;
+          api.set_int_vault(path).then(refreshIntegration);
+        });
       }
 
       function refreshIntegration() {
@@ -310,6 +323,7 @@
       }
 
       document.getElementById("btnIntCheck").addEventListener("click", refreshIntegration);
+      document.getElementById("btnIntBrowse").addEventListener("click", browseIntVault);
       document.getElementById("btnIntInstall").addEventListener("click", function () {
         installIntegration();
       });
