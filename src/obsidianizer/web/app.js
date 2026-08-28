@@ -1362,7 +1362,16 @@
     makeDraggable("topicManageModal");
     makeDraggable("helpModal");
 
+    setTimeout(fadeSplash, 1800);
     setStatus("Готово. Выберите папки и нажмите «Обработать».", null);
+  }
+
+  function fadeSplash() {
+    const s = document.getElementById("splash");
+    if (s && !s.classList.contains("fade-out")) {
+      s.classList.add("fade-out");
+      setTimeout(function () { s.style.display = "none"; }, 600);
+    }
   }
 
   if (window.pywebview) { init(); }

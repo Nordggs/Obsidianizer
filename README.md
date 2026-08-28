@@ -142,6 +142,10 @@ installation is needed — launch it straight from the repo root:
 python Obsidianizer.py
 ```
 
+**Shortcut icon**: `Obsidianizer.ico` lives in the repo root — create a
+shortcut to `Obsidianizer.bat`, then right-click the shortcut → Properties →
+Change Icon → point it at `Obsidianizer.ico`.
+
 Diagnostics without opening a window:
 
 ```bash

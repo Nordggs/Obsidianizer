@@ -1,5 +1,26 @@
 # Obsidianizer
 
+## [0.4.1] - 2026-08-28
+
+### Changed
+- Full visual restyle to match **AI Chat Exporter**: the palette moved from
+  the neutral VS theme to the ACE dark-blue one (`#0b0f17` background,
+  `#121826→#0e1420` gradient panels with 14px radius, `#1f2a3a` borders),
+  the accent is now `#2f6bff`, status colors `#0ea56a`/`#f0b400`/`#ff5555`,
+  and the font is Inter (system-ui fallback). Buttons, inputs, checkboxes,
+  dropdowns, topic/chat lists, modals (12px radius, `#2a3345` border) and
+  ~30 hardcoded colors were re-skinned to the same palette.
+- Header is a topbar now: `Obsidianizer` + `LOCAL PROJECT CARDS` subtitle
+  (AI Chat Exporter style), version moved to the right edge.
+
+### Added
+- Splash screen on GUI start — `Obsidianizer Заставка.png` (fullscreen,
+  fades out after ~1.8 s), mirroring AI Chat Exporter's splash.
+- `Obsidianizer.ico` in the repo root (multi-size, generated from
+  `Obsidianizer ярлык.png`) for the Windows shortcut icon, plus
+  `<link rel="icon">` and `icon.png` in the web assets; README documents
+  how to attach the icon to a shortcut.
+
 ## [0.4.0] - 2026-08-28
 
 ### Added

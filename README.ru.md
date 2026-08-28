@@ -146,6 +146,10 @@ obsidianizer folders --path "<папка>" --no-recursive --adopt \
 python Obsidianizer.py
 ```
 
+**Ярлык с иконкой**: в корне репозитория лежит `Obsidianizer.ico` — создайте
+ярлык на `Obsidianizer.bat`, затем ПКМ по ярлыку → Свойства → Сменить
+значок → укажите `Obsidianizer.ico`.
+
 Диагностика без открытия окна:
 
 ```bash
