@@ -27,7 +27,6 @@ obsidianizer.log
 config.yml
 
 # Ownership manifest and generated indexes
-# Ownership manifest and generated indexes
 .obsidianizer-manifest.json
 build_new/
 dist_new/
