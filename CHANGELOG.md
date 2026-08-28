@@ -1,5 +1,24 @@
 # Obsidianizer
 
+## [0.5.1] - 2026-08-28
+
+### Fixed
+- **Packaging: the EXE crashed on first run from a downloaded archive**
+  (`RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize`).
+  Root cause: Windows Mark-of-the-Web — archives downloaded from GitHub
+  carry the zone marker on every unpacked file, and the .NET Framework
+  host refuses to load blocked assemblies, so the WinForms backend of
+  pywebview failed to start. Fixed by shipping `Obsidianizer.exe.config`
+  (with `loadFromRemoteSources enabled`) **next to the EXE**:
+  - `build-release.bat` automates the whole build and always copies the
+    config;
+  - `Obsidianizer.iss` delivers it for the installer too;
+  - verified with a MOTW simulation (zone markers forced on every file of
+    the packaged build — the app starts).
+- `v0.5.0` note: that build is affected — unpacking and running it from a
+  downloaded archive crashes; use **v0.5.1** or run `Unblock-File` on the
+  extracted folder.
+
 ## [0.5.0] - 2026-08-28
 
 ### Added
