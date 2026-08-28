@@ -781,7 +781,7 @@
   }
 
   const OBS_STATUS = {
-    ok: ["? ok", "s-ok"],
+    ok: ["✓ ok", "s-ok"],
     stale: ["~ требует обновления", "s-stale"],
     missing: ["- нет", "s-missing"],
     conflict: ["? конфликт", "s-conflict"],
