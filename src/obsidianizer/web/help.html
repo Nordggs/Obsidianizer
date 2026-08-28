@@ -242,7 +242,16 @@
       // ── Integration tab ──────────────────────────────────────────────────
 
       let api = null;
-      function initHelpApi() { api = window.pywebview.api; }
+      function initHelpApi() {
+        api = window.pywebview.api;
+        if (api && api.defaults) {
+          api.defaults().then(function (d) {
+            if (d && d.integration_vault && !document.getElementById("intVault").value.trim()) {
+              document.getElementById("intVault").value = d.integration_vault;
+            }
+          });
+        }
+      }
       if (window.pywebview) { initHelpApi(); }
       else { window.addEventListener("pywebviewready", initHelpApi); }
       let intRepairPending = false;
@@ -268,7 +277,7 @@
         if (!api || !api.choose_folder) return;
         api.choose_folder("obsidianize").then(function (path) {
           if (!path) return;
-          $("intVault").value = path;
+          document.getElementById("intVault").value = path;
           api.set_int_vault(path).then(refreshIntegration);
         });
       }

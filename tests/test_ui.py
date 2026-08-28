@@ -1051,3 +1051,39 @@ def test_review_run_empty_reply_reports_error(monkeypatch, tmp_path):
     summary = json.loads(app.events[-1].message)
     assert summary["ok"] == 0
     assert summary["errors"] == 1
+
+
+# ── Integration vault isolation ──────────────────────────────────────────────
+
+
+def test_integration_vault_persists_independently(tmp_path):
+    """set_int_vault must not overwrite obsidianize_dir."""
+    app = UIApp()
+    app.settings.config_path = tmp_path / "config.yml"
+    app.settings.obsidianize_dir = "/work/project"
+    app.set_obsidianize_dir("/work/project")
+    app.set_int_vault("/vault/MyVault")
+    loaded = Settings.load(tmp_path / "config.yml")
+    assert loaded.obsidianize_dir == "/work/project"
+    assert loaded.integration_vault == "/vault/MyVault"
+
+
+def test_defaults_includes_integration_vault():
+    app = UIApp()
+    d = app.defaults()
+    assert "integration_vault" in d
+    assert d["integration_vault"] == ""
+
+
+def test_obs_integration_status_uses_integration_vault(tmp_path):
+    """Fallback vault comes from integration_vault, not obsidianize_dir."""
+    vault = tmp_path / "MyVault"
+    (vault / ".obsidian").mkdir(parents=True)
+    app = UIApp()
+    app.settings.config_path = tmp_path / "config.yml"
+    app.settings.obsidianize_dir = "/unrelated/path"
+    app.settings.integration_vault = str(vault)
+    res = app.obs_integration_status()
+    assert res["ok"] is True
+    assert res["vault_found"] is True
+    assert res["vault"] == str(vault)

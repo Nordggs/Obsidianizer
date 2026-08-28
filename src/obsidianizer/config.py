@@ -194,6 +194,7 @@ class Settings:
     dry_run: bool = False
     # Folder Obsidianizer tab (persisted GUI state)
     obsidianize_dir: str = ""
+    integration_vault: str = ""  # Obsidian vault root for the Integration tab
     obsidianize_vault_root: str = ""
     obsidianize_gallery_prefix: str = ""  # fallback vault path prefix for img-gallery
     obsidianize_template: str = "github"  # github (Project Dashboard) | classic
@@ -256,6 +257,8 @@ class Settings:
             s.dry_run = bool(data["dry_run"])
         if "obsidianize_dir" in data:
             s.obsidianize_dir = str(data["obsidianize_dir"])
+        if "integration_vault" in data:
+            s.integration_vault = str(data["integration_vault"])
         if "obsidianize_vault_root" in data:
             s.obsidianize_vault_root = str(data["obsidianize_vault_root"])
         if "obsidianize_gallery_prefix" in data:
@@ -293,6 +296,7 @@ class Settings:
         data["prune_enriched"] = bool(self.prune_enriched)
         data["dry_run"] = bool(self.dry_run)
         data["obsidianize_dir"] = str(self.obsidianize_dir)
+        data["integration_vault"] = str(self.integration_vault)
         data["obsidianize_vault_root"] = str(self.obsidianize_vault_root)
         data["obsidianize_gallery_prefix"] = str(self.obsidianize_gallery_prefix)
         data["obsidianize_template"] = str(self.obsidianize_template)

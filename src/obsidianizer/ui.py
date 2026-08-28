@@ -233,6 +233,7 @@ class UIApp:
             "prune_enriched": self.settings.prune_enriched,
             "dry_run": self.settings.dry_run,
             "obsidianize_dir": self.settings.obsidianize_dir,
+            "integration_vault": self.settings.integration_vault,
             "obsidianize_vault_root": self.settings.obsidianize_vault_root,
             "obsidianize_gallery_prefix": self.settings.obsidianize_gallery_prefix,
             "obsidianize_template": self.settings.obsidianize_template,
@@ -348,7 +349,7 @@ class UIApp:
 
     def set_int_vault(self, path: str) -> dict:
         """Remember the Integration vault folder (persisted in settings)."""
-        self.settings.obsidianize_dir = str(path).strip()
+        self.settings.integration_vault = str(path).strip()
         self._save_settings()
         return {"ok": True}
 
@@ -576,7 +577,7 @@ class UIApp:
 
         opts = opts or {}
         vault = str(
-            opts.get("vault") or self.settings.obsidianize_dir or ""
+            opts.get("vault") or self.settings.integration_vault or ""
         ).strip()
         if not vault:
             return {
@@ -602,7 +603,7 @@ class UIApp:
         from .integration import install_obsidian_integration
 
         opts = opts or {}
-        vault = str(opts.get("vault") or self.settings.obsidianize_dir or "").strip()
+        vault = str(opts.get("vault") or self.settings.integration_vault or "").strip()
         if not vault:
             picked = self.choose_folder()
             if not picked:
@@ -613,7 +614,7 @@ class UIApp:
             Path(vault).expanduser(), repair=bool(opts.get("repair"))
         )
         if res.get("ok"):
-            self.settings.obsidianize_dir = vault
+            self.settings.integration_vault = vault
             self._save_settings()
             logger.info("Obsidian integration installed: %s", res.get("target"))
         return res
