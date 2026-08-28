@@ -222,20 +222,25 @@ Full card structure, templates and the user flow live in
 
 ## Obsidian integration (Templater hotkey)
 
-One hotkey refreshes the card of the folder you are standing in:
+One hotkey refreshes the card of the folder you are standing in. Setup is a
+single button — no manual path editing:
 
-1. Copy `obsidian/templater/Obsidianizer Update.md` into your Templater
-   templates folder (Settings → Templater → Template folder location).
-2. Inside the template, replace the `cli` path with the path to your
-   `obsidianizer-cli.bat` (repo root; adjust if you moved the repo).
-3. Bind a hotkey (e.g. `Alt+3`) in Settings → Hotkeys →
+1. In the GUI, set the «Папка» field to your Obsidian vault.
+2. Press **🔗 Obsidian Integration** — the update template is copied into
+   your Templater folder **with the real Obsidianizer path filled in
+   automatically**.
+3. Bind the hotkey (e.g. `Alt+3`) in Obsidian: Settings → Hotkeys →
    "Obsidianizer Update".
 
 On success you get a Notice with self-diagnostics: `Gallery ✓/✗ · Images ✓/✗`.
 The template runs the CLI against the note's folder only (`--no-recursive`)
-with `--adopt --vault-root --rel`, so a single press updates exactly one card
-and never touches sibling cards. The same result is available without
-Templater via the "Shell commands" plugin — both variants are described in
+with `--adopt --vault-root --rel`, so a single press updates exactly one card.
+
+The floating Help window (the «?» button → **🔗 Integration** tab) shows the
+live integration status — vault ✓/✗, Templater ✓/✗, template ✓/✗, CLI ✓ —
+with an **Install / Repair** button. The frozen EXE doubles as the CLI, so
+installed builds need no bat files or PATH entries. Manual setup is still
+documented in
 [obsidian/obsidianizer-refresh.md](obsidian/obsidianizer-refresh.md).
 
 ## Config

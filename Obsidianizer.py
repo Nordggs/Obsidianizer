@@ -21,6 +21,11 @@ _SRC = _ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+# CLI subcommands proxied to obsidianizer.cli (so that a frozen EXE doubles
+# as the CLI: "Obsidianizer.exe folders --path ..." works exactly like the
+# dev-time "obsidianizer-cli.bat folders --path ...").
+_CLI_SUBCOMMANDS = ("folders", "ai", "ui")
+
 
 def _print_check() -> int:
     """Diagnostics: version, package location, webview status. Never opens UI."""
@@ -45,6 +50,14 @@ def _print_check() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+
+    # CLI proxy (frozen EXE and source launcher alike)
+    if args and args[0] in _CLI_SUBCOMMANDS:
+        from obsidianizer.cli import main as cli_main
+
+        return cli_main(args)
+
     parser = argparse.ArgumentParser(
         prog="Obsidianizer.py",
         description="Запуск графического интерфейса Obsidianizer.",

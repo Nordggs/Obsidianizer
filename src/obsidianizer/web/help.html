@@ -60,6 +60,18 @@
     }
     .help-footer .dim { font-size: 11.5px; }
     .help-footer .spacer { flex: 1; }
+    .hidden { display: none !important; }
+    .int-section { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+    .int-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .int-row label { color: var(--dim); white-space: nowrap; }
+    .int-row input { flex: 1; background: var(--inner); border: 1px solid var(--inner-border);
+      color: var(--fg); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); }
+    .int-status { list-style: none; margin: 0 0 12px; padding: 10px 12px;
+      background: var(--inner); border: 1px solid var(--inner-border); border-radius: 10px; }
+    .int-status li { padding: 3px 0; font-size: 13px; }
+    .int-status li.ok { color: var(--ok); }
+    .int-status li.err { color: var(--err); }
+    #intResult { margin-bottom: 12px; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -84,9 +96,26 @@
     <button id="htabObs" class="htab active" data-tab="obsidianize">📁 Obsidianize</button>
     <button id="htabChat" class="htab" data-tab="chat">💬 Чат-обработка</button>
     <button id="htabAi" class="htab" data-tab="ai">🤖 AI-анализ</button>
+    <button id="htabInt" class="htab" data-tab="integration">🔗 Integration</button>
   </div>
 
   <div id="helpBody" class="help-body"></div>
+
+  <div id="intSection" class="int-section hidden">
+    <div class="int-row">
+      <label for="intVault">Vault:</label>
+      <input id="intVault" type="text" spellcheck="false" placeholder="D:\Obsidian\MyVault">
+      <button id="btnIntCheck" class="pick">Проверить</button>
+    </div>
+    <ul id="intStatusList" class="int-status">
+      <li id="stVault">Vault: —</li>
+      <li id="stTemplater">Templater: —</li>
+      <li id="stTemplate">Шаблон обновления: —</li>
+      <li id="stCli">Obsidianizer CLI: —</li>
+    </ul>
+    <div id="intResult" class="dim"></div>
+    <button id="btnIntInstall" class="primary" title="Скопировать шаблон обновления в папку Templater (путь к CLI подставится автоматически)">Установить / Починить интеграцию</button>
+  </div>
 
   <div class="help-footer">
     <span class="dim">Подробные инструкции — в README и docs/obsidianize</span>
@@ -168,12 +197,18 @@
       const body = document.getElementById("helpBody");
 
       function showHelpTab(tab) {
-        const h = HELP[tab] || HELP.obsidianize;
-        document.getElementById("helpBody").innerHTML =
-          "<h3>" + h.title + "</h3>" + h.body;
+        const intSection = document.getElementById("intSection");
+        const isInt = tab === "integration";
+        body.classList.toggle("hidden", isInt);
+        intSection.classList.toggle("hidden", !isInt);
         document.querySelectorAll(".htab").forEach(function (t) {
           t.classList.toggle("active", t.dataset.tab === tab);
         });
+        if (isInt) refreshIntegration();
+        else {
+          const h = HELP[tab] || HELP.obsidianize;
+          body.innerHTML = "<h3>" + h.title + "</h3>" + h.body;
+        }
       }
 
       // initial section from the URL hash (#obsidianize | #chat | #ai)
@@ -184,6 +219,7 @@
       document.getElementById("htabObs").addEventListener("click", function () { showHelpTab("obsidianize"); });
       document.getElementById("htabChat").addEventListener("click", function () { showHelpTab("chat"); });
       document.getElementById("htabAi").addEventListener("click", function () { showHelpTab("ai"); });
+      document.getElementById("htabInt").addEventListener("click", function () { showHelpTab("integration"); });
 
       document.getElementById("btnHelpClose").addEventListener("click", function () {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.close_help_window) {
@@ -191,6 +227,80 @@
         } else {
           window.close();
         }
+      });
+
+      // ── Integration tab ──────────────────────────────────────────────────
+
+      const api = (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
+      let intRepairPending = false;
+
+      function renderStatus(s) {
+        const mark = (v) => (v ? "✓" : "✗");
+        document.getElementById("stVault").textContent =
+          "Vault: " + mark(s.vault_found) + (s.vault ? "  (" + s.vault + ")" : "");
+        document.getElementById("stVault").className = s.vault_found ? "ok" : "err";
+        document.getElementById("stTemplater").textContent =
+          "Templater: " + mark(s.templater_installed) +
+          (s.templates_folder ? "  (" + s.templates_folder + ")" : "");
+        document.getElementById("stTemplater").className = s.templater_installed ? "ok" : "err";
+        document.getElementById("stTemplate").textContent =
+          "Шаблон обновления: " + mark(s.template_installed);
+        document.getElementById("stTemplate").className = s.template_installed ? "ok" : "err";
+        document.getElementById("stCli").textContent =
+          "Obsidianizer CLI: " + mark(s.cli_exists) + (s.cli_path ? "  (" + s.cli_path + ")" : "");
+        document.getElementById("stCli").className = s.cli_exists ? "ok" : "err";
+      }
+
+      function refreshIntegration() {
+        if (!api || !api.obs_integration_status) {
+          document.getElementById("intResult").textContent =
+            "Статус недоступен вне приложения.";
+          return;
+        }
+        api.obs_integration_status({ vault: document.getElementById("intVault").value.trim() })
+          .then(function (s) {
+            if (!s || s.ok === false) return;
+            if (!document.getElementById("intVault").value.trim() && s.vault) {
+              document.getElementById("intVault").value = s.vault;
+            }
+            renderStatus(s);
+            intRepairPending = false;
+            document.getElementById("intResult").textContent = s.vault_found
+              ? (s.template_installed ? "Интеграция установлена." : "Шаблон не установлен — нажмите «Установить».")
+              : "Выберите папку Obsidian vault (в ней должна быть .obsidian).";
+          });
+      }
+
+      function installIntegration() {
+        if (!api || !api.obs_integration_install) return;
+        const vault = document.getElementById("intVault").value.trim();
+        if (!vault) {
+          document.getElementById("intResult").textContent =
+            "Укажите папку Obsidian vault.";
+          return;
+        }
+        api.obs_integration_install({ vault: vault, repair: intRepairPending })
+          .then(function (r) {
+            intRepairPending = false;
+            const res = document.getElementById("intResult");
+            if (!r || r.ok === false) {
+              if (r && r.exists) {
+                intRepairPending = true;
+                res.textContent = "Шаблон уже установлен. Нажмите ещё раз, чтобы перезаписать (Repair).";
+              } else {
+                res.textContent = (r && r.error) || "Не удалось установить интеграцию.";
+              }
+              refreshIntegration();
+              return;
+            }
+            res.textContent = "✓ Установлено: " + r.target + " · " + (r.hint || "");
+            refreshIntegration();
+          });
+      }
+
+      document.getElementById("btnIntCheck").addEventListener("click", refreshIntegration);
+      document.getElementById("btnIntInstall").addEventListener("click", function () {
+        installIntegration();
       });
     })();
   </script>

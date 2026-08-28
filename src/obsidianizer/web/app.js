@@ -859,6 +859,45 @@
     api.obs_scan(path).then(renderObsScan);
   }
 
+  let integrationRepairPending = false;
+
+  function runIntegration() {
+    if (!api) return;
+    const vault = $("obsDir").value.trim();
+    if (!vault) { setStatus("Выберите папку Obsidian vault (в поле «Папка»)", "err"); return; }
+
+    api.obs_integration_status({ vault: vault }).then(function (s) {
+      if (!s || s.ok === false) {
+        setStatus("Integration: " + ((s && s.error) || "ошибка проверки"), "err");
+        return;
+      }
+      if (!s.vault_found) {
+        setStatus("Integration: это не Obsidian vault — нет папки .obsidian", "err");
+        return;
+      }
+      if (!s.templater_installed) {
+        setStatus("Integration: плагин Templater не найден в vault. Установите Templater в Obsidian и повторите.", "warn");
+        return;
+      }
+      if (!integrationRepairPending && s.template_installed) {
+        integrationRepairPending = true;
+        setStatus("Integration: шаблон уже установлен. Нажмите ещё раз, чтобы перезаписать (Repair).", "warn");
+        return;
+      }
+
+      api.obs_integration_install({ vault: vault, repair: integrationRepairPending }).then(function (r) {
+        integrationRepairPending = false;
+        if (!r || r.ok === false) {
+          setStatus("Integration: " + ((r && r.error) || "не удалось установить"), "err");
+          return;
+        }
+        setStatus("✓ Интеграция установлена. В Obsidian: Настройки → Горячие клавиши → «Obsidianizer Update» → Alt+3.", "ok");
+        renderLog("✓ Integration: " + r.target, "ok");
+        renderLog("  " + (r.hint || ""), "dim");
+      });
+    });
+  }
+
   function applyObsResultHeight() {
     const box = $("obsResult");
     if (!box) return;
@@ -1203,6 +1242,7 @@
     $("btnObsOpen").addEventListener("click", function () {
       api.obs_open_folder($("obsDir").value.trim());
     });
+    $("btnObsIntegration").addEventListener("click", runIntegration);
     $("btnAiDir").addEventListener("click", function () { pickFolderObs("obsidianize"); });
     $("btnAiScan").addEventListener("click", runReviewScan);
     $("btnAiRun").addEventListener("click", runReview);

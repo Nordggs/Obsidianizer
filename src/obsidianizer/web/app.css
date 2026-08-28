@@ -587,6 +587,8 @@ button.ghost.danger:hover {   background: #2a1a1e; }
 
 /* ── app tabs (top navigation) ──────────────────────────────────────────── */
 
+.hidden { display: none !important; }
+
 .tab-page { display: none; }
 .tab-page.active { display: block; overflow-anchor: none; }
 

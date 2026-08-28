@@ -559,6 +559,59 @@ class UIApp:
             subprocess.Popen([opener, str(target)])
         return {"ok": True}
 
+    # ── Obsidian integration (Templater) ──────────────────────────────────
+
+    def obs_integration_status(self, opts: dict | None = None) -> dict:
+        """✓/✗ snapshot of the Obsidian integration for the GUI/help window.
+
+        ``opts``: ``{"vault": str}`` — falls back to the Obsidianize folder.
+        """
+        from .integration import integration_status
+
+        opts = opts or {}
+        vault = str(
+            opts.get("vault") or self.settings.obsidianize_dir or ""
+        ).strip()
+        if not vault:
+            return {
+                "ok": True,
+                "vault": "",
+                "vault_found": False,
+                "templater_installed": False,
+                "templates_folder": None,
+                "template_installed": False,
+                "cli_path": "",
+                "cli_exists": False,
+            }
+        res = integration_status(Path(vault).expanduser())
+        res["ok"] = True
+        return res
+
+    def obs_integration_install(self, opts: dict | None = None) -> dict:
+        """Install/repair the Templater update template into the vault.
+
+        ``opts``: ``{"vault": str, "repair": bool}``. When no vault is given,
+        a native folder picker opens (prefilled with the Obsidianize folder).
+        """
+        from .integration import install_obsidian_integration
+
+        opts = opts or {}
+        vault = str(opts.get("vault") or self.settings.obsidianize_dir or "").strip()
+        if not vault:
+            picked = self.choose_folder()
+            if not picked:
+                return {"ok": False, "error": "Папка не выбрана"}
+            vault = picked
+
+        res = install_obsidian_integration(
+            Path(vault).expanduser(), repair=bool(opts.get("repair"))
+        )
+        if res.get("ok"):
+            self.settings.obsidianize_dir = vault
+            self._save_settings()
+            logger.info("Obsidian integration installed: %s", res.get("target"))
+        return res
+
     # ── AI folder review (tab 3) ──────────────────────────────────────────
 
     def review_run(self, opts: dict | None = None) -> dict:
