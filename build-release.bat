@@ -11,3 +11,6 @@ if errorlevel 1 exit /b 1
 
 copy /Y Obsidianizer.exe.config dist\Obsidianizer\ >nul
 echo Config copied: dist\Obsidianizer\Obsidianizer.exe.config
+
+xcopy /E /I /Y integration dist\Obsidianizer\integration >nul
+echo Integration folder copied: dist\Obsidianizer\integration
