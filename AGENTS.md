@@ -38,13 +38,30 @@
 
 ## Purpose
 
-Obsidianizer is a standalone local tool that prepares raw materials for use in
-Obsidian: it structures files, enriches them with metadata and (optionally)
-LLM-generated summaries/tags, and emits an Obsidian-ready output folder — while
-never touching the source.
+Obsidianizer is a standalone local tool that prepares project materials for
+working in Obsidian: it turns ordinary folders into structured, navigable card
+systems, processes exported chats and other Markdown materials, and connects a
+local LLM for search/review/summarization — while never touching the source.
 
 It must stay independent of AI Chat Exporter. The two projects do not share
 code; communication happens only through the filesystem (a `--source` path).
+
+## Product positioning (fixed)
+
+Three tools in one app — documentation, UI labels and release notes must keep
+this order and framing:
+
+1. **Obsidianize** — the primary tool: turn ordinary project folders into a
+   comfortable Obsidian structure (cards, navigation, galleries).
+2. **Chat Processing** — for exported chats **and other Markdown materials**
+   (one common scenario, not a required source: AI Chat Exporter,
+   https://github.com/Nordggs/Project_AI_Base).
+3. **AI Analysis** — local-LLM work with materials in **any folder the user
+   points at** (chat results, project folders, the whole vault): search,
+   review, summarize, analyze.
+
+User-facing texts must not lead with "preprocessor"/"raw materials" — that
+wording belongs to architecture/development docs only.
 
 ## Critical principles
 

@@ -1,5 +1,32 @@
 # Obsidianizer
 
+## [0.5.2] - 2026-08-28
+
+### Documentation release — product repositioning
+- README (EN+RU) fully restructured around what the app actually is:
+  **Obsidianizer — a local tool for preparing project materials for working
+  in Obsidian**, with three tools in one app:
+  1. **Obsidianize** (primary) — ordinary project folders → cards,
+     navigation, galleries;
+  2. **Chat Processing** — exported chats **and other Markdown materials**
+     (one common scenario, not a required source) — with a dedicated
+     **AI Chat Exporter** section linking the sibling project
+     (github.com/Nordggs/Project_AI_Base) and the
+     ACE → Markdown → Chat Processing → Obsidian chain;
+  3. **AI Analysis** — search/review/summarize in **any folder the user
+     points at** (chat results, project folders, the whole vault), not just
+     chat-processing output.
+- The "local preprocessor" wording moved out of the intro (kept for the
+  architecture/development docs); the Obsidian-integration section became a
+  step-by-step scenario (install → point at vault → Install → check/assign
+  the hotkey → Alt+3) with an explicit responsibility boundary:
+  **Obsidianizer never edits your vault's hotkeys.json** — `Alt+3` is an
+  example, the user checks and assigns the key in Obsidian.
+- Floating Help window texts and `obsidianizer-refresh.md` synced with the
+  same positioning; hotkey-check step added.
+- `AGENTS.md`: product positioning fixed as a rule (order and framing for
+  docs, UI labels and release notes).
+
 ## [0.5.1] - 2026-08-28
 
 ### Fixed
