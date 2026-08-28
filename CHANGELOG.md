@@ -1,5 +1,23 @@
 # Obsidianizer
 
+## [0.5.3] - 2026-08-29
+
+### Fixed
+- **Integration tab: Browse button now works** — `api` was captured as `null`
+  before the `pywebviewready` event; the same root cause affected Check and
+  Install buttons (#2, #3).
+- **Scan table: ✓ instead of ?** for ok status in the scan results (#1).
+- **Integration vault isolated** from the Obsidianize working directory —
+  new `integration_vault` setting prevents the two tabs from overwriting
+  each other's paths.
+
+### Added
+- **`integration/` folder** for manual Templater / Shell Commands setup:
+  instruction (`Obsidianizer Update.md`), Templater template with
+  `{{CLI_PATH}}` placeholder, and a Shell Commands plugin config stub
+  in the real plugin format (#4).
+- Help window Integration tab now mentions the manual setup option.
+
 ## [0.5.2] - 2026-08-28
 
 ### Documentation release — product repositioning
