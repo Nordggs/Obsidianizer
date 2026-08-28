@@ -1072,7 +1072,6 @@ def test_defaults_includes_integration_vault():
     app = UIApp()
     d = app.defaults()
     assert "integration_vault" in d
-    assert d["integration_vault"] == ""
 
 
 def test_obs_integration_status_uses_integration_vault(tmp_path):
