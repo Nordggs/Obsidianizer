@@ -636,6 +636,28 @@ nav.tabs .tab svg.tab-ico {
 .help-body b { color: var(--fg); }
 .help-body i { color: var(--dim); }
 
+/* ── splash screen (AI Chat Exporter style) ─────────────────────────────── */
+
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0b0f17;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+#splash.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+#splash img {
+  max-width: min(70%, 900px);
+  max-height: 70%;
+  object-fit: contain;
+}
+
 /* ── scrollbars (Chromium/WebView2) — AI Chat Exporter palette ──────────── */
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

@@ -1,5 +1,15 @@
 # Obsidianizer
 
+## [0.4.5] - 2026-08-28
+
+### Fixed
+- The splash screen rendered at its native 1408×768 size — larger than the
+  startup window: the `#splash` CSS block was accidentally missing from
+  v0.4.1 (the div and the fade-out JS were in place, the styles were not).
+  The full splash stylesheet is now in place with the image capped at
+  `min(70%, 900px)` width and 70% height — centered on the `#0b0f17`
+  background, visibly inside the window, same feel as AI Chat Exporter.
+
 ## [0.4.4] - 2026-08-28
 
 ### Changed
