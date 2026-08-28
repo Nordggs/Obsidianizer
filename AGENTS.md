@@ -349,3 +349,20 @@ pytest                  # safety-critical tests run from the repo root
 - Keep the history clean and atomic: one logical change per commit.
 - The project must remain standalone — do not vendor or reference AI Chat
   Exporter internals.
+
+## Git safety protocol (mandatory after the Nematron incident)
+
+- **Never** run `git reset --hard`, `git stash`, branch deletion, tag
+  deletion, or any history-rewriting operation (`rebase`, `filter-branch`,
+  force-push) without the user's explicit permission for that exact
+  operation.
+- Before any potentially destructive Git operation, create a checkpoint:
+  a commit and/or a branch/tag pointing at the current safe state.
+- Every finished, tested stage becomes a release point: bump the version,
+  tag it, update the CHANGELOG. Tags are the project's time machine — they
+  are never deleted.
+- Versioning discipline: a version bump happens **only** after a completed,
+  tested functional stage. Inside development, use plain commits without
+  touching `__version__` / `pyproject.toml`.
+  - `0.4.x` — post-release bugfixes and small improvements;
+  - `0.5.0` — a noticeable new feature (e.g. Obsidian Integration).
