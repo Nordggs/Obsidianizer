@@ -1,5 +1,18 @@
 # Obsidianizer
 
+## [0.4.2] - 2026-08-28
+
+### Changed
+- The status footer is now **pinned to the bottom of the window** on every
+  tab (the tab content scrolls inside its own area, mirroring AI Chat
+  Exporter's layout) — the scan summary ("проверено N · требуют обновления:
+  M") never scrolls away again.
+- The version marker moved to the **bottom-left corner** of that same
+  footer (11px, `#4a5568`, selectable — exact AI Chat Exporter style),
+  always visible on all tabs.
+- The header subtitle now matches the AI Chat Exporter style exactly
+  (10px, 0.6 opacity, caps text, no letter-spacing).
+
 ## [0.4.1] - 2026-08-28
 
 ### Changed

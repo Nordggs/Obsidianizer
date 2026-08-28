@@ -41,12 +41,14 @@ header {
 }
 
 header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: normal; }
+header .title {
+  font-size: 18px;
+  font-weight: 700;
+}
 header .subtitle {
   display: block;
   font-size: 10px;
   opacity: 0.6;
-  letter-spacing: 1px;
-  text-transform: uppercase;
   margin-top: 2px;
 }
 header .version { margin-left: auto; font-size: 11px; color: #4a5568; user-select: text; }
@@ -261,12 +263,21 @@ button.ghost:hover { background: #2a3444; }
   padding: 8px 16px;
   border-top: 1px solid var(--panel-border);
   background: var(--panel);
-  color: var(--dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 13px;
 }
-.status.ok   { color: var(--ok); }
-.status.warn { color: var(--warn); }
-.status.err  { color: var(--err); }
+.status .version {
+  font-size: 11px;
+  color: #4a5568;
+  user-select: text;
+  white-space: nowrap;
+}
+.status-text { color: var(--dim); }
+.status-text.ok   { color: var(--ok); }
+.status-text.warn { color: var(--warn); }
+.status-text.err  { color: var(--err); }
 
 /* ── prompt editor modal ─────────────────────────────────────────────── */
 
@@ -574,7 +585,13 @@ button.ghost.danger:hover {   background: #2a1a1e; }
 /* ── app tabs (top navigation) ──────────────────────────────────────────── */
 
 .tab-page { display: none; }
-.tab-page.active { display: block; }
+.tab-page.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 
 nav.tabs {
   padding: 8px 16px 0;

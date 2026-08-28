@@ -24,9 +24,9 @@
   function log(msg) { renderLog(msg, "plain"); }
 
   function setStatus(text, cls) {
-    const s = $("status");
+    const s = $("statusText");
     s.textContent = text;
-    s.className = "status" + (cls ? " " + cls : "");
+    s.className = "status-text" + (cls ? " " + cls : "");
   }
 
   function setBusy(value) {
