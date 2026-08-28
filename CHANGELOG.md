@@ -1,5 +1,28 @@
 # Obsidianizer
 
+## [0.5.0] - 2026-08-28
+
+### Added
+- **Obsidian Integration** — one-button setup of the Templater hotkey:
+  - 🔗 «Obsidian Integration» button on the Obsidianize tab: copies the
+    update template into the vault's Templater folder **with the real
+    Obsidianizer path substituted automatically** (no manual path editing,
+    no PATH entries);
+  - floating Help window gains an **🔗 Integration** tab with a live
+    status checklist — vault ✓/✗, Templater ✓/✗, template ✓/✗, CLI ✓/✗ —
+    and an Install / Repair button (an existing template is never
+    overwritten without an explicit second click);
+  - missing Templater is reported as guidance, not an error.
+- **The frozen EXE doubles as the CLI**: `Obsidianizer.exe folders …`
+  proxies into the same engine as `obsidianizer-cli.bat`, so installed
+  builds need no bat files.
+- `src/obsidianizer/integration.py`: CLI resolution (frozen vs source),
+  Templater folder detection (reads the plugin's `data.json`, falls back
+  to `<vault>/templates`), atomic template install with JS-escaped paths.
+
+New feature release: the 0.4.x line (recovery, fixes, docs, restyle) is
+complete and stable.
+
 ## [0.4.5] - 2026-08-28
 
 ### Fixed
