@@ -787,7 +787,7 @@
     conflict: ["? конфликт", "s-conflict"],
   };
 
-  // ── Tab help (context "?" button) ───────────────────────────────────────
+  // ── Tab help ("?" opens the floating help window) ───────────────────────
 
   const TAB_ICONS = {
     obsidianize:
@@ -801,86 +801,7 @@
     ai: "🤖",
   };
 
-  const TAB_HELP = {
-    obsidianize: {
-      title: "📁 → Справка: Obsidianize",
-      body:
-        "<p>Эта вкладка создаёт <b>карточки проектов</b> — заметку в стиле " +
-        "GitHub для каждой папки: какие файлы лежат, что в подпапках, поля " +
-        "проекта, галерея.</p>" +
-        "<ul>" +
-        "<li><b>Просканировать</b> — только смотрит и показывает таблицу: где " +
-        "карточка ок, где устарела, где её ещё нет. <i>Ничего не пишет.</i></li>" +
-        "<li><b>✨ Obsidianize</b> — создаёт и обновляет карточки. Сами ваши " +
-        "файлы не изменяются.</li>" +
-        "<li>Файл <b>&lt;папка&gt;_заметки.md</b> — ваша личная территория " +
-        "(клиент, адрес, дизайнер, комментарии…). Программа создаёт его один " +
-        "раз и <b>никогда не перезаписывает</b>.</li>" +
-        "<li>Если в папке случайно появилась заметка от Obsidian (Ctrl+клик) — " +
-        "без вашего разрешения она не тронется. Включите <b>«Принять " +
-        "существующую заметку как заметки»</b>, и она станет файлом заметок, " +
-        "а на её месте появится карточка.</li>" +
-        "<li>Полоса-разделитель под таблицей тянется мышью: сотни карточек не " +
-        "уведут результаты обработки за экран. Высота запоминается.</li>" +
-        "<li>В Obsidian настройте хоткей «Obsidianizer Update» — одно нажатие " +
-        "обновляет карточку той папки, в которой вы стоите.</li>" +
-        "</ul>",
-    },
-    chat: {
-      title: "💬 Справка: Чат-обработка",
-      body:
-        "<p>Конвейер из двух папок с необязательным AI-этапом:</p>" +
-        "<ul>" +
-        "<li><b>Источник</b> — сырые экспорты чатов. <b>Результат обработки</b> " +
-        "(processed) — чистый импорт: метаданные, медиа, структура. " +
-        "<b>AI-результат</b> (enriched) — обогащённое хранилище, <i>его и " +
-        "открывайте в Obsidian</i>.</li>" +
-        "<li><b>ОБРАБОТАТЬ</b> — чистый импорт: модель не вызывается, файлы " +
-        "не изменяются в источнике.</li>" +
-        "<li><b>AI-постобработка</b> — отдельный прогон модели по processed: " +
-        "резюме, теги. Уже обработанные файлы не пересчитываются.</li>" +
-        "<li><b>Объединить в тему…</b> — слить выбранные чаты в одну обзорную " +
-        "заметку (enriched/topics). <b>Авто-группировка</b> — разобрать всю " +
-        "коллекцию на темы автоматически.</li>" +
-        "<li><b>Стоп</b> — корректная остановка: текущий файл завершится, " +
-        "остальные пропустятся.</li>" +
-        "<li><b>Только просмотр</b> — покажет план, ничего не записывая. " +
-        "<b>Удалить старые результаты</b> — убирает только файлы, созданные " +
-        "самой программой.</li>" +
-        "</ul>",
-    },
-    ai: {
-      title: "🤖 Справка: AI-анализ",
-      body:
-        "<p>Локальная модель читает содержимое выбранной папки и пишет " +
-        "обзор — файл <b>&lt;папка&gt;_обзор.md</b> рядом с карточкой.</p>" +
-        "<ul>" +
-        "<li><b>Просканировать</b> — список папок с карточками; отметьте " +
-        "нужные галочками.</li>" +
-        "<li><b>Сформировать обзор</b> — модель анализирует каждую выбранную " +
-        "папку и сохраняет обзор. Источники не изменяются.</li>" +
-        "<li>Обзор <b>автоматически встраивается</b> в карточку папки (секция " +
-        "AI Review) и появляется/исчезает вместе с файлом.</li>" +
-        "<li><b>Включать содержимое текстовых файлов</b> — модель прочитает и " +
-        "тексты (обзор подробнее, но дольше).</li>" +
-        "<li>Модель — та же, что и для AI-постобработки (Ollama).</li>" +
-        "</ul>",
-    },
-  };
-
   let currentTab = "obsidianize";
-
-  function openHelp() {
-    const h = TAB_HELP[currentTab] || TAB_HELP.obsidianize;
-    $("helpModalHead").innerHTML =
-      (TAB_ICONS[currentTab] || "") + " " + h.title;
-    $("helpBody").innerHTML = h.body;
-    $("helpModal").classList.remove("hidden");
-  }
-
-  function closeHelp() {
-    $("helpModal").classList.add("hidden");
-  }
 
   function renderObsScan(r) {
     const box = $("obsResult");
@@ -1258,11 +1179,8 @@
     $("tabNavObs").addEventListener("click", function () { showTab("obsidianize"); });
     $("tabNavChat").addEventListener("click", function () { showTab("chat"); });
     $("tabNavAi").addEventListener("click", function () { showTab("ai"); });
-    $("tabNavHelp").addEventListener("click", openHelp);
-    $("btnHelpClose").addEventListener("click", closeHelp);
-    $("btnHelpOk").addEventListener("click", closeHelp);
-    $("helpModal").addEventListener("click", function (e) {
-      if (e.target === $("helpModal")) closeHelp();
+    $("tabNavHelp").addEventListener("click", function () {
+      api.open_help_window(currentTab);
     });
     $("tabHelpIcon").innerHTML = TAB_ICONS.obsidianize;
     initObsSplitter();
@@ -1320,10 +1238,7 @@
       if (modelDropdownOpen && !e.target.closest(".model-wrap")) closeModelDropdown();
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        closeModelDropdown();
-        if (!$("helpModal").classList.contains("hidden")) closeHelp();
-      }
+      if (e.key === "Escape") closeModelDropdown();
     });
     $("btnPrompt").addEventListener("click", openPrompt);
     $("btnPromptClose").addEventListener("click", closePrompt);
@@ -1363,7 +1278,6 @@
     makeDraggable("promptModal");
     makeDraggable("topicModal");
     makeDraggable("topicManageModal");
-    makeDraggable("helpModal");
 
     setTimeout(fadeSplash, 1800);
     setStatus("Готово. Выберите папки и нажмите «Обработать».", null);

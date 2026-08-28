@@ -1,5 +1,21 @@
 # Obsidianizer
 
+## [0.4.4] - 2026-08-28
+
+### Changed
+- The startup window size now matches **AI Chat Exporter** (1300×750,
+  background `#0b0f17`) — the splash screen renders identically in both
+  apps instead of overflowing a smaller window.
+
+### Added
+- The "?" help is now a **floating native window** (like the AI-chat
+  window): it can be dragged anywhere — including outside the main
+  window's bounds — and stays on top. The "?" button passes the active
+  tab; the help window has its own tab switcher (Obsidianize /
+  Чат-обработка / AI-анализ), reads the initial section from the URL
+  hash, and follows `showHelpTab` pushes when already open. Replaces the
+  in-window modal, which could never leave the app's bounds.
+
 ## [0.4.3] - 2026-08-28
 
 ### Fixed

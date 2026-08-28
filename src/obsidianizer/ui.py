@@ -172,6 +172,8 @@ class UIApp:
         self._window = None
         # Separate AI-chat window (created lazily by ``open_chat_window``).
         self._chat_window = None
+        # Separate floating help window (created lazily by ``open_help_window``).
+        self._help_window = None
         self.events: list[Event] = []
         self._cancel = False
         self._busy = False
@@ -1066,6 +1068,56 @@ class UIApp:
             pass
         return {"ok": True, "opened": True}
 
+    def open_help_window(self, tab: str = "obsidianize") -> dict:
+        """Open (or refocus) the floating help window.
+
+        Idempotent, mirrors ``open_chat_window``: the help lives in its own
+        native window so it can be dragged beyond the main window's bounds.
+        ``tab`` selects the initial section: obsidianize | chat | ai.
+        """
+        if self._window is None:
+            # Headless (tests / CLI) — nothing to attach a window to.
+            return {"ok": True, "opened": False}
+        import webview
+
+        if self._help_window is not None and not getattr(self._help_window, "closed", False):
+            try:
+                self._help_window.show()
+            except Exception:  # noqa: BLE001 - best-effort focus
+                pass
+            self._push(
+                f"window.showHelpTab && window.showHelpTab({json.dumps(tab)})",
+                self._help_window,
+            )
+            return {"ok": True, "opened": False}
+
+        safe = tab if tab in ("obsidianize", "chat", "ai") else "obsidianize"
+        window = webview.create_window(
+            "Obsidianizer — Справка",
+            url=str(RESOURCES / "help.html") + "#" + safe,
+            js_api=self,
+            width=600,
+            height=700,
+            min_size=(420, 420),
+            background_color="#0b0f17",
+        )
+        self._help_window = window
+        try:
+            window.events.closed += lambda: setattr(self, "_help_window", None)
+        except Exception:  # noqa: BLE001 - best-effort cleanup
+            pass
+        return {"ok": True, "opened": True}
+
+    def close_help_window(self) -> dict:
+        """Close the floating help window (button inside help.html)."""
+        if self._help_window is not None:
+            try:
+                self._help_window.destroy()
+            except Exception:  # noqa: BLE001 - already gone
+                pass
+            self._help_window = None
+        return {"ok": True}
+
     def send_chat_topic_request(self, rels: list[str]) -> dict:
         """Bridge "Add found chats to topic" from the chat window to the main UI.
 
@@ -1617,10 +1669,10 @@ def launch(
         "Obsidianizer",
         url=str(RESOURCES / "app.html"),
         js_api=app,
-        width=960,
-        height=760,
+        width=1300,
+        height=750,
         min_size=(720, 560),
-        background_color="#1e1e1e",
+        background_color="#0b0f17",
     )
     app._window = window  # pywebview 6 does not set js_api.window automatically
     try:

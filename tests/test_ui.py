@@ -608,6 +608,20 @@ def test_open_chat_window_headless_noop(tmp_path):
     assert app._chat_window is None
 
 
+def test_open_help_window_headless_noop(tmp_path):
+    source, target = _prepare(tmp_path)
+    app = _app(source, target)
+
+    res = app.open_help_window("obsidianize")
+
+    assert res["ok"] is True
+    assert res["opened"] is False
+    assert app._help_window is None
+
+    res = app.close_help_window()
+    assert res["ok"] is True
+
+
 def test_send_chat_topic_request_headless(tmp_path):
     source, target = _prepare(tmp_path)
     app = _app(source, target)

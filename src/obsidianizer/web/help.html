@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidianizer — Справка</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; }
+    .help-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 0;
+    }
+    .help-topbar svg.tab-ico { width: 18px; height: 22px; }
+    .help-topbar .title { font-size: 16px; font-weight: 700; }
+    .help-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 10px 16px 0;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .help-tabs .htab {
+      background: #1f2a3a;
+      border: 1px solid #2a3444;
+      color: var(--dim);
+      border-radius: 10px 10px 0 0;
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .help-tabs .htab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .help-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 18px;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .help-body h3 { margin: 0 0 12px; font-size: 15px; }
+    .help-body p { margin: 0 0 10px; }
+    .help-body ul { margin: 0; padding-left: 20px; }
+    .help-body li { margin-bottom: 8px; }
+    .help-body b { color: var(--fg); }
+    .help-body i { color: var(--dim); }
+    .help-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--panel-border);
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .help-footer .dim { font-size: 11.5px; }
+    .help-footer .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="help-topbar">
+    <svg class="tab-ico" viewBox="0 0 24 28" aria-hidden="true">
+      <defs>
+        <linearGradient id="obsGradH" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#a78bfa"/>
+          <stop offset="1" stop-color="#6d28d9"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 1 L21 6.5 L21 15.2 L12 21 L3 15.2 L3 6.5 Z" fill="url(#obsGradH)"/>
+      <path d="M12 1 L21 6.5 L16 10.8 L7.2 7.6 Z" fill="#c4b5fd" opacity="0.9"/>
+      <path d="M7.2 7.6 L16 10.8 L12 21 Z" fill="#8b5cf6"/>
+      <path d="M3 6.5 L7.2 7.6 L12 21 L3 15.2 Z" fill="#5b21b6"/>
+      <path d="M12 1 L7.2 7.6 L3 6.5 Z" fill="#ddd6fe"/>
+    </svg>
+    <span class="title">Obsidianizer — Справка</span>
+  </div>
+
+  <div class="help-tabs">
+    <button id="htabObs" class="htab active" data-tab="obsidianize">📁 Obsidianize</button>
+    <button id="htabChat" class="htab" data-tab="chat">💬 Чат-обработка</button>
+    <button id="htabAi" class="htab" data-tab="ai">🤖 AI-анализ</button>
+  </div>
+
+  <div id="helpBody" class="help-body"></div>
+
+  <div class="help-footer">
+    <span class="dim">Подробные инструкции — в README и docs/obsidianize</span>
+    <span class="spacer"></span>
+    <button id="btnHelpClose" class="primary">Закрыть</button>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const HELP = {
+        obsidianize: {
+          title: "📁 Obsidianize — карточки папок",
+          body:
+            "<p>Эта вкладка создаёт <b>карточки проектов</b> — заметку в стиле " +
+            "GitHub для каждой папки: какие файлы лежат, что в подпапках, поля " +
+            "проекта, галерея.</p>" +
+            "<ul>" +
+            "<li><b>Просканировать</b> — только смотрит и показывает таблицу: где " +
+            "карточка ок, где устарела, где её ещё нет. <i>Ничего не пишет.</i></li>" +
+            "<li><b>✨ Obsidianize</b> — создаёт и обновляет карточки. Сами ваши " +
+            "файлы не изменяются.</li>" +
+            "<li>Файл <b>&lt;папка&gt;_заметки.md</b> — ваша личная территория " +
+            "(клиент, адрес, дизайнер, комментарии…). Программа создаёт его один " +
+            "раз и <b>никогда не перезаписывает</b>.</li>" +
+            "<li>Если в папке случайно появилась заметка от Obsidian (Ctrl+клик) — " +
+            "без вашего разрешения она не тронется. Включите <b>«Принять " +
+            "существующую заметку как заметки»</b>, и она станет файлом заметок, " +
+            "а на её месте появится карточка.</li>" +
+            "<li>Полоса-разделитель под таблицей тянется мышью: сотни карточек не " +
+            "уведут результаты обработки за экран. Высота запоминается.</li>" +
+            "<li>В Obsidian настройте хоткей «Obsidianizer Update» — одно нажатие " +
+            "обновляет карточку той папки, в которой вы стоите.</li>" +
+            "</ul>",
+        },
+        chat: {
+          title: "💬 Чат-обработка — импорт и AI-обогащение",
+          body:
+            "<p>Конвейер из двух папок с необязательным AI-этапом:</p>" +
+            "<ul>" +
+            "<li><b>Источник</b> — сырые экспорты чатов. <b>Результат обработки</b> " +
+            "(processed) — чистый импорт: метаданные, медиа, структура. " +
+            "<b>AI-результат</b> (enriched) — обогащённое хранилище, <i>его и " +
+            "открывайте в Obsidian</i>.</li>" +
+            "<li><b>ОБРАБОТАТЬ</b> — чистый импорт: модель не вызывается, файлы " +
+            "не изменяются в источнике.</li>" +
+            "<li><b>AI-постобработка</b> — отдельный прогон модели по processed: " +
+            "резюме, теги. Уже обработанные файлы не пересчитываются.</li>" +
+            "<li><b>Объединить в тему…</b> — слить выбранные чаты в одну обзорную " +
+            "заметку (enriched/topics). <b>Авто-группировка</b> — разобрать всю " +
+            "коллекцию на темы автоматически.</li>" +
+            "<li><b>Стоп</b> — корректная остановка: текущий файл завершится, " +
+            "остальные пропустятся.</li>" +
+            "<li><b>Только просмотр</b> — покажет план, ничего не записывая. " +
+            "<b>Удалить старые результаты</b> — убирает только файлы, созданные " +
+            "самой программой.</li>" +
+            "</ul>",
+        },
+        ai: {
+          title: "🤖 AI-анализ — обзор папки моделью",
+          body:
+            "<p>Локальная модель читает содержимое выбранной папки и пишет " +
+            "обзор — файл <b>&lt;папка&gt;_обзор.md</b> рядом с карточкой.</p>" +
+            "<ul>" +
+            "<li><b>Просканировать</b> — список папок с карточками; отметьте " +
+            "нужные галочками.</li>" +
+            "<li><b>Сформировать обзор</b> — модель анализирует каждую выбранную " +
+            "папку и сохраняет обзор. Источники не изменяются.</li>" +
+            "<li>Обзор <b>автоматически встраивается</b> в карточку папки (секция " +
+            "AI Review) и появляется/исчезает вместе с файлом.</li>" +
+            "<li><b>Включать содержимое текстовых файлов</b> — модель прочитает и " +
+            "тексты (обзор подробнее, но дольше).</li>" +
+            "<li>Модель — та же, что и для AI-постобработки (Ollama).</li>" +
+            "</ul>",
+        },
+      };
+
+      const body = document.getElementById("helpBody");
+
+      function showHelpTab(tab) {
+        const h = HELP[tab] || HELP.obsidianize;
+        document.getElementById("helpBody").innerHTML =
+          "<h3>" + h.title + "</h3>" + h.body;
+        document.querySelectorAll(".htab").forEach(function (t) {
+          t.classList.toggle("active", t.dataset.tab === tab);
+        });
+      }
+
+      // initial section from the URL hash (#obsidianize | #chat | #ai)
+      const initial = (location.hash || "#obsidianize").slice(1);
+      showHelpTab(initial);
+      window.showHelpTab = showHelpTab;
+
+      document.getElementById("htabObs").addEventListener("click", function () { showHelpTab("obsidianize"); });
+      document.getElementById("htabChat").addEventListener("click", function () { showHelpTab("chat"); });
+      document.getElementById("htabAi").addEventListener("click", function () { showHelpTab("ai"); });
+
+      document.getElementById("btnHelpClose").addEventListener("click", function () {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.close_help_window) {
+          window.pywebview.api.close_help_window();
+        } else {
+          window.close();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
