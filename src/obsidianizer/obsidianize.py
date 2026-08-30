@@ -716,12 +716,12 @@ def _render_dashboard(
         for sub in folder.subfolders:
             ss = subs.get(sub)
             if ss is None or not ss["count"]:
-                parts.append(f"| 📁 [[{sub}/{sub}\\|{sub}]] | 0 | 0 B | |")
+                parts.append(f"| 📁 [[./{sub}/{sub}\\|{sub}]] | 0 | 0 B | |")
                 continue
             changed = format_rel_date(ss["max_mtime_ns"]) if ss["max_mtime_ns"] else ""
             size_str = format_size(ss["size"])
             parts.append(
-                f"| 📁 [[{sub}/{sub}\\|{sub}]] | {ss['count']} | {size_str} | {changed} |"
+                f"| 📁 [[./{sub}/{sub}\\|{sub}]] | {ss['count']} | {size_str} | {changed} |"
             )
     else:
         parts.append("| *No folders* | | | |")

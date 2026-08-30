@@ -316,7 +316,7 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
 
     # Tree: physical folders only, with folder icon
     assert "| Name | Files | Size | Updated |" in card
-    assert "| 📁 [[Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
+    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
 
     # About falls back to the old card frontmatter when notes absent
     assert "## About\n" in card
@@ -936,7 +936,7 @@ def test_build_card_github_golden(mock_get_now, tmp_path):
     assert "[[#Folders|Folders]] | [[#Files|Files]] | [[#About|About]] | [[#Notes|Notes]]" in card
     assert "## Folders\n" in card
     assert "| Name | Files | Size | Updated |" in card
-    assert "| 📁 [[Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
+    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
     assert "## About\n" not in card  # нет данных в заметках — секция скрыта
     assert "## Files\n" in card
     assert "| File | Type | Opens with | Modified | Size | Comment |" in card
@@ -1006,7 +1006,7 @@ def test_github_tree_view_with_aggregates(tmp_path):
     # Code table: physical folders with icon, count, size
     assert "| Name | Files | Size | Updated |" in card
     assert "| --- | --- | --- | --- |" in card
-    assert "| 📁 [[под/под\\|под]] | 1 | 512 B | сегодня |" in card
+    assert "| 📁 [[./под/под\\|под]] | 1 | 512 B | сегодня |" in card
 
 
 @patch("obsidianizer.obsidianize._get_now")
@@ -1363,7 +1363,7 @@ def test_no_recursive_keeps_folder_aggregates(tmp_path):
     card = (root / "Оборудование.md").read_text(encoding="utf-8")
 
     # Folders row for Арх must carry real aggregates, not 0 / 0 B
-    row = [l for l in card.splitlines() if l.startswith("| 📁 [[Арх/Арх")]
+    row = [l for l in card.splitlines() if l.startswith("| 📁 [[./Арх/Арх")]
     assert row, f"Арх row missing in card:\n{card}"
     assert f"| 1 | {format_size(size)} |" in row[0], row[0]
 
