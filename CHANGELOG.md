@@ -1,5 +1,12 @@
 # Obsidianizer
 
+## [0.5.6] - 2026-08-30
+
+### Changed
+- **Obsidian Integration button** now opens the Help window with integration
+  instructions instead of checking the vault. The vault check/install flow
+  remains available inside the Help window's Integration tab.
+
 ## [0.5.5] - 2026-08-30
 
 ### Fixed

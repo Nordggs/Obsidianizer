@@ -1242,7 +1242,9 @@
     $("btnObsOpen").addEventListener("click", function () {
       api.obs_open_folder($("obsDir").value.trim());
     });
-    $("btnObsIntegration").addEventListener("click", runIntegration);
+    $("btnObsIntegration").addEventListener("click", function () {
+      api.open_help_window("integration");
+    });
     $("btnAiDir").addEventListener("click", function () { pickFolderObs("obsidianize"); });
     $("btnAiScan").addEventListener("click", runReviewScan);
     $("btnAiRun").addEventListener("click", runReview);

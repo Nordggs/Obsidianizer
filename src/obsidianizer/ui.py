@@ -1144,7 +1144,8 @@ class UIApp:
 
         Idempotent, mirrors ``open_chat_window``: the help lives in its own
         native window so it can be dragged beyond the main window's bounds.
-        ``tab`` selects the initial section: obsidianize | chat | ai.
+        ``tab`` selects the initial section: obsidianize | chat | ai |
+        integration.
         """
         if self._window is None:
             # Headless (tests / CLI) — nothing to attach a window to.
@@ -1162,10 +1163,10 @@ class UIApp:
             )
             return {"ok": True, "opened": False}
 
-        safe = tab if tab in ("obsidianize", "chat", "ai") else "obsidianize"
+        safe = tab if tab in ("obsidianize", "chat", "ai", "integration") else "obsidianize"
         window = webview.create_window(
             "Obsidianizer — Справка",
-            url=str(RESOURCES / "help.html") + "#" + safe,
+            url=str(RESOURCES / "help.html"),
             js_api=self,
             width=600,
             height=700,
@@ -1177,6 +1178,16 @@ class UIApp:
             window.events.closed += lambda: setattr(self, "_help_window", None)
         except Exception:  # noqa: BLE001 - best-effort cleanup
             pass
+        if safe != "obsidianize":
+            import threading
+            def _set_tab() -> None:
+                import time
+                time.sleep(0.4)
+                self._push(
+                    f"window.showHelpTab && window.showHelpTab({json.dumps(safe)})",
+                    window,
+                )
+            threading.Thread(target=_set_tab, daemon=True).start()
         return {"ok": True, "opened": True}
 
     def close_help_window(self) -> dict:
