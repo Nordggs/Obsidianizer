@@ -12,10 +12,19 @@ closed-and-reopened window restores every path and checkbox.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_CONFIG_NAME = "config.yml"
+
+
+def _user_data_dir() -> Path:
+    """Writable directory for config, log, etc."""
+    if getattr(sys, "frozen", False):
+        base = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
+        return base / "Obsidianizer"
+    return Path(__file__).resolve().parents[2]
 
 # Bumped whenever the produced-note format changes. The pipeline writes it
 # into every frontmatter and reprocesses files carrying an older version, so a
@@ -229,7 +238,7 @@ class Settings:
     def load(cls, path: Path | None = None) -> "Settings":
         """Load from an optional config file, falling back to defaults."""
 
-        cfg_path = path or Path.cwd() / DEFAULT_CONFIG_NAME
+        cfg_path = path or _user_data_dir() / DEFAULT_CONFIG_NAME
         s = cls()
         s.config_path = cfg_path
         if not cfg_path.exists():
@@ -277,7 +286,7 @@ class Settings:
         Returns the written path.
         """
 
-        cfg_path = path or self.config_path or Path.cwd() / DEFAULT_CONFIG_NAME
+        cfg_path = path or self.config_path or _user_data_dir() / DEFAULT_CONFIG_NAME
         data: dict = {}
         if cfg_path.exists():
             try:

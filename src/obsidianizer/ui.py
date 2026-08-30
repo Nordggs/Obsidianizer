@@ -43,6 +43,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import threading
 from pathlib import Path
 
@@ -79,7 +80,17 @@ from .topics import rename_topic as build_rename_topic
 from .topics import update_topic as build_update_topic
 
 RESOURCES = Path(__file__).resolve().parent / "web"
-LOG_FILE = Path(__file__).resolve().parents[2] / "obsidianizer.log"
+
+
+def _user_data_dir() -> Path:
+    """Writable directory for config, log, etc."""
+    if getattr(sys, "frozen", False):
+        base = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
+        return base / "Obsidianizer"
+    return Path(__file__).resolve().parents[2]
+
+
+LOG_FILE = _user_data_dir() / "obsidianizer.log"
 
 logger = logging.getLogger("obsidianizer.ui")
 
@@ -1712,6 +1723,7 @@ def launch(
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     if not any(getattr(h, "_obsidianizer_log", False) for h in root.handlers):
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
         file_handler._obsidianizer_log = True
         file_handler.setLevel(logging.INFO)

@@ -1,5 +1,12 @@
 # Obsidianizer
 
+## [0.5.5] - 2026-08-30
+
+### Fixed
+- **PermissionError on launch when installed to Program Files** — log and
+  config now write to `%LOCALAPPDATA%\Obsidianizer\` instead of the
+  installation directory. The uninstaller also cleans up this folder.
+
 ## [0.5.4] - 2026-08-30
 
 ### Security

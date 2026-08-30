@@ -1,5 +1,5 @@
 #define MyAppName "Obsidianizer"
-#define MyAppVersion "0.5.4"
+#define MyAppVersion "0.5.5"
 #define MyAppPublisher "Nordggs"
 #define MyAppExeName "Obsidianizer.exe"
 
@@ -35,3 +35,6 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Obsidianizer"
