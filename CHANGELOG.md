@@ -1,5 +1,14 @@
 # Obsidianizer
 
+## [0.5.4] - 2026-08-30
+
+### Security
+- **Sanitized all personal data** from source code, docs, and git history:
+  test fixtures now use generic names (А. В., Д. З.), dummy phone numbers
+  (`+7 (999) 123-45-67`), and placeholder paths (`PROJECT/OBSIDIAN/Objects`,
+  `D:\Path\To\...`). Git history rewritten via `git filter-repo`; old
+  tags (v0.3.0–v0.5.3) removed. First public-ready release.
+
 ## [0.5.3] - 2026-08-29
 
 ### Fixed
