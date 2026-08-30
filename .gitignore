@@ -30,4 +30,5 @@ config.yml
 .obsidianizer-manifest.json
 build_new/
 dist_new/
+release/
 *.zip
