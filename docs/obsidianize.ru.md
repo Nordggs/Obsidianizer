@@ -201,17 +201,17 @@ obsidianizer-cli.bat folders --path "<папка>" --no-recursive --adopt
 ## CLI
 
 ```bash
-obsidianizer folders --path "D:\Projects\DemoProject"                 # всё дерево
-obsidianizer folders --path "D:\Projects\DemoProject" --dry-run       # только отчёт
-obsidianizer folders --path "D:\Projects\DemoProject" --force         # пересобрать карточки
-obsidianizer folders --path "D:\Projects\DemoProject" --no-recursive  # только карточка корня
-obsidianizer folders --path "D:\Projects\DemoProject" --no-gallery    # без блока Gallery
-obsidianizer folders --path "D:\Projects\DemoProject" \
+obsidianizer folders --path "D:\Projects\MyProject"                 # всё дерево
+obsidianizer folders --path "D:\Projects\MyProject" --dry-run       # только отчёт
+obsidianizer folders --path "D:\Projects\MyProject" --force         # пересобрать карточки
+obsidianizer folders --path "D:\Projects\MyProject" --no-recursive  # только карточка корня
+obsidianizer folders --path "D:\Projects\MyProject" --no-gallery    # без блока Gallery
+obsidianizer folders --path "D:\Projects\MyProject" \
     --vault-root "D:\Obsidian\Vault"                              # vault-пути для Gallery
-obsidianizer folders --path "D:\Projects\DemoProject" \
+obsidianizer folders --path "D:\Projects\MyProject" \
     --gallery-prefix "PROJECT/OBSIDIAN/Objects"             # проекты вне vault
-obsidianizer folders --path "D:\Projects\DemoProject" --template classic
-obsidianizer folders --path "D:\Projects\DemoProject" --adopt         # принять чужие заметки
+obsidianizer folders --path "D:\Projects\MyProject" --template classic
+obsidianizer folders --path "D:\Projects\MyProject" --adopt         # принять чужие заметки
 ```
 
 ## Оформление GitHub (CSS-сниппет, опционально)

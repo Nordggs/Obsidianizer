@@ -140,7 +140,7 @@ yourself.
 
 ```bash
 # full tree
-obsidianizer folders --path "D:\Projects\DemoProject" --force
+obsidianizer folders --path "D:\Projects\MyProject" --force
 
 # single card only (the Templater hotkey does exactly this)
 obsidianizer folders --path "<folder>" --no-recursive --adopt \

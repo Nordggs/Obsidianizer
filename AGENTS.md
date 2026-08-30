@@ -274,8 +274,8 @@ python -m obsidianizer --source ./raw --target ./processed --dry-run
 obsidianizer --source ./raw --target ./processed --prune   # after `pip install .`
 obsidianizer ai --target ./processed --enriched ./enriched             # AI stage only
 obsidianizer ai --target ./processed --enriched ./enriched --prune-enriched
-obsidianizer folders --path ./160_DemoProject --dry-run                     # Folder Obsidianizer
-obsidianizer folders --path ./160_DemoProject --vault-root "D:\Vault" --force
+obsidianizer folders --path ./my-project --dry-run                     # Folder Obsidianizer
+obsidianizer folders --path ./my-project --vault-root "D:\Vault" --force
 pytest                  # safety-critical tests run from the repo root
 ```
 

@@ -30,7 +30,7 @@
 2. Вставьте его в папку шаблонов Templater (по умолчанию `templates/` в корне vault)
 3. Откройте скопированный файл и замените `{{CLI_PATH}}` на реальный путь к Obsidianizer:
    - Если используете сборку: путь к `Obsidianizer.exe` (например, `C:\Obsidianizer\Obsidianizer.exe`)
-   - Если из исходников: путь к `obsidianizer-cli.bat` (например, `D:\Main\OpenCode\Obsidianizer\obsidianizer-cli.bat`)
+   - Если из исходников: путь к `obsidianizer-cli.bat` (например, `D:\Path\To\Obsidianizer\obsidianizer-cli.bat`)
 
 ### Шаг 3. Назначьте горячую клавишу
 

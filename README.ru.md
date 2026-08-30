@@ -142,7 +142,7 @@ Obsidianizer никогда не перезаписывает заметки; и
 
 ```bash
 # всё дерево
-obsidianizer folders --path "D:\Projects\DemoProject" --force
+obsidianizer folders --path "D:\Projects\MyProject" --force
 
 # только одна карточка (именно это делает хоткей Templater)
 obsidianizer folders --path "<папка>" --no-recursive --adopt \

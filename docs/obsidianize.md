@@ -194,17 +194,17 @@ documented in [obsidian/obsidianizer-refresh.md](../obsidian/obsidianizer-refres
 ## CLI
 
 ```bash
-obsidianizer folders --path "D:\Projects\DemoProject"                 # full tree
-obsidianizer folders --path "D:\Projects\DemoProject" --dry-run       # report only
-obsidianizer folders --path "D:\Projects\DemoProject" --force         # rebuild all cards
-obsidianizer folders --path "D:\Projects\DemoProject" --no-recursive  # root card only
-obsidianizer folders --path "D:\Projects\DemoProject" --no-gallery    # no Gallery block
-obsidianizer folders --path "D:\Projects\DemoProject" \
+obsidianizer folders --path "D:\Projects\MyProject"                 # full tree
+obsidianizer folders --path "D:\Projects\MyProject" --dry-run       # report only
+obsidianizer folders --path "D:\Projects\MyProject" --force         # rebuild all cards
+obsidianizer folders --path "D:\Projects\MyProject" --no-recursive  # root card only
+obsidianizer folders --path "D:\Projects\MyProject" --no-gallery    # no Gallery block
+obsidianizer folders --path "D:\Projects\MyProject" \
     --vault-root "D:\Obsidian\Vault"                              # vault paths for Gallery
-obsidianizer folders --path "D:\Projects\DemoProject" \
+obsidianizer folders --path "D:\Projects\MyProject" \
     --gallery-prefix "PROJECT/OBSIDIAN/Objects"             # projects outside the vault
-obsidianizer folders --path "D:\Projects\DemoProject" --template classic
-obsidianizer folders --path "D:\Projects\DemoProject" --adopt         # adopt foreign notes
+obsidianizer folders --path "D:\Projects\MyProject" --template classic
+obsidianizer folders --path "D:\Projects\MyProject" --adopt         # adopt foreign notes
 ```
 
 ## GitHub look (CSS snippet, optional)

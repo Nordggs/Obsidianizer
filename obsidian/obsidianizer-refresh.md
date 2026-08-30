@@ -5,7 +5,7 @@
 > Ключевое: обновление запускает **командную обёртку** `obsidianizer-cli.bat`
 > (лежит рядом с `Obsidianizer.bat`). Полный путь к ней указан ниже —
 > установка пакета в PATH не требуется. Если репозиторий у вас в другом
-> месте — замените `D:\Main\OpenCode\Obsidianizer` на свой путь.
+> месте — замените `D:\Path\To\Obsidianizer` на свой путь.
 
 ---
 
@@ -18,7 +18,7 @@
    - **Название**: `Obsidianizer: обновить карточку`
    - **Команда**:
      ```
-     "D:\Main\OpenCode\Obsidianizer\obsidianizer-cli.bat" folders --path "{{folder_path}}" --no-recursive --adopt --vault-root "{{vault_path}}" --rel "{{relative}}"
+      "D:\Path\To\Obsidianizer\obsidianizer-cli.bat" folders --path "{{folder_path}}" --no-recursive --adopt --vault-root "{{vault_path}}" --rel "{{relative}}"
      ```
      *(Obsidian сам подставляет корень vault через `{{vault_path}}` и путь
      папки относительно vault через `{{relative}}` — галерея получает
@@ -49,7 +49,7 @@ Gallery ✓/✗ · Images ✓/✗` — сразу видно, что галер�
 сгенерированы.
 
 > Если путь к программе у вас другой — замените в шаблоне/команде
-> `D:\Main\OpenCode\Obsidianizer` на свой.
+> `D:\Path\To\Obsidianizer` на свой.
 >
 > **Проще**: в самом приложении есть кнопка **🔗 Obsidian Integration** —
 > она скопирует шаблон в папку Templater и подставит корректный путь к CLI

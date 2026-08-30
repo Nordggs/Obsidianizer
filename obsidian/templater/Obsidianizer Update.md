@@ -10,7 +10,7 @@ try {
   const full = base + "/" + rel;
   const { exec } = require("child_process");
   const fs = require("fs");
-  const cli = "D:\\Main\\OpenCode\\Obsidianizer\\obsidianizer-cli.bat";
+  const cli = "{{CLI_PATH}}";
   exec(
     `"${cli}" folders --path "${full}" --no-recursive --adopt --vault-root "${base}" --rel "${rel}"`,
     (error) => {

@@ -46,37 +46,37 @@ def _sha(path: Path) -> str:
 
 
 def _make_equipment(tmp_path: Path) -> Path:
-    """Mirror of the real 160_DemoProject/Оборудование structure."""
+    """Mirror of the real 160_Проект/Оборудование structure."""
     root = tmp_path / "Оборудование"
     _touch(root / "Арх" / "Арх.md", "---\nobsidianizer: true\n---\n\nподкарточка\n")
-    _touch(root / "Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx")
-    _touch(root / "Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx")
-    _touch(root / "Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf")
+    _touch(root / "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx")
+    _touch(root / "Товар_Монтажные_размеры_ModelX_2025_v1.xlsx")
+    _touch(root / "Товар Инструкция instruction-manual.pdf")
     return root
 
 
 SCRIPT_CARD_EQUIPMENT = """---
 дата_начала: 2026-03-16
-источник: А. В. +7 (999) 123-45-67
-дизайнер: Инна Футуро
-клиент: Д. З. +7 (999) 123-45-67
-адрес: Москва, Дмитровское шоссе 79
+источник: Иванов Иван +7 (999) 123-45-67
+дизайнер: Мария Иванова
+клиент: Петров Пётр +7 (999) 765-43-21
+адрес: Москва, ул. Примерная, 1
 tags: [проект]
 комментарий: null
 ---
 
 > [!info] 📋 Карточка проекта
-> - **клиент**: Д. З. +7 (999) 123-45-67
-> - **адрес**: Москва, Дмитровское шоссе 79
-> - **источник**: А. В. +7 (999) 123-45-67
+> - **клиент**: Петров Пётр +7 (999) 765-43-21
+> - **адрес**: Москва, ул. Примерная, 1
+> - **источник**: Иванов Иван +7 (999) 123-45-67
 > - **дата_начала**: 2026-03-16
-> - **дизайнер**: Инна Футуро
+> - **дизайнер**: Мария Иванова
 
 ---
 #### 📁 Папки внутри проекта
 | Папка | Комментарий |
 | --- | --- |
-| [[PROJECT/OBSIDIAN/Objects/160_Project_Name/Оборудование/Арх/Арх\\|Арх]] |  |
+| [[PROJECT/OBSIDIAN/Objects/160_Проект_Пример/Оборудование/Арх/Арх\\|Арх]] |  |
 
 ---
 #### 📐 Чертежи (.dwg)
@@ -86,14 +86,14 @@ tags: [проект]
 #### 💰 Сметы (.xlsx, .xls)
 | Файл | Комментарий |
 | --- | --- |
-| [[PROJECT/OBSIDIAN/Objects/160_Project_Name/Оборудование/Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx\\|Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx]] |  |
-| [[PROJECT/OBSIDIAN/Objects/160_Project_Name/Оборудование/Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx\\|Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx]] |  |
+| [[PROJECT/OBSIDIAN/Objects/160_Проект_Пример/Оборудование/Товар_2шт_Счёт_на_оплату_№_0000001.xlsx\\|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] |  |
+| [[PROJECT/OBSIDIAN/Objects/160_Проект_Пример/Оборудование/Товар_Монтажные_размеры_ModelX_2025_v1.xlsx\\|Товар_Монтажные_размеры_ModelX_2025_v1.xlsx]] |  |
 
 ---
 #### 📄 Документы (.pdf, .docx)
 | Файл | Комментарий |
 | --- | --- |
-| [[PROJECT/OBSIDIAN/Objects/160_Project_Name/Оборудование/Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf\\|Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf]] |  |
+| [[PROJECT/OBSIDIAN/Objects/160_Проект_Пример/Оборудование/Товар Инструкция instruction-manual.pdf\\|Товар Инструкция instruction-manual.pdf]] |  |
 
 ---
 ## ✍️ Ручные заметки и дополнения
@@ -123,9 +123,9 @@ def test_scan_tree_equipment_shape(tmp_path):
     root_scan, sub_scan = tree[""], tree["Арх"]
 
     assert [f.name for f in root_scan.files] == [
-        "Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf",
-        "Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx",
-        "Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx",
+        "Товар Инструкция instruction-manual.pdf",
+        "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx",
+        "Товар_Монтажные_размеры_ModelX_2025_v1.xlsx",
     ]
     assert root_scan.subfolders == ["Арх"]
     assert root_scan.images == []
@@ -194,7 +194,7 @@ def test_scan_tree_card_never_catalogues_itself(tmp_path):
 def test_parse_frontmatter_types():
     content = """---
 дата_начала: 2026-03-16
-источник: А. В. +7 (999) 123-45-67
+источник: Иванов Иван +7 (999) 123-45-67
 tags:
   - проект
   - "два"
@@ -209,7 +209,7 @@ tags:
 тело"""
     props = parse_frontmatter(content)
     assert props["дата_начала"] == "2026-03-16"
-    assert props["источник"] == "А. В. +7 (999) 123-45-67"
+    assert props["источник"] == "Иванов Иван +7 (999) 123-45-67"
     assert props["tags"] == ["проект", "два", 42]
     assert props["пусто"] is None
     assert props["число"] == 42
@@ -239,7 +239,7 @@ def test_extract_comments_from_our_and_script_cards():
 | [[смета.xlsx|смета.xlsx]] | главная смета |
 | [[чертеж.dwg|чертеж.dwg]] |  |
 """
-    script = """| [[PROJECT/ОБСИДИАН/foo/смета.xlsx\\|смета.xlsx]] | главная смета |
+    script = """| [[PROJECT/OBSIDIAN/foo/смета.xlsx\\|смета.xlsx]] | главная смета |
 """
     assert extract_comments(our) == {"смета.xlsx": "главная смета"}
     assert extract_comments(script) == {"смета.xlsx": "главная смета"}
@@ -320,18 +320,18 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
 
     # About falls back to the old card frontmatter when notes absent
     assert "## About\n" in card
-    assert "> - **Клиент**: Д. З. +7 (999) 123-45-67" in card
-    assert "> - **Адрес**: Москва, Дмитровское шоссе 79" in card
+    assert "> - **Клиент**: Петров Пётр +7 (999) 765-43-21" in card
+    assert "> - **Адрес**: Москва, ул. Примерная, 1" in card
 
     # Files: single GitHub-style table with opens-with column
     assert "## Files\n" in card
     assert "| File | Type | Opens with | Modified | Size | Comment |" in card
     assert (
-        "| 📊 [[Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx]]"
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]]"
         " | XLSX | Excel | сегодня | 1 B |  |" in card
     )
     assert (
-        "| 📄 [[Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf]]"
+        "| 📄 [[Товар Инструкция instruction-manual.pdf]]"
         " | PDF | Obsidian | сегодня | 1 B |  |" in card
     )
 
@@ -363,8 +363,8 @@ def test_update_cards_migrates_user_frontmatter_to_notes(tmp_path):
     prev_card = (
         "---\n"
         "дата_начала: 2026-03-16\n"
-        "источник: А. В. +7 (999) 123-45-67\n"
-        "клиент: Д. З. +7 (999) 123-45-67\n"
+        "источник: Иванов Иван +7 (999) 123-45-67\n"
+        "клиент: Петров Пётр +7 (999) 765-43-21\n"
         "телефон: +7 999 123-45-67\n"
         "карта: https://yandex.ru/maps/?text=Москва\n"
         "мой_пункт: что-то\n"
@@ -392,8 +392,8 @@ def test_update_cards_migrates_user_frontmatter_to_notes(tmp_path):
     # Notes received ALL user fields, incl. unknown ones and block-list tags
     notes_props = parse_frontmatter((root / "Оборудование_заметки.md").read_text(encoding="utf-8"))
     assert notes_props["дата_начала"] == "2026-03-16"
-    assert notes_props["источник"] == "А. В. +7 (999) 123-45-67"
-    assert notes_props["клиент"] == "Д. З. +7 (999) 123-45-67"
+    assert notes_props["источник"] == "Иванов Иван +7 (999) 123-45-67"
+    assert notes_props["клиент"] == "Петров Пётр +7 (999) 765-43-21"
     assert notes_props["телефон"] == "+7 999 123-45-67"
     assert notes_props["карта"] == "https://yandex.ru/maps/?text=Москва"
     assert notes_props["мой_пункт"] == "что-то"
@@ -401,7 +401,7 @@ def test_update_cards_migrates_user_frontmatter_to_notes(tmp_path):
 
     # About section renders from the migrated notes
     body = card.read_text(encoding="utf-8")
-    assert "> - **Клиент**: Д. З. +7 (999) 123-45-67" in body
+    assert "> - **Клиент**: Петров Пётр +7 (999) 765-43-21" in body
     assert "> - **Телефон**: +7 999 123-45-67" in body
     assert "> - **Карта**: https://yandex.ru/maps/?text=Москва" in body
     assert "> - **Мой_пункт**: что-то" in body
@@ -433,8 +433,8 @@ def test_build_card_preserves_comments(tmp_path):
     root = _make_equipment(tmp_path)
     scan = scan_tree(root)[""]
     prev = SCRIPT_CARD_EQUIPMENT.replace(
-        "Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx\\|Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx]] |  |",
-        "Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx\\|Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx]] | главная смета |",
+        "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx\\|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] |  |",
+        "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx\\|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | главная смета |",
     )
     card = build_card(scan, prev, ObsidianizeConfig(template="classic"))
     assert "| главная смета |" in card
@@ -940,8 +940,8 @@ def test_build_card_github_golden(mock_get_now, tmp_path):
     assert "## About\n" not in card  # нет данных в заметках — секция скрыта
     assert "## Files\n" in card
     assert "| File | Type | Opens with | Modified | Size | Comment |" in card
-    assert "📊 [[Бриз_2шт 55 Счет_на_оплату_№_05_0014216_от_26_01_2026.xlsx]] | XLSX | Excel | сегодня | 1 B |  |" in card
-    assert "| 📄 [[Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf]] | PDF | Obsidian | сегодня | 1 B |  |" in card
+    assert "📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |" in card
+    assert "| 📄 [[Товар Инструкция instruction-manual.pdf]] | PDF | Obsidian | сегодня | 1 B |  |" in card
     assert "## Notes\n" in card
     assert "![[Оборудование_заметки]]" in card
     assert '<footer class="repo-meta">' in card
@@ -1249,17 +1249,17 @@ def test_manifest_written_and_diff_detected(tmp_path):
     assert "добавлен: новый.dwg" in format_changes(diff2)
 
     # изменён размер существующего
-    (root / "Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx").write_bytes(b"xx")
+    (root / "Товар_Монтажные_размеры_ModelX_2025_v1.xlsx").write_bytes(b"xx")
     diff3 = card_diff(content, scan_tree(root)[""], notes_text)
-    assert "Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx" in diff3["changed"]
-    assert "изменён: Бриз_Монтажные_размеры_FUNAI_2025_v1.xlsx" in format_changes(diff3)
+    assert "Товар_Монтажные_размеры_ModelX_2025_v1.xlsx" in diff3["changed"]
+    assert "изменён: Товар_Монтажные_размеры_ModelX_2025_v1.xlsx" in format_changes(diff3)
 
     # удалён
     (root / "новый.dwg").unlink()
-    (root / "Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf").unlink()
+    (root / "Товар Инструкция instruction-manual.pdf").unlink()
     diff5 = card_diff(content, scan_tree(root)[""], notes_text)
     assert diff5["removed"] == [
-        "Бриз Фунай onsen-full-dc-inverter-heat-pump-instruction.pdf"
+        "Товар Инструкция instruction-manual.pdf"
     ]
     assert any("удалён" in line for line in format_changes(diff5))
 
