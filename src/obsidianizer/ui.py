@@ -59,6 +59,7 @@ from .config import (
 )
 from .events import Event, EventType
 from .guard import GuardError, check as guard_check
+from .i18n import tr
 from .llm import LLMClient
 from .md_processor import MdProcessor
 from .pipeline import Report
@@ -106,6 +107,13 @@ def _integration_source_dir() -> Path | None:
         if cand.is_dir():
             return cand
     return None
+
+
+def _lang_resolved(raw: str | None) -> str:
+    """Effective UI language for ``raw`` setting ("" → OS locale)."""
+    from .i18n import resolve_language
+
+    return resolve_language(raw)
 
 
 LOG_FILE = _user_data_dir() / "obsidianizer.log"
@@ -266,7 +274,18 @@ class UIApp:
             "obsidianize_vault_root": self.settings.obsidianize_vault_root,
             "obsidianize_gallery_prefix": self.settings.obsidianize_gallery_prefix,
             "obsidianize_template": self.settings.obsidianize_template,
+            "language": self.settings.language,
+            "lang_resolved": _lang_resolved(self.settings.language),
         }
+
+    def set_language(self, lang: str) -> dict:
+        """Persist the UI language ("ru" | "en" | "" = auto) and apply it live."""
+        from .i18n import set_language as _set_lang
+
+        self.settings.language = str(lang or "").strip().lower()
+        _set_lang(self.settings.language)
+        self._save_settings()
+        return {"ok": True, "lang_resolved": _lang_resolved(self.settings.language)}
 
     def choose_folder(self, kind: str = "source") -> str | None:
         """Open a native folder picker; returns the chosen path or None.
@@ -306,7 +325,7 @@ class UIApp:
         try:
             self.settings.save()
         except Exception as exc:  # noqa: BLE001 - persistence is best-effort
-            logger.warning("Не удалось сохранить настройки: %s", exc)
+            logger.warning(tr("log.settings_save_failed", exc=exc))
 
     def save_settings(self) -> None:
         """Public persistence hook (e.g. bound to the window-closed event)."""
@@ -371,7 +390,7 @@ class UIApp:
     def set_obsidianize_template(self, template: str) -> dict:
         """Remember the card template (github | classic)."""
         if template not in ("github", "classic"):
-            return {"ok": False, "error": f"неизвестный шаблон: {template}"}
+            return {"ok": False, "error": tr("err.unknown_template", template=template)}
         self.settings.obsidianize_template = str(template).strip()
         self._save_settings()
         return {"ok": True}
@@ -402,10 +421,10 @@ class UIApp:
 
         path = str(path or "").strip() or str(self.settings.obsidianize_dir).strip()
         if not path:
-            return {"ok": False, "error": "не выбрана папка"}
+            return {"ok": False, "error": tr("err.no_folder")}
         root = Path(path).expanduser()
         if not root.is_dir():
-            return {"ok": False, "error": f"Папка не существует: {root}"}
+            return {"ok": False, "error": tr("err.folder_missing", path=root)}
         try:
             cfg = ObsidianizeConfig(template=self.settings.obsidianize_template)
             tree = scan_tree(root, cfg)
@@ -439,9 +458,9 @@ class UIApp:
                         )
                     except OSError:
                         diff = None
-                    changes = format_changes(diff) if diff else ["карточка устарела"]
+                    changes = format_changes(diff) if diff else [tr("scan.card_stale")]
                     if not changes:
-                        changes = ["изменилось содержимое проекта"]
+                        changes = [tr("scan.content_changed")]
                     logger.info(
                         "Obs scan diff: rel=%s status=%s added=%d removed=%d "
                         "changed=%d folders_changed=%s notes_changed=%s",
@@ -472,10 +491,11 @@ class UIApp:
                 "ok": True,
                 "root": str(root),
                 "folders": folders,
-                "summary": (
-                    f"Проверено: {len(folders)} · "
-                    f"без изменений: {len(folders) - changed_n} · "
-                    f"требуют обновления: {changed_n}"
+                "summary": tr(
+                    "scan.summary",
+                    checked=len(folders),
+                    unchanged=len(folders) - changed_n,
+                    changed=changed_n,
                 ),
             }
         except Exception as exc:  # noqa: BLE001
@@ -489,14 +509,14 @@ class UIApp:
         ``OBS_*`` events; the source folder is never modified.
         """
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         path = str(opts.get("path") or "").strip() or str(self.settings.obsidianize_dir).strip()
         if not path:
-            return {"ok": False, "error": "не выбрана папка"}
+            return {"ok": False, "error": tr("err.no_folder")}
         root = Path(path).expanduser()
         if not root.is_dir():
-            return {"ok": False, "error": f"Папка не существует: {root}"}
+            return {"ok": False, "error": tr("err.folder_missing", path=root)}
         from .obsidianize import ObsidianizeConfig
 
         vault_root = str(opts.get("vault_root") or self.settings.obsidianize_vault_root)
@@ -581,10 +601,10 @@ class UIApp:
     def obs_open_folder(self, path: str = "") -> dict:
         """Open the scanned folder in the system file manager."""
         if self._window is None:
-            return {"ok": False, "error": "нет окна"}
+            return {"ok": False, "error": tr("err.no_window")}
         target = Path(path or self.settings.obsidianize_dir).expanduser()
         if not target.is_dir():
-            return {"ok": False, "error": f"Папка не существует: {target}"}
+            return {"ok": False, "error": tr("err.folder_missing", path=target)}
         try:
             os.startfile(str(target))
         except AttributeError:
@@ -636,7 +656,7 @@ class UIApp:
         if not vault:
             picked = self.choose_folder()
             if not picked:
-                return {"ok": False, "error": "Папка не выбрана"}
+                return {"ok": False, "error": tr("err.no_folder_picked")}
             vault = picked
 
         res = install_obsidian_integration(
@@ -662,24 +682,24 @@ class UIApp:
         opts = opts or {}
         target = str(opts.get("target") or "").strip()
         if not target:
-            return {"ok": False, "error": "Папка не выбрана"}
+            return {"ok": False, "error": tr("err.no_folder_picked")}
         src = _integration_source_dir()
         if src is None:
             return {
                 "ok": False,
-                "error": "Папка integration не найдена — переустановите программу",
+                "error": tr("err.integration_missing"),
             }
         dst = Path(target).expanduser()
         files = sorted(f for f in src.iterdir() if f.is_file())
         if not files:
-            return {"ok": False, "error": f"В {src} нет файлов шаблонов"}
+            return {"ok": False, "error": tr("err.no_template_files", src=src)}
 
         conflicts = [f.name for f in files if (dst / f.name).exists()]
         if conflicts and not opts.get("force"):
             return {
                 "ok": False,
                 "conflicts": conflicts,
-                "error": "Файлы уже существуют. Повторный клик перезапишет их.",
+                "error": tr("err.files_exist"),
             }
 
         try:
@@ -710,20 +730,20 @@ class UIApp:
         never modified — only the review files are written.
         """
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         path = str(opts.get("path") or "").strip() or str(self.settings.obsidianize_dir).strip()
         if not path:
-            return {"ok": False, "error": "не выбрана папка"}
+            return {"ok": False, "error": tr("err.no_folder")}
         root = Path(path).expanduser()
         if not root.is_dir():
-            return {"ok": False, "error": f"Папка не существует: {root}"}
+            return {"ok": False, "error": tr("err.folder_missing", path=root)}
         rels = [str(r) for r in (opts.get("rels") or []) if r is not None]
         if not rels:
-            return {"ok": False, "error": "выберите хотя бы одну папку"}
+            return {"ok": False, "error": tr("err.pick_folder")}
         llm = _make_llm(self.settings)
         if llm is None:
-            return {"ok": False, "error": "LLM отключён — включите «AI-постобработку»"}
+            return {"ok": False, "error": tr("err.llm_disabled")}
         self.settings.obsidianize_dir = str(root)
         self._save_settings()
         self._busy = True
@@ -778,7 +798,7 @@ class UIApp:
                     request = build_request([payload], include_text=include_text)
                     reply = llm.chat([{"role": "user", "content": request}], prompt)
                     if not reply or not reply.strip():
-                        raise RuntimeError("модель не ответила")
+                        raise RuntimeError(tr("err.model_no_reply"))
                     target = save_review(
                         folder, build_review_markdown(reply.strip(), model=model)
                     )
@@ -837,7 +857,7 @@ class UIApp:
         )
         models = client.list_models()
         if models is None:
-            return {"ok": False, "error": "Ollama недоступен"}
+            return {"ok": False, "error": tr("err.ollama_unavailable")}
         return {"ok": True, "models": models}
 
     def get_prompts(self) -> dict:
@@ -859,7 +879,7 @@ class UIApp:
 
     def set_prompt(self, kind: str, value: str) -> dict:
         if kind not in ("prompt", "ai_prompt", "topic_prompt", "map_prompt"):
-            return {"ok": False, "error": "Неизвестный промпт"}
+            return {"ok": False, "error": tr("err.unknown_prompt")}
         self.settings.ollama[kind] = value
         self._save_settings()
         return {"ok": True}
@@ -874,7 +894,7 @@ class UIApp:
             "map_prompt": DEFAULT_TOPIC_MAP_PROMPT,
         }.get(kind)
         if default is None:
-            return {"ok": False, "error": "Неизвестный промпт"}
+            return {"ok": False, "error": tr("err.unknown_prompt")}
         self.settings.ollama[kind] = default
         self._save_settings()
         return {"ok": True, "value": default}
@@ -917,7 +937,7 @@ class UIApp:
         try:
             topic = build_get_topic(self.settings.enriched.resolve(), str(topic_id))
             if topic is None:
-                return {"ok": False, "error": "Тема не найдена"}
+                return {"ok": False, "error": tr("err.topic_missing")}
             return {"ok": True, "topic": topic}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
@@ -958,7 +978,7 @@ class UIApp:
 
     def start_run(self, opts: dict | None = None) -> dict:
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         self._busy = True
         self._cancel = False
@@ -994,7 +1014,7 @@ class UIApp:
     def start_ai(self, opts: dict | None = None) -> dict:
         """Start the AI post-processing stage alone (skip re-import)."""
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         s = Settings()
         s.source = self.settings.source
@@ -1029,11 +1049,11 @@ class UIApp:
         the ``TOPIC_*`` events.
         """
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         rel_files = opts.get("files") or []
         if not isinstance(rel_files, list) or not rel_files:
-            return {"ok": False, "error": "не выбраны файлы"}
+            return {"ok": False, "error": tr("err.no_files")}
         rel_files = [str(f).replace("\\", "/") for f in rel_files]
         s = Settings()
         s.source = self.settings.source
@@ -1064,7 +1084,7 @@ class UIApp:
         ``TOPIC_FILE_*`` per created topic).
         """
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         s = Settings()
         s.source = self.settings.source
         s.target = self.settings.target
@@ -1094,14 +1114,14 @@ class UIApp:
         Progress arrives via the ``TOPIC_*`` events.
         """
         if self._busy:
-            return {"ok": False, "error": "запуск уже выполняется"}
+            return {"ok": False, "error": tr("err.busy")}
         opts = opts or {}
         topic_id = str(opts.get("topic_id") or "")
         rel_files = opts.get("files") or []
         if not topic_id:
-            return {"ok": False, "error": "не указана тема"}
+            return {"ok": False, "error": tr("err.no_topic")}
         if not isinstance(rel_files, list) or not rel_files:
-            return {"ok": False, "error": "не выбраны файлы"}
+            return {"ok": False, "error": tr("err.no_files")}
         rel_files = [str(f).replace("\\", "/") for f in rel_files]
         s = Settings()
         s.source = self.settings.source
@@ -1125,7 +1145,7 @@ class UIApp:
 
     def cancel(self) -> bool:
         self._cancel = True
-        self._log("Остановка… текущий файл будет завершён")
+        self._log(tr("status.stopping"))
         return True
 
     # ── AI assistant chat ─────────────────────────────────────────────────
@@ -1277,7 +1297,7 @@ class UIApp:
         """
         norm = [str(r).replace("\\", "/") for r in rels if str(r).strip()]
         if not norm:
-            return {"ok": False, "error": "нет выбранных чатов"}
+            return {"ok": False, "error": tr("err.no_chats")}
         payload = json.dumps(norm, ensure_ascii=False)
         self._push(f"window.openTopicFromFound({payload})")
         return {"ok": True, "count": len(norm)}
@@ -1358,11 +1378,11 @@ class UIApp:
         via the ``CHAT_REPLY`` event (``CHAT_ERROR`` on failure).
         """
         if self._chat_busy:
-            return {"ok": False, "error": "ассистент уже отвечает"}
+            return {"ok": False, "error": tr("err.assistant_busy")}
         opts = opts or {}
         message = str(opts.get("message") or "").strip()
         if not message:
-            return {"ok": False, "error": "пустое сообщение"}
+            return {"ok": False, "error": tr("err.empty_message")}
         context = opts.get("context")
         if context is None:
             context = list(self._chat_context)
@@ -1497,7 +1517,7 @@ class UIApp:
         llm = _make_llm(settings)
         if llm is None:
             report = EnrichReport()
-            report.critical_error = "LLM отключён — включите «AI-постобработку»"
+            report.critical_error = tr("err.llm_disabled")
             self._on_event(Event(type=EventType.AI_FINISHED, message=report.critical_error))
             return report
         return postprocess_enrich(
@@ -1518,7 +1538,7 @@ class UIApp:
         llm = _make_llm(settings)
         if llm is None:
             report = TopicReport()
-            report.critical_error = "LLM отключён — включите «AI-постобработку»"
+            report.critical_error = tr("err.llm_disabled")
             self._on_event(
                 Event(type=EventType.TOPIC_FINISHED, message=report.critical_error)
             )
@@ -1541,7 +1561,7 @@ class UIApp:
         llm = _make_llm(settings)
         if llm is None:
             report = GroupReport()
-            report.critical_error = "LLM отключён — включите «AI-постобработку»"
+            report.critical_error = tr("err.llm_disabled")
             self._on_event(
                 Event(type=EventType.TOPIC_FINISHED, message=report.critical_error)
             )
@@ -1563,7 +1583,7 @@ class UIApp:
         llm = _make_llm(settings)
         if llm is None:
             report = TopicReport()
-            report.critical_error = "LLM отключён — включите «AI-постобработку»"
+            report.critical_error = tr("err.llm_disabled")
             self._on_event(
                 Event(type=EventType.TOPIC_FINISHED, message=report.critical_error)
             )
@@ -1594,7 +1614,7 @@ class UIApp:
         """
         llm = _make_llm(settings)
         if llm is None:
-            error = "LLM отключён — включите «AI-постобработку»"
+            error = tr("err.llm_disabled")
             self._on_event(Event(type=EventType.CHAT_ERROR, message=error))
             return ""
         system = str(settings.ollama.get("chat_prompt") or DEFAULT_CHAT_PROMPT)
@@ -1645,7 +1665,7 @@ class UIApp:
         reply = llm.chat(self._chat_history, system)
         if not reply:
             self._chat_history.pop()  # a failed turn leaves no trace
-            error = "Модель не ответила — проверьте Ollama и модель"
+            error = tr("err.model_no_reply_check")
             self._on_event(Event(type=EventType.CHAT_ERROR, message=error))
             return ""
         self._chat_history.append({"role": "assistant", "content": reply})
@@ -1717,7 +1737,7 @@ class UIApp:
             if body_head:
                 parts.append(body_head)
             if not parts:
-                parts.append("(текст недоступен)")
+                parts.append(tr("status.text_unavailable"))
             blocks.append(f"### {c.title} ({c.rel})\n" + "\n\n…\n\n".join(parts))
         return "\n\n---\n\n".join(blocks)
 
@@ -1799,6 +1819,9 @@ def launch(
         app.settings.target = Path(initial_target)
     if initial_enriched:
         app.settings.enriched = Path(initial_enriched)
+
+    from .i18n import set_language as _i18n_set
+    _i18n_set(app.settings.language)  # UI language ≠ data language
 
     root = logging.getLogger()
     root.setLevel(logging.INFO)

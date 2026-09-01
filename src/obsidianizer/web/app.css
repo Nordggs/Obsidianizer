@@ -53,6 +53,26 @@ header .subtitle {
 }
 header .version { margin-left: auto; font-size: 11px; color: #4a5568; user-select: text; }
 
+/* ── language switcher ──────────────────────────────────────────────────── */
+
+.lang-switch { margin-left: 8px; display: inline-flex; gap: 4px; }
+.lang-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  background: #1f2a3a;
+  color: var(--dim);
+  border: 1px solid #2a3444;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.lang-btn:hover { background: #2a3444; }
+.lang-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .dim { color: var(--dim); }
 
 .mono { font-family: var(--mono); }

@@ -51,7 +51,7 @@
     const copyBtn = document.createElement("button");
     copyBtn.className = "chat-copy";
     copyBtn.textContent = "⧉";
-    copyBtn.title = "Копировать";
+    copyBtn.title = t("chat.copy");
     copyBtn.addEventListener("click", function () {
       copyText(text, copyBtn);
     });
@@ -75,7 +75,7 @@
       const chip = document.createElement("span");
       chip.className = "chat-chip";
       chip.textContent = rel;
-      chip.title = "Убрать из контекста";
+      chip.title = t("chat.remove_context");
       chip.addEventListener("click", function () {
         api.set_chat_context(contextRels.filter(function (r) { return r !== rel; }))
           .then(function () { refreshContext(); });
@@ -95,13 +95,13 @@
     if (!api) return;
     const text = $("chatInput").value.trim();
     if (!text) return;
-    appendChatLine("Вы", text);
+    appendChatLine(t("chat.you"), text);
     $("chatInput").value = "";
     setChatBusy(true);
     api.chat_send({ message: text, context: contextRels }).then(function (r) {
       if (r && r.ok === false) {
         setChatBusy(false);
-        appendChatLine("Система", r.error || "не удалось отправить", "err");
+        appendChatLine(t("chat.system"), r.error || t("chat.send_failed"), "err");
         return;
       }
     });
@@ -116,7 +116,7 @@
     chatFoundCards = [];
     chatFoundSelected.clear();
     renderChatFound([]);
-    appendChatLine("Система", "Диалог очищен.", "dim");
+    appendChatLine(t("chat.system"), t("chat.cleared"), "dim");
   }
 
   function renderChatFound(cards) {
@@ -128,8 +128,8 @@
       return;
     }
     $("chatFoundTitle").textContent =
-      "Источники: " + chatFoundCards.length + " чат(ов)" +
-      (chatFoundCards.some(function (c) { return c.partial; }) ? " · частичное совпадение" : "");
+      t("chat.sources_n", { n: chatFoundCards.length }) +
+      (chatFoundCards.some(function (c) { return c.partial; }) ? t("chat.partial") : "");
     $("chatFound").classList.remove("hidden");
   }
 
@@ -153,14 +153,14 @@
       const title = document.createElement("span");
       title.className = "chat-found-title";
       title.textContent = card.title || card.rel;
-      title.title = card.rel + (card.score ? " · релевантность " + card.score : "");
+      title.title = card.rel + (card.score ? t("chat.relevance", { score: card.score }) : "");
       const rel = document.createElement("span");
       rel.className = "chat-found-rel dim";
       rel.textContent = card.rel;
       const openBtn = document.createElement("button");
       openBtn.className = "chat-found-open";
       openBtn.textContent = "↗";
-      openBtn.title = "Открыть чат";
+      openBtn.title = t("chat.open_chat");
       openBtn.addEventListener("click", function () {
         if (api) api.open_note(card.rel);
       });
@@ -178,7 +178,7 @@
   function updateChatFoundThemeBtn() {
     $("btnChatFoundTheme").disabled = chatFoundSelected.size === 0;
     $("btnChatFoundTheme").textContent =
-      "Добавить в тему" + (chatFoundSelected.size ? " (" + chatFoundSelected.size + ")" : "");
+      t("chat.add_to_topic") + (chatFoundSelected.size ? " (" + chatFoundSelected.size + ")" : "");
   }
 
   function showMoreChatFound() {
@@ -191,26 +191,26 @@
     const rels = Array.from(chatFoundSelected);
     api.send_chat_topic_request(rels).then(function (r) {
       if (r && r.ok === false) {
-        appendChatLine("Система", r.error || "не удалось передать в тему", "err");
+        appendChatLine(t("chat.system"), r.error || t("chat.topic_failed"), "err");
         return;
       }
       chatFoundSelected.clear();
       renderChatFoundList();
-      appendChatLine("Система", "Открыт выбор темы в главном окне.", "dim");
+      appendChatLine(t("chat.system"), t("chat.topic_opened"), "dim");
     });
   }
 
   window.pushEvent = function (ev) {
     const kind = ev.type;
     if (kind === "chat_reply") {
-      appendChatLine("AI", ev.message || "(пустой ответ)", "ai");
+      appendChatLine("AI", ev.message || t("chat.empty_reply"), "ai");
       setChatBusy(false);
     } else if (kind === "chat_found") {
       let cards = [];
       try { cards = JSON.parse(ev.message || "[]") || []; } catch (e) { cards = []; }
       renderChatFound(cards);
     } else if (kind === "chat_error") {
-      appendChatLine("Система", ev.message || "ошибка", "err");
+      appendChatLine(t("chat.system"), ev.message || t("status.err_generic"), "err");
       setChatBusy(false);
     }
   };
@@ -223,6 +223,8 @@
   function init() {
     api = window.pywebview.api;
     api.defaults().then(function (d) {
+      window.initLang(d.lang_resolved === "en" ? "en" : "ru");
+      window.applyI18n(document);
       $("chatModelLabel").textContent = d.chat_model || d.model || "";
     });
     api.chat_history().then(function (r) {
@@ -230,10 +232,10 @@
       const log = $("chatLog");
       log.textContent = "";
       (r.messages || []).forEach(function (m) {
-        appendChatLine(m.role === "assistant" ? "AI" : "Вы", m.content || "");
+        appendChatLine(m.role === "assistant" ? "AI" : t("chat.you"), m.content || "");
       });
       if (!(r.messages || []).length) {
-        appendChatLine("Система", "Чат с локальной моделью. Задайте вопрос — чат найдёт заметки в коллекции и ответит с источниками.", "dim");
+        appendChatLine(t("chat.system"), t("chat.hello"), "dim");
       }
     });
     api.chat_found().then(function (r) {
@@ -255,6 +257,9 @@
     $("btnChatFoundTheme").addEventListener("click", chatFoundToTopic);
     $("btnChatFoundMore").addEventListener("click", showMoreChatFound);
   }
+
+  window.initLang("ru");
+  window.applyI18n(document);
 
   if (window.pywebview) { init(); }
   else { window.addEventListener("pywebviewready", init); }

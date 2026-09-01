@@ -74,24 +74,24 @@
       total = ev.total || 0;
       $("progressSection").classList.remove("hidden");
       setProgress(0);
-      log("Сканирование… " + total + " файл(ов)");
+      log(t("status.scanning", { n: total }));
     } else if (kind === "file_started") {
       $("currentFile").textContent = ev.path;
       setProgress(ev.index - 1);
     } else if (kind === "llm_started") {
-      renderLog("⟳ " + ev.path + " — анализ Ollama…", "warn");
+      renderLog(t("log.llm_started", { path: ev.path }), "warn");
     } else if (kind === "file_done") {
       setProgress(ev.index);
-      renderLog("✓ " + ev.path + "  (" + ev.index + "/" + ev.total + ")", "ok");
+      renderLog(t("log.file_done", { path: ev.path, index: ev.index, total: ev.total }), "ok");
       $("currentFile").textContent = "";
     } else if (kind === "file_skipped") {
-      renderLog("– пропущен (без изменений): " + ev.path, "dim");
+      renderLog(t("log.file_skipped", { path: ev.path }), "dim");
     } else if (kind === "file_error") {
-      renderLog("✗ " + ev.path + ": " + ev.message, "err");
+      renderLog(t("log.file_error", { path: ev.path, message: ev.message }), "err");
     } else if (kind === "finished") {
       importMsg = ev.message || "";
       if (aiExpected) {
-        renderLog("✓ Импорт завершён", "ok");
+        renderLog(t("log.import_finished"), "ok");
       } else {
         finish(ev);
         importMsg = "";
@@ -99,57 +99,57 @@
     } else if (kind === "ai_scan_started") {
       aiStarted = true;
       aiTotal = ev.total || 0;
-      $("aiStageLabel").textContent = "AI-постобработка";
+      $("aiStageLabel").textContent = t("ai.post");
       $("aiProgressSection").classList.remove("hidden");
       setAiProgress(0);
-      log("AI-постобработка: " + aiTotal + " файл(ов)");
+      log(t("log.ai_scan", { n: aiTotal }));
     } else if (kind === "ai_file_started") {
       $("aiCurrentFile").textContent = ev.path;
       setAiProgress(ev.index - 1);
     } else if (kind === "ai_file_done") {
       setAiProgress(ev.index);
-      renderLog("✓ AI " + ev.path + "  (" + ev.index + "/" + ev.total + ")", "ok");
+      renderLog(t("log.ai_file_done", { path: ev.path, index: ev.index, total: ev.total }), "ok");
       $("aiCurrentFile").textContent = "";
     } else if (kind === "ai_file_skipped") {
-      renderLog("– AI пропущен (актуальный результат): " + ev.path, "dim");
+      renderLog(t("log.ai_file_skipped", { path: ev.path }), "dim");
     } else if (kind === "ai_file_error") {
-      renderLog("✗ AI " + ev.path + ": " + ev.message, "err");
+      renderLog(t("log.ai_file_error", { path: ev.path, message: ev.message }), "err");
     } else if (kind === "ai_finished") {
       finishAi(ev);
     } else if (kind === "topic_map_started") {
       aiStarted = true;
       aiTotal = ev.total || 0;
-      $("aiStageLabel").textContent = "Авто-группировка";
+      $("aiStageLabel").textContent = t("ai.group_all");
       $("aiProgressSection").classList.remove("hidden");
       setAiProgress(0);
-      log("Авто-группировка: карта тем по " + aiTotal + " чат(ам)");
+      log(t("log.group_scan", { n: aiTotal }));
     } else if (kind === "topic_scan_started") {
       aiStarted = true;
       aiTotal = ev.total || 0;
-      $("aiStageLabel").textContent = "Объединение в тему";
+      $("aiStageLabel").textContent = t("modal.tab_topic");
       $("aiProgressSection").classList.remove("hidden");
       setAiProgress(0);
-      log("Объединение в тему: " + aiTotal + " файл(ов)");
+      log(t("log.topic_scan", { n: aiTotal }));
     } else if (kind === "topic_file_started") {
       $("aiCurrentFile").textContent = ev.path;
       setAiProgress(ev.index - 1);
     } else if (kind === "topic_file_done") {
       setAiProgress(ev.index);
-      renderLog("✓ собрано: " + ev.path, "ok");
+      renderLog(t("log.topic_file_done", { path: ev.path }), "ok");
       $("aiCurrentFile").textContent = "";
     } else if (kind === "topic_file_error") {
-      renderLog("✗ " + ev.path + ": " + ev.message, "err");
+      renderLog(t("log.file_error", { path: ev.path, message: ev.message }), "err");
     } else if (kind === "topic_finished") {
       finishTopic(ev);
     } else if (kind === "obs_scan_started") {
-      log("Obsidianize: сканирование… " + ev.total + " папок");
-      setStatus("Obsidianize: создание карточек…", null);
+      log(t("log.obs_scan", { n: ev.total }));
+      setStatus(t("status.obs_running"), null);
     } else if (kind === "obs_folder_done") {
       const act = {
-        created: "✓ создана карточка",
-        updated: "✓ обновлена карточка",
-        skipped: "– карточка актуальна",
-        conflict: "⚠ конфликт (чужой .md)",
+        created: t("log.obs_created"),
+        updated: t("log.obs_updated"),
+        skipped: t("log.obs_current"),
+        conflict: t("log.obs_conflict"),
       }[ev.message] || ev.message;
       renderLog(
         act + ": " + ev.path + "  (" + ev.index + "/" + ev.total + ")",
@@ -157,12 +157,12 @@
           : (ev.message === "created" || ev.message === "updated") ? "ok" : "dim"
       );
     } else if (kind === "obs_finished") {
-      let s = "Готово: ";
+      let s = t("status.done");
       try {
         const m = JSON.parse(ev.message);
-        s += "папок=" + m.scanned + ", создано=" + m.created + ", обновлено=" + m.updated +
-          ", актуально=" + m.skipped;
-        if (m.conflicts && m.conflicts.length) s += ", конфликтов=" + m.conflicts.length;
+        s += t("status.obs_folders") + m.scanned + t("status.created") + m.created +
+          t("status.updated") + m.updated + t("status.current") + m.skipped;
+        if (m.conflicts && m.conflicts.length) s += t("status.conflicts_n") + m.conflicts.length;
       } catch (_) { s += ev.message; }
       setStatus(s, "ok");
       runObsScan();
@@ -170,25 +170,25 @@
       setStatus("Obsidianize: " + ev.message, "err");
       renderLog("✗ Obsidianize: " + ev.message, "err");
     } else if (kind === "review_started") {
-      log("AI-анализ: " + ev.total + " папок (" + ev.message + ")");
-      setStatus("AI-анализ: формирование обзоров…", null);
+      log(t("log.review_scan", { n: ev.total, message: ev.message }));
+      setStatus(t("status.review_running"), null);
     } else if (kind === "review_folder_done") {
       if (ev.message === "ok") {
-        renderLog("✓ обзор сформирован: " + ev.path + "  (" + ev.index + "/" + ev.total + ")", "ok");
+        renderLog(t("log.review_ok", { path: ev.path, index: ev.index, total: ev.total }), "ok");
       } else {
-        renderLog("✗ обзор не сформирован: " + ev.path + "  (" + ev.index + "/" + ev.total + ")", "err");
+        renderLog(t("log.review_fail", { path: ev.path, index: ev.index, total: ev.total }), "err");
       }
     } else if (kind === "review_finished") {
-      let s = "Готово: ";
+      let s = t("status.done");
       try {
         const m = JSON.parse(ev.message);
-        s += "обзоров=" + m.ok + ", ошибок=" + m.errors;
+        s += t("status.reviews") + m.ok + t("status.errors_eq") + m.errors;
       } catch (_) { s += ev.message; }
       setStatus(s, "ok");
       renderReviewFiles(ev.message);
     } else if (kind === "review_error") {
-      setStatus("AI-анализ: " + ev.message, "err");
-      renderLog("✗ AI-анализ: " + ev.message, "err");
+      setStatus(t("status.review_prefix") + ev.message, "err");
+      renderLog("✗ " + t("status.review_prefix") + ev.message, "err");
     }
   };
 
@@ -198,21 +198,22 @@
     setBusy(false);
     const m = ev.message || "";
     let cls = "ok";
-    let status = "Готово: ";
+    let status = t("status.done");
     if (m.indexOf("отменена") !== -1) {
       cls = "warn";
-      status = "Отменено: ";
+      status = t("status.cancelled");
     } else if (m.indexOf("критическая") !== -1) {
       cls = "err";
-      status = "Критическая ошибка: ";
+      status = t("status.critical");
     }
     const counts = m.match(/AI-обработано=(\d+), пропущено=(\d+), ошибок=(\d+)/);
     if (counts) {
-      let summary = "Обработано: " + counts[1] + " · Пропущено: " + counts[2] +
-        " · Ошибок: " + counts[3];
+      let summary = t("status.processed_n", { n: counts[1] }) + " · " +
+        t("status.skipped_n", { n: counts[2] }) + " · " +
+        t("status.errors_n", { n: counts[3] });
       const pruned = m.match(/удалено сирот=(\d+)/);
-      if (pruned) summary += " · Сирот удалено: " + pruned[1];
-      if (importMsg) summary = "Импорт " + importMsg + " · " + summary;
+      if (pruned) summary += " · " + t("status.orphans_removed_n", { n: pruned[1] });
+      if (importMsg) summary = t("status.import_x", { x: importMsg }) + " · " + summary;
       setStatus(status + summary, cls);
     } else {
       setStatus(status + m, cls);
@@ -228,13 +229,13 @@
     setBusy(false);
     const m = ev.message || "";
     if (m.indexOf("отменено") === 0) {
-      setStatus("Отменено: " + m, "warn");
+      setStatus(t("status.cancelled") + m, "warn");
       renderLog("■ " + m, "warn");
     } else if (m.indexOf("критическая ошибка") === 0) {
-      setStatus("Критическая ошибка: " + m, "err");
+      setStatus(t("status.critical") + m, "err");
       renderLog("■ " + m, "err");
     } else {
-      setStatus("Готово: " + m, "ok");
+      setStatus(t("status.done") + m, "ok");
       renderLog("■ " + m, "ok");
     }
   }
@@ -243,16 +244,16 @@
     setBusy(false);
     const m = ev.message || "";
     let cls = "ok";
-    let status = "Готово: ";
+    let status = t("status.done");
     if (m.indexOf("отменено") !== -1) {
       cls = "warn";
-      status = "Отменено: ";
+      status = t("status.cancelled");
     } else if (m.indexOf("Критическая ошибка") !== -1) {
       cls = "err";
-      status = "Критическая ошибка: ";
+      status = t("status.critical");
     } else if (m.indexOf("актуальна") !== -1) {
       cls = "dim";
-      status = "Пропущено: ";
+      status = t("status.skipped_prefix");
     }
     setStatus(status + m, cls);
     renderLog("■ " + m, cls);
@@ -299,9 +300,9 @@
       $("enriched").value.trim()
     ).then(function (r) {
       if (r && r.ok === false) {
-        setStatus("Ошибка путей: " + r.error, "err");
+        setStatus(t("status.paths_error") + r.error, "err");
       } else if (r && r.ok) {
-        setStatus("Пути приняты. Нажмите «Обработать».", null);
+        setStatus(t("status.paths_ok"), null);
       }
     });
   }
@@ -311,12 +312,12 @@
     const source = $("source").value.trim();
     const target = $("target").value.trim();
     if (!source || !target) {
-      setStatus("Укажите папки источника и результата.", "err");
+      setStatus(t("status.need_folders"), "err");
       return;
     }
     api.set_paths(source, target, $("enriched").value.trim()).then(function (r) {
       if (r && r.ok === false) {
-        setStatus("Ошибка путей: " + r.error, "err");
+        setStatus(t("status.paths_error") + r.error, "err");
         return;
       }
       aiExpected = false;
@@ -332,11 +333,11 @@
         prune_ai: $("pruneAi").checked,
       }).then(function (started) {
         if (started && started.ok === false) {
-          setStatus("Не удалось запустить: " + started.error, "err");
+          setStatus(t("status.start_failed") + started.error, "err");
           return;
         }
         setBusy(true);
-        setStatus("Выполняется…", null);
+        setStatus(t("status.running"), null);
       });
     });
   }
@@ -351,18 +352,18 @@
     pushFlags();
     api.start_ai({ prune_ai: $("pruneAi").checked }).then(function (started) {
       if (started && started.ok === false) {
-        setStatus("Не удалось запустить: " + started.error, "err");
+        setStatus(t("status.start_failed") + started.error, "err");
         return;
       }
       setBusy(true);
-      setStatus("AI-постобработка…", null);
+      setStatus(t("status.ai_running"), null);
     });
   }
 
   function stop() {
     if (!api) return;
     api.cancel();
-    setStatus("Остановка… текущий файл будет завершён", "warn");
+    setStatus(t("status.stopping"), "warn");
   }
 
   function openTarget() {
@@ -384,15 +385,15 @@
     if (!api) return;
     api.list_models().then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Ollama недоступен — список моделей не обновлён", "warn");
-        if (modelDropdownOpen) renderModelDropdown("Ollama недоступен");
+        setStatus(t("status.ollama_unavailable"), "warn");
+        if (modelDropdownOpen) renderModelDropdown(t("status.ollama_short"));
         return;
       }
       const current = $("model").value.trim();
       const names = r.models || [];
       if (current && names.indexOf(current) === -1) names.unshift(current);
       modelNames = names;
-      setStatus("Список моделей обновлён: " + names.length, null);
+      setStatus(t("status.models_updated", { n: names.length }), null);
       if (modelDropdownOpen) renderModelDropdown();
     });
   }
@@ -403,7 +404,7 @@
     if (!modelNames.length) {
       const hint = document.createElement("div");
       hint.className = "drop-empty";
-      hint.textContent = emptyHint || "Модели не загружены. Нажмите «Обновить».";
+      hint.textContent = emptyHint || t("status.no_models");
       box.appendChild(hint);
       return;
     }
@@ -483,7 +484,7 @@
       if (!r || r.ok === false) return;
       promptData[promptKind] = r.value;
       $("promptText").value = r.value;
-      setStatus("Промпт восстановлен к стандартному", null);
+      setStatus(t("status.prompt_reset"), null);
     });
   }
 
@@ -492,12 +493,12 @@
     const value = $("promptText").value;
     api.set_prompt(promptKind, value).then(function (r) {
       if (r && r.ok === false) {
-        setStatus("Не удалось сохранить промпт: " + r.error, "err");
+        setStatus(t("status.prompt_save_failed") + r.error, "err");
         return;
       }
       promptData[promptKind] = value;
       closePrompt();
-      setStatus("Промпт сохранён", "ok");
+      setStatus(t("status.prompt_saved"), "ok");
     });
   }
 
@@ -519,7 +520,7 @@
     if (!api) return;
     api.list_chats().then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Не удалось получить список чатов: " + ((r && r.error) || "ошибка"), "err");
+        setStatus(t("status.chats_list_failed") + ((r && r.error) || t("status.err_generic")), "err");
         return;
       }
       topicFiles = r.files || [];
@@ -534,8 +535,8 @@
     if (!api) return;
     topicUpdateId = null;
     chatContextMode = false;
-    $("topicModalHead").textContent = "Объединить чаты в тему";
-    $("btnTopicCreate").textContent = "Создать справку";
+    $("topicModalHead").textContent = t("modal.topic_head");
+    $("btnTopicCreate").textContent = t("modal.create_topic");
     resetTopicList();
     $("topicModal").classList.remove("hidden");
     loadTopicChats(null);
@@ -545,8 +546,8 @@
     if (!api) return;
     topicUpdateId = topic.topic_id;
     chatContextMode = false;
-    $("topicModalHead").textContent = "Обновить тему: " + topic.name;
-    $("btnTopicCreate").textContent = "Обновить справку";
+    $("topicModalHead").textContent = t("modal.update_topic", { name: topic.name });
+    $("btnTopicCreate").textContent = t("modal.update_topic_btn");
     resetTopicList();
     $("topicModal").classList.remove("hidden");
     loadTopicChats(topic.chats || []);
@@ -556,8 +557,8 @@
     if (!api) return;
     topicUpdateId = null;
     chatContextMode = false;
-    $("topicModalHead").textContent = "Объединить чаты в тему";
-    $("btnTopicCreate").textContent = "Создать справку";
+    $("topicModalHead").textContent = t("modal.topic_head");
+    $("btnTopicCreate").textContent = t("modal.create_topic");
     resetTopicList();
     $("topicModal").classList.remove("hidden");
     api.chats_without_topic().then(function (r) {
@@ -583,8 +584,8 @@
       const hint = document.createElement("div");
       hint.className = "drop-empty";
       hint.textContent = q
-        ? "Ничего не найдено"
-        : "Нет обработанных чатов. Сначала выполните импорт.";
+        ? t("modal.no_matches")
+        : t("modal.no_chats");
       box.appendChild(hint);
       return;
     }
@@ -604,7 +605,7 @@
       const meta = [];
       if (f.service) meta.push(f.service);
       if (f.date) meta.push(f.date);
-      if (f.messages && f.messages.total) meta.push(f.messages.total + " сообщ.");
+      if (f.messages && f.messages.total) meta.push(t("chat.msgs", { n: f.messages.total }));
       const info = document.createElement("span");
       info.className = "topic-info dim";
       info.textContent = meta.length ? " — " + meta.join(", ") : "";
@@ -617,7 +618,7 @@
 
   function renderTopicCount() {
     const n = topicFiles.filter(function (f) { return f._selected; }).length;
-    $("topicCount").textContent = "Выбрано: " + n;
+    $("topicCount").textContent = t("status.selected") + n;
     $("btnTopicCreate").disabled = n === 0;
   }
 
@@ -629,7 +630,7 @@
     if (chatContextMode) {
       closeTopic();
       api.set_chat_context(selected).then(function () {
-        setStatus("Заметки прикреплены к чату: " + selected.length, "ok");
+        setStatus(t("status.attached", { n: selected.length }), "ok");
       });
       return;
     }
@@ -638,21 +639,21 @@
     if (topicUpdateId) {
       api.update_topic({ topic_id: topicUpdateId, files: selected }).then(function (started) {
         if (started && started.ok === false) {
-          setStatus("Не удалось запустить: " + started.error, "err");
+          setStatus(t("status.start_failed") + started.error, "err");
           return;
         }
         setBusy(true);
-        setStatus("Обновление темы…", null);
+        setStatus(t("status.updating_topic"), null);
       });
       return;
     }
     api.create_topic({ files: selected }).then(function (started) {
       if (started && started.ok === false) {
-        setStatus("Не удалось запустить: " + started.error, "err");
+        setStatus(t("status.start_failed") + started.error, "err");
         return;
       }
       setBusy(true);
-      setStatus("Объединение в тему…", null);
+      setStatus(t("status.topic_running"), null);
     });
   }
 
@@ -663,11 +664,11 @@
     $("log").textContent = "";
     api.group_all().then(function (started) {
       if (started && started.ok === false) {
-        setStatus("Не удалось запустить: " + started.error, "err");
+        setStatus(t("status.start_failed") + started.error, "err");
         return;
       }
       setBusy(true);
-      setStatus("Авто-группировка…", null);
+      setStatus(t("status.group_running"), null);
     });
   }
 
@@ -687,14 +688,14 @@
     if (!api) return;
     api.list_topics().then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Не удалось получить список тем: " + ((r && r.error) || "ошибка"), "err");
+        setStatus(t("status.topics_list_failed") + ((r && r.error) || t("status.err_generic")), "err");
         return;
       }
       renderTopicManageList(r.topics || []);
     });
     api.chats_without_topic().then(function (r) {
       const n = r && r.ok === false ? 0 : (r.files || []).length;
-      $("topicOrphansCount").textContent = "Чаты без темы: " + n;
+      $("topicOrphansCount").textContent = t("modal.orphans") + n;
     });
   }
 
@@ -704,34 +705,34 @@
     if (!topics.length) {
       const hint = document.createElement("div");
       hint.className = "drop-empty";
-      hint.textContent = "Тем ещё нет. Создайте первую через «Объединить в тему…».";
+      hint.textContent = t("modal.no_topics");
       box.appendChild(hint);
       return;
     }
-    topics.forEach(function (t) {
+    topics.forEach(function (topic) {
       const row = document.createElement("div");
       row.className = "topic-manage-item";
       const head = document.createElement("div");
       head.className = "topic-manage-head";
       const name = document.createElement("span");
       name.className = "topic-title";
-      name.textContent = t.name;
+      name.textContent = topic.name;
       const meta = document.createElement("span");
       meta.className = "topic-info dim";
-      meta.textContent = " — " + t.chats.length + " чат(ов)" + (t.created ? ", " + t.created : "");
+      meta.textContent = " — " + t("modal.chats_n", { n: topic.chats.length }) + (topic.created ? ", " + topic.created : "");
       head.appendChild(name);
       head.appendChild(meta);
       const actions = document.createElement("div");
       actions.className = "topic-manage-actions";
-      actions.appendChild(makeManageButton("Перегенерировать", function () {
+      actions.appendChild(makeManageButton(t("modal.regenerate"), function () {
         closeTopicManage();
-        openTopicForUpdate(t);
+        openTopicForUpdate(topic);
       }));
-      actions.appendChild(makeManageButton("Переименовать", function () {
-        renameTopicAction(t);
+      actions.appendChild(makeManageButton(t("modal.rename"), function () {
+        renameTopicAction(topic);
       }));
-      actions.appendChild(makeManageButton("Удалить", function () {
-        deleteTopicAction(t);
+      actions.appendChild(makeManageButton(t("modal.delete"), function () {
+        deleteTopicAction(topic);
       }, true));
       row.appendChild(head);
       row.appendChild(actions);
@@ -748,26 +749,26 @@
   }
 
   function renameTopicAction(topic) {
-    const name = window.prompt("Новое имя темы:", topic.name);
+    const name = window.prompt(t("modal.new_topic_name"), topic.name);
     if (!name || name.trim() === "" || name === topic.name) return;
     api.rename_topic(topic.topic_id, name.trim()).then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Не удалось переименовать: " + ((r && r.error) || "ошибка"), "err");
+        setStatus(t("status.rename_failed") + ((r && r.error) || t("status.err_generic")), "err");
         return;
       }
-      setStatus("Тема переименована: " + r.name, "ok");
+      setStatus(t("status.renamed", { name: r.name }), "ok");
       refreshTopicManage();
     });
   }
 
   function deleteTopicAction(topic) {
-    if (!window.confirm("Удалить тему «" + topic.name + "»? (чаты не удаляются)")) return;
+    if (!window.confirm(t("modal.delete_confirm", { name: topic.name }))) return;
     api.delete_topic(topic.topic_id).then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Не удалось удалить: " + ((r && r.error) || "ошибка"), "err");
+        setStatus(t("status.delete_failed") + ((r && r.error) || t("status.err_generic")), "err");
         return;
       }
-      setStatus("Тема удалена", "ok");
+      setStatus(t("status.topic_deleted"), "ok");
       refreshTopicManage();
     });
   }
@@ -781,10 +782,10 @@
   }
 
   const OBS_STATUS = {
-    ok: ["✓ ok", "s-ok"],
-    stale: ["~ требует обновления", "s-stale"],
-    missing: ["- нет", "s-missing"],
-    conflict: ["? конфликт", "s-conflict"],
+    ok: ["obs.st_ok", "s-ok"],
+    stale: ["obs.st_stale", "s-stale"],
+    missing: ["obs.st_missing", "s-missing"],
+    conflict: ["obs.st_conflict", "s-conflict"],
   };
 
   // ── Tab help ("?" opens the floating help window) ───────────────────────
@@ -810,17 +811,18 @@
     applyObsResultHeight();
     if (!r || r.ok === false) {
       box.innerHTML = "";
-      setStatus(((r && r.error) || "Ошибка сканирования"), "err");
+      setStatus(((r && r.error) || t("status.scan_error")), "err");
       return;
     }
     if (!r.folders || r.folders.length === 0) {
-      box.innerHTML = '<p class="dim">Файлов и подпапок не найдено.</p>';
-      setStatus("Obsidianize: пусто (" + r.root + ")", "warn");
+      box.innerHTML = '<p class="dim"></p>';
+      box.firstChild.textContent = t("obs.no_files");
+      setStatus(t("status.obs_empty", { root: r.root }), "warn");
       return;
     }
     const rows = r.folders.map(function (f) {
       const c = f.categories || {};
-      const st = OBS_STATUS[f.card] || ["—", "s-missing"];
+      const st = OBS_STATUS[f.card] || ["obs.st_missing", "s-missing"];
       let changesHtml = "";
       if (f.card === "stale" && (f.changes || []).length) {
         changesHtml =
@@ -829,11 +831,11 @@
           "</td></tr>";
       } else if (f.card === "stale") {
         changesHtml =
-          "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>⚠ есть изменения</td></tr>";
+          "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>⚠ " + escHtml(t("obs.has_changes")) + "</td></tr>";
       } else if (f.card === "conflict" && f.adoptable) {
         changesHtml =
           "<tr class='obs-changes-row'><td></td><td colspan='8' class='dim'>" +
-          "чужая заметка — отметь «Принять существующую заметку как заметки» и запусти Obsidianize" +
+          escHtml(t("obs.conflict_hint")) +
           "</td></tr>";
       }
       return "<tr><td class='mono'>" + escHtml(f.rel || "·") + "</td>" +
@@ -844,18 +846,18 @@
         "<td>" + (c.images || 0) + "</td>" +
         "<td>" + (c.other || 0) + "</td>" +
         "<td>" + f.subfolders + "</td>" +
-        "<td class='" + st[1] + "'>" + st[0] + "</td></tr>" + changesHtml;
+        "<td class='" + st[1] + "'>" + escHtml(t(st[0])) + "</td></tr>" + changesHtml;
     }).join("");
     box.innerHTML = "<table class='obs-table'><thead><tr>" +
-      "<th>Папка</th><th>Файлов</th><th>📐</th><th>📊</th><th>📄</th><th>🖼️</th><th>📦</th><th>Подпапок</th><th>Карточка</th>" +
+      "<th>" + t("obs.th_folder") + "</th><th>" + t("obs.th_files") + "</th><th>📐</th><th>📊</th><th>📄</th><th>🖼️</th><th>📦</th><th>" + t("obs.th_subfolders") + "</th><th>" + t("obs.th_card") + "</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
-    setStatus("Obsidianize: " + (r.summary || (r.folders.length + " папок")) + " · " + r.root, "ok");
+    setStatus("Obsidianize: " + (r.summary || t("obs.n_folders", { n: r.folders.length })) + " · " + r.root, "ok");
   }
 
   function runObsScan() {
     if (!api) return;
     const path = $("obsDir").value.trim();
-    if (!path) { setStatus("Выберите папку для сканирования", "err"); return; }
+    if (!path) { setStatus(t("status.pick_scan_folder"), "err"); return; }
     api.obs_scan(path).then(renderObsScan);
   }
 
@@ -864,34 +866,34 @@
   function runIntegration() {
     if (!api) return;
     const vault = $("obsDir").value.trim();
-    if (!vault) { setStatus("Выберите папку Obsidian vault (в поле «Папка»)", "err"); return; }
+    if (!vault) { setStatus(t("status.pick_vault"), "err"); return; }
 
     api.obs_integration_status({ vault: vault }).then(function (s) {
       if (!s || s.ok === false) {
-        setStatus("Integration: " + ((s && s.error) || "ошибка проверки"), "err");
+        setStatus("Integration: " + ((s && s.error) || t("status.check_error")), "err");
         return;
       }
       if (!s.vault_found) {
-        setStatus("Integration: это не Obsidian vault — нет папки .obsidian", "err");
+        setStatus(t("status.not_vault"), "err");
         return;
       }
       if (!s.templater_installed) {
-        setStatus("Integration: плагин Templater не найден в vault. Установите Templater в Obsidian и повторите.", "warn");
+        setStatus(t("status.no_templater"), "warn");
         return;
       }
       if (!integrationRepairPending && s.template_installed) {
         integrationRepairPending = true;
-        setStatus("Integration: шаблон уже установлен. Нажмите ещё раз, чтобы перезаписать (Repair).", "warn");
+        setStatus(t("status.repair_hint"), "warn");
         return;
       }
 
       api.obs_integration_install({ vault: vault, repair: integrationRepairPending }).then(function (r) {
         integrationRepairPending = false;
         if (!r || r.ok === false) {
-          setStatus("Integration: " + ((r && r.error) || "не удалось установить"), "err");
+          setStatus("Integration: " + ((r && r.error) || t("status.install_failed")), "err");
           return;
         }
-        setStatus("✓ Интеграция установлена. В Obsidian: Настройки → Горячие клавиши → «Obsidianizer Update» → Alt+3.", "ok");
+        setStatus(t("status.integration_ok"), "ok");
         renderLog("✓ Integration: " + r.target, "ok");
         renderLog("  " + (r.hint || ""), "dim");
       });
@@ -947,10 +949,10 @@
   function runObs() {
     if (!api) return;
     const path = $("obsDir").value.trim();
-    if (!path) { setStatus("Укажите папку для Obsidianize", "err"); return; }
+    if (!path) { setStatus(t("status.need_obs_folder"), "err"); return; }
     $("obsResultSection").classList.add("hidden");
     $("obsSplitter").classList.add("hidden");
-    setStatus("Obsidianize: запуск…", null);
+    setStatus(t("status.obs_starting"), null);
     api.obs_obsidianize({
       path: path,
       recursive: $("obsRecursive").checked,
@@ -961,7 +963,7 @@
       template: $("obsTemplate").value,
     }).then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("Obsidianize: " + ((r && r.error) || "не удалось запустить"), "err");
+        setStatus("Obsidianize: " + ((r && r.error) || t("status.run_failed")), "err");
       }
     });
   }
@@ -1001,11 +1003,12 @@
     $("aiFoldersSection").classList.remove("hidden");
     if (!r || r.ok === false) {
       box.innerHTML = "";
-      setStatus(((r && r.error) || "ошибка сканирования"), "err");
+      setStatus(((r && r.error) || t("status.scan_error_low")), "err");
       return;
     }
     if (!r.folders || r.folders.length === 0) {
-      box.innerHTML = '<p class="dim">Папок не найдено.</p>';
+      box.innerHTML = '<p class="dim"></p>';
+      box.firstChild.textContent = t("ai.no_folders");
       return;
     }
     reviewSelection.clear();
@@ -1015,7 +1018,7 @@
       label.className = "chat-item";
       label.innerHTML = "<input type='checkbox'> " +
         "<span class='chat-found-rel'>" + escHtml(f.rel || "·") + "</span>" +
-        "<span class='dim'>" + f.files + " файл(ов)" + (f.card === "missing" ? " · карточки нет" : "") + "</span>";
+        "<span class='dim'>" + escHtml(t("ai.files_n", { n: f.files }) + (f.card === "missing" ? t("ai.no_card") : "")) + "</span>";
       const cb = label.querySelector("input");
       cb.checked = true;
       cb.addEventListener("change", function () {
@@ -1038,7 +1041,7 @@
     labels.forEach(function (l) {
       if (l.querySelector("input").checked) n += 1;
     });
-    $("aiFolderCount").textContent = "Выбрано: " + n;
+    $("aiFolderCount").textContent = t("status.selected") + n;
   }
 
   function renderReviewFiles(message) {
@@ -1047,7 +1050,8 @@
       const box = $("aiReviewList");
       $("aiReviewSection").classList.remove("hidden");
       if (!m.files || m.files.length === 0) {
-        box.innerHTML = '<p class="dim">Обзоры не сформированы.</p>';
+        box.innerHTML = '<p class="dim"></p>';
+        box.firstChild.textContent = t("ai.no_reviews");
         return;
       }
       box.innerHTML = m.files.map(function (f) {
@@ -1059,30 +1063,30 @@
   function runReviewScan() {
     if (!api) return;
     const path = $("aiDir").value.trim();
-    if (!path) { setStatus("Укажите папку для анализа", "err"); return; }
+    if (!path) { setStatus(t("status.need_review_folder"), "err"); return; }
     api.obs_scan(path).then(renderReviewFolders);
   }
 
   function runReview() {
     if (!api) return;
     const path = $("aiDir").value.trim();
-    if (!path) { setStatus("Укажите папку для анализа", "err"); return; }
+    if (!path) { setStatus(t("status.need_review_folder"), "err"); return; }
     const rels = [];
     $("aiFolderList").querySelectorAll("label").forEach(function (l) {
       if (l.querySelector("input").checked) {
         rels.push(l.querySelector(".chat-found-rel").textContent);
       }
     });
-    if (rels.length === 0) { setStatus("Выберите хотя бы одну папку", "err"); return; }
+    if (rels.length === 0) { setStatus(t("status.pick_one_folder"), "err"); return; }
     $("aiReviewSection").classList.add("hidden");
-    setStatus("AI-анализ: запуск (" + rels.length + " папок)…", null);
+    setStatus(t("status.review_starting", { n: rels.length }), null);
     api.review_run({
       path: path,
       rels: rels,
       include_text: $("aiIncludeText").checked,
     }).then(function (r) {
       if (!r || r.ok === false) {
-        setStatus("AI-анализ: " + ((r && r.error) || "не удалось запустить"), "err");
+        setStatus(t("status.review_prefix") + ((r && r.error) || t("status.run_failed")), "err");
       }
     });
   }
@@ -1108,8 +1112,8 @@
     if (!api) return;
     topicUpdateId = null;
     chatContextMode = true;
-    $("topicModalHead").textContent = "Выберите заметки для контекста";
-    $("btnTopicCreate").textContent = "Добавить в контекст";
+    $("topicModalHead").textContent = t("modal.pick_context");
+    $("btnTopicCreate").textContent = t("modal.add_context");
     resetTopicList();
     $("topicModal").classList.remove("hidden");
     api.chat_context().then(function (r) {
@@ -1124,12 +1128,12 @@
     if (!api) return;
     topicUpdateId = null;
     chatContextMode = false;
-    $("topicModalHead").textContent = "Объединить найденные чаты в тему";
-    $("btnTopicCreate").textContent = "Создать справку";
+    $("topicModalHead").textContent = t("modal.topic_found_head");
+    $("btnTopicCreate").textContent = t("modal.create_topic");
     resetTopicList();
     $("topicModal").classList.remove("hidden");
     loadTopicChats(rels);
-    setStatus("Найдено " + rels.length + " чат(ов) — отметьте нужные и создайте тему", "ok");
+    setStatus(t("status.found_n", { n: rels.length }), "ok");
   }
 
   // ── draggable modals ─────────────────────────────────────────────────────
@@ -1194,6 +1198,18 @@
 
   // ── init ───────────────────────────────────────────────────────────────
 
+  function updateLangButtons() {
+    const lang = window.I18N_LANG;
+    if ($("langRu")) $("langRu").classList.toggle("active", lang === "ru");
+    if ($("langEn")) $("langEn").classList.toggle("active", lang === "en");
+  }
+
+  function switchLang(lang) {
+    window.setLang(lang);
+    updateLangButtons();
+    if (api && api.set_language) api.set_language(lang);
+  }
+
   function init() {
     api = window.pywebview.api;
     api.defaults().then(function (d) {
@@ -1212,8 +1228,14 @@
       $("obsGalleryPrefix").value = d.obsidianize_gallery_prefix || "";
       $("obsTemplate").value = d.obsidianize_template || "github";
       $("aiDir").value = d.obsidianize_dir || "";
+      window.initLang(d.lang_resolved === "en" ? "en" : "ru");
+      window.applyI18n(document);
+      updateLangButtons();
       toggleAiDetails();
     });
+
+    $("langRu").addEventListener("click", function () { switchLang("ru"); });
+    $("langEn").addEventListener("click", function () { switchLang("en"); });
 
     $("tabNavObs").addEventListener("click", function () { showTab("obsidianize"); });
     $("tabNavChat").addEventListener("click", function () { showTab("chat"); });
@@ -1322,7 +1344,7 @@
     makeDraggable("topicManageModal");
 
     setTimeout(fadeSplash, 1800);
-    setStatus("Готово. Выберите папки и нажмите «Обработать».", null);
+    setStatus(t("status.ready"), null);
   }
 
   function fadeSplash() {

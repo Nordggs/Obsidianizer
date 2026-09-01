@@ -1,5 +1,21 @@
 # Obsidianizer
 
+## [0.6.0] - 2026-09-02
+
+### Added
+- **RU/EN interface localization** (stage 1 of the i18n effort) — every
+  button, label, tooltip, placeholder, status and error message switches
+  live via the RU|EN toggle in the footer. The choice persists in
+  `config.yml`; a fresh install auto-detects the language from the OS locale.
+- New i18n infrastructure: `web/i18n.js` (JS string tables + `t()` +
+  `applyI18n()`) and `i18n.py` (`tr()`) for backend messages.
+
+### Fixed principles
+- **UI language ≠ data language**: Markdown cards, LLM prompts and the
+  Templater template stay in Russian regardless of the UI language.
+- Backend progress/log message decoupling (structured events) is planned
+  for the follow-up release.
+
 ## [0.5.7] - 2026-09-02
 
 ### Added

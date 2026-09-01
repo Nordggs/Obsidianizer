@@ -21,6 +21,8 @@ import os
 import sys
 from pathlib import Path
 
+from .i18n import tr
+
 TEMPLATE_NAME = "Obsidianizer Update.md"
 TEMPLATER_PLUGIN_DIR = "templater-obsidian"
 
@@ -139,7 +141,7 @@ def install_obsidian_integration(vault: Path, repair: bool = False) -> dict:
     if not vault.is_dir() or not (vault / ".obsidian").is_dir():
         return {
             "ok": False,
-            "error": "Это не Obsidian vault: не найдена папка .obsidian",
+            "error": tr("int.not_vault"),
         }
 
     det = detect_templater_folder(vault)
@@ -147,11 +149,7 @@ def install_obsidian_integration(vault: Path, repair: bool = False) -> dict:
         return {
             "ok": False,
             "templater_missing": True,
-            "error": (
-                "Плагин Templater не найден (нет .obsidian/plugins/"
-                f"{TEMPLATER_PLUGIN_DIR}). Установите Templater в Obsidian "
-                "и повторите установку интеграции."
-            ),
+                "error": tr("int.templater_missing", plugin=TEMPLATER_PLUGIN_DIR),
         }
 
     folder: Path = det["folder"]
@@ -163,7 +161,7 @@ def install_obsidian_integration(vault: Path, repair: bool = False) -> dict:
             "ok": False,
             "exists": True,
             "target": str(target),
-            "error": "Шаблон уже установлен. Повторный запуск перезапишет его (Repair).",
+            "error": tr("int.exists"),
         }
 
     cli = resolve_cli_command()
@@ -175,8 +173,5 @@ def install_obsidian_integration(vault: Path, repair: bool = False) -> dict:
         "ok": True,
         "target": str(target),
         "cli": cli,
-        "hint": (
-            "В Obsidian: Настройки → Горячие клавиши → «Obsidianizer Update» "
-            "→ назначьте Alt+3."
-        ),
+        "hint": tr("int.hint"),
     }

@@ -1152,3 +1152,48 @@ def test_extract_templates_no_source(tmp_path, monkeypatch):
     res = app.extract_templates({"target": str(tmp_path / "dst")})
     assert res["ok"] is False
     assert "integration" in res["error"]
+
+
+# ── i18n: language setting ───────────────────────────────────────────────────
+
+
+def test_defaults_contains_language():
+    app = UIApp()
+    d = app.defaults()
+    assert "language" in d
+    assert "lang_resolved" in d
+    assert d["lang_resolved"] in ("ru", "en")
+
+
+def test_set_language_persists_and_resolves(tmp_path):
+    app = UIApp()
+    app.settings.config_path = tmp_path / "config.yml"
+    res = app.set_language("en")
+    assert res["ok"] is True
+    assert res["lang_resolved"] == "en"
+    loaded = Settings.load(tmp_path / "config.yml")
+    assert loaded.language == "en"
+
+
+def test_set_language_auto_empty(tmp_path):
+    app = UIApp()
+    app.settings.config_path = tmp_path / "config.yml"
+    res = app.set_language("")
+    assert res["ok"] is True
+    assert res["lang_resolved"] in ("ru", "en")
+
+
+def test_bridge_errors_localized(tmp_path, monkeypatch):
+    """Error strings returned to the UI follow the active language."""
+    from obsidianizer import i18n as i18n_mod
+
+    app = UIApp()
+    app.settings.config_path = tmp_path / "config.yml"
+    app._busy = True  # any bridge call now reports busy
+    i18n_mod.set_language("en")
+    res = app.create_topic({})
+    assert res["error"] == "a run is already in progress"
+    i18n_mod.set_language("ru")
+    res = app.create_topic({})
+    assert res["error"] == "запуск уже выполняется"
+    app._busy = False

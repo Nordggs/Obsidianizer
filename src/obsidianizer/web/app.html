@@ -34,9 +34,9 @@
       </svg>
       Obsidianize
     </button>
-    <button id="tabNavChat" class="tab" data-page="chat">💬 Чат-обработка</button>
-    <button id="tabNavAi" class="tab" data-page="ai">🤖 AI-анализ</button>
-    <button id="tabNavHelp" class="tab tab-help" title="Справка по текущей вкладке">
+    <button id="tabNavChat" class="tab" data-page="chat" data-i18n="tabs.chat">💬 Чат-обработка</button>
+    <button id="tabNavAi" class="tab" data-page="ai" data-i18n="tabs.ai">🤖 AI-анализ</button>
+    <button id="tabNavHelp" class="tab tab-help" data-i18n-title="tabs.help_title" title="Справка по текущей вкладке">
       <span id="tabHelpIcon"></span><span class="help-q">?</span>
     </button>
   </nav>
@@ -44,111 +44,111 @@
   <section id="page-obsidianize" class="tab-page active">
     <section class="panel">
       <div class="row">
-        <label for="obsDir">Папка:</label>
+        <label for="obsDir" data-i18n="obs.folder">Папка:</label>
         <input id="obsDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
-        <button id="btnObsDir" class="pick" title="Выбрать папку">Выбрать</button>
+        <button id="btnObsDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
       </div>
       <div class="row">
-        <label for="obsVaultRoot">Корень Obsidian (для галереи):</label>
-        <input id="obsVaultRoot" type="text" spellcheck="false" placeholder="необязательно">
-        <button id="btnObsVaultRoot" class="pick" title="Выбрать корень хранилища">Выбрать</button>
+        <label for="obsVaultRoot" data-i18n="obs.vault_root">Корень Obsidian (для галереи):</label>
+        <input id="obsVaultRoot" type="text" spellcheck="false" placeholder="необязательно" data-i18n-placeholder="obs.optional">
+        <button id="btnObsVaultRoot" class="pick" data-i18n-title="obs.pick_vault_root" title="Выбрать корень хранилища" data-i18n="buttons.pick">Выбрать</button>
       </div>
       <div class="row">
-        <label for="obsGalleryPrefix" title="Запасной базовый путь галереи, когда проекты вне Vault и «Корень Obsidian» не задан. Пример: PROJECT/OBSIDIAN/Objects">Базовый путь галереи (для проектов вне Vault):</label>
+        <label for="obsGalleryPrefix" data-i18n-title="obs.gallery_prefix_title" title="Запасной базовый путь галереи, когда проекты вне Vault и «Корень Obsidian» не задан. Пример: PROJECT/OBSIDIAN/Objects" data-i18n="obs.gallery_prefix">Базовый путь галереи (для проектов вне Vault):</label>
         <input id="obsGalleryPrefix" type="text" spellcheck="false" placeholder="PROJECT/OBSIDIAN/Objects">
       </div>
       <div class="row opts">
-        <label class="check"><input type="checkbox" id="obsRecursive" checked> Вложенные папки</label>
-        <label class="check"><input type="checkbox" id="obsGallery" checked> Галерея</label>
-        <label class="check"><input type="checkbox" id="obsAdopt" title="Если существует чужая заметка с именем папки (без маркера) — переименовать её в <имя>_заметки.md, сохранив содержимое, и создать карточку">Принять существующую заметку как заметки</label>
-        <span class="field-label">Шаблон карточки:</span>
-        <select id="obsTemplate" title="github — Project Dashboard (README-стиль) | classic — старый формат таблиц">
+        <label class="check"><input type="checkbox" id="obsRecursive" checked> <span data-i18n="obs.recursive">Вложенные папки</span></label>
+        <label class="check"><input type="checkbox" id="obsGallery" checked> <span data-i18n="obs.gallery">Галерея</span></label>
+        <label class="check"><input type="checkbox" id="obsAdopt" data-i18n-title="obs.adopt_title" title="Если существует чужая заметка с именем папки (без маркера) — переименовать её в <имя>_заметки.md, сохранив содержимое, и создать карточку"><span data-i18n="obs.adopt">Принять существующую заметку как заметки</span></label>
+        <span class="field-label" data-i18n="obs.template">Шаблон карточки:</span>
+        <select id="obsTemplate" data-i18n-title="obs.template_title" title="github — Project Dashboard (README-стиль) | classic — старый формат таблиц">
           <option value="github">github (Project Dashboard)</option>
           <option value="classic">classic</option>
         </select>
       </div>
-      <p class="ai-note">Исходные файлы не изменяются: создаются/обновляются только карточки <span class="mono">.md</span>.</p>
+      <p class="ai-note"><span data-i18n="obs.no_change_a">Исходные файлы не изменяются: создаются/обновляются только карточки</span> <span class="mono">.md</span><span data-i18n="obs.no_change_b">.</span></p>
     </section>
 
     <section class="actions">
-      <button id="btnObsScan" class="ghost" title="Только прочитать папку и показать статус карточек (ничего не пишет)">🔍 Просканировать</button>
-      <button id="btnObsRun" class="primary" title="Создать/обновить карточки для каждой папки (исходники не трогаются)">✨ Obsidianize</button>
-      <button id="btnObsOpen" class="ghost" title="Открыть папку в проводнике">Открыть папку</button>
-      <button id="btnObsIntegration" class="ghost" title="Связать с Obsidian: установить шаблон Templater с автоматическим путём к Obsidianizer">🔗 Obsidian Integration</button>
+      <button id="btnObsScan" class="ghost" data-i18n-title="obs.scan_title" title="Только прочитать папку и показать статус карточек (ничего не пишет)" data-i18n="obs.scan">🔍 Просканировать</button>
+      <button id="btnObsRun" class="primary" data-i18n-title="obs.run_title" title="Создать/обновить карточки для каждой папки (исходники не трогаются)">✨ Obsidianize</button>
+      <button id="btnObsOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
+      <button id="btnObsIntegration" class="ghost" data-i18n-title="obs.integration_title" title="Связать с Obsidian: установить шаблон Templater с автоматическим путём к Obsidianizer">🔗 Obsidian Integration</button>
     </section>
 
     <section id="obsResultSection" class="panel hidden">
-      <div class="stage-label">Карточки</div>
+      <div class="stage-label" data-i18n="obs.cards">Карточки</div>
       <div id="obsResult" class="obs-result"></div>
     </section>
-    <div id="obsSplitter" class="splitter hidden" title="Потяните, чтобы изменить размер области карточек"></div>
+    <div id="obsSplitter" class="splitter hidden" data-i18n-title="obs.splitter_title" title="Потяните, чтобы изменить размер области карточек"></div>
   </section>
 
   <section id="page-chat" class="tab-page">
     <section class="panel">
       <div class="row">
-        <label for="source">Источник:</label>
+        <label for="source" data-i18n="chat.source">Источник:</label>
         <input id="source" type="text" spellcheck="false" placeholder="D:\raw">
-        <button id="btnSource" class="pick" title="Выбрать папку">Выбрать</button>
+        <button id="btnSource" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
       </div>
       <div class="row">
-        <label for="target">Результат обработки:</label>
+        <label for="target" data-i18n="chat.target">Результат обработки:</label>
         <input id="target" type="text" spellcheck="false" placeholder="D:\processed">
-        <button id="btnTarget" class="pick" title="Выбрать папку">Выбрать</button>
+        <button id="btnTarget" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
       </div>
       <div class="row">
-        <label for="enriched">AI-результат:</label>
+        <label for="enriched" data-i18n="chat.enriched">AI-результат:</label>
         <input id="enriched" type="text" spellcheck="false" placeholder="D:\enriched">
-        <button id="btnEnriched" class="pick" title="Выбрать папку">Выбрать</button>
+        <button id="btnEnriched" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
       </div>
     </section>
 
     <section class="panel">
       <div class="ai-row">
-        <label class="check"><input type="checkbox" id="ai" checked> AI-постобработка</label>
+        <label class="check"><input type="checkbox" id="ai" checked> <span data-i18n="ai.post">AI-постобработка</span></label>
       </div>
       <div id="aiDetails" class="ai-details">
         <div class="row">
-          <label for="model">Модель:</label>
+          <label for="model" data-i18n="ai.model">Модель:</label>
           <div class="model-wrap">
             <input id="model" type="text" spellcheck="false" placeholder="deepseek-r1:14b">
-            <button id="btnModelDropdown" class="drop-btn" title="Показать все модели">▼</button>
+            <button id="btnModelDropdown" class="drop-btn" data-i18n-title="ai.show_models" title="Показать все модели">▼</button>
             <div id="modelDropdown" class="dropdown hidden"></div>
           </div>
-          <button id="btnRefreshModels" class="pick" title="Получить список моделей из Ollama">Обновить</button>
-          <span class="field-label">Модель чата:</span>
+          <button id="btnRefreshModels" class="pick" data-i18n-title="ai.refresh_models_title" title="Получить список моделей из Ollama" data-i18n="buttons.refresh">Обновить</button>
+          <span class="field-label" data-i18n="ai.chat_model">Модель чата:</span>
           <input id="chatModel" type="text" spellcheck="false" placeholder="qwen2.5:latest"
-            title="Модель для AI-чата и поиска по коллекции (импорт использует модель выше)">
+            data-i18n-title="ai.chat_model_title" title="Модель для AI-чата и поиска по коллекции (импорт использует модель выше)">
         </div>
         <div class="row">
-          <span class="field-label">Промпт:</span>
-          <button id="btnPrompt" class="ghost" title="Посмотреть и изменить промпты импорта, AI-постобработки и объединения в тему">Изменить…</button>
-          <span class="ai-note">Локальная модель через Ollama</span>
+          <span class="field-label" data-i18n="ai.prompt">Промпт:</span>
+          <button id="btnPrompt" class="ghost" data-i18n-title="ai.edit_prompts_title" title="Посмотреть и изменить промпты импорта, AI-постобработки и объединения в тему" data-i18n="ai.edit_prompts">Изменить…</button>
+          <span class="ai-note" data-i18n="ai.local_model">Локальная модель через Ollama</span>
         </div>
         <div class="row">
-          <button id="btnTopic" class="pick" title="Объединить несколько выбранных чатов в одну тему (enriched/topics)">Объединить в тему…</button>
-          <button id="btnTopics" class="pick" title="Список тем: перегенерация, переименование, удаление, чаты без темы">Темы…</button>
-          <button id="btnGroupAll" class="pick" title="Автоматически сгруппировать все обработанные чаты в темы (без выбора)">Авто-группировка</button>
+          <button id="btnTopic" class="pick" data-i18n-title="ai.topic_btn_title" title="Объединить несколько выбранных чатов в одну тему (enriched/topics)" data-i18n="ai.topic_btn">Объединить в тему…</button>
+          <button id="btnTopics" class="pick" data-i18n-title="ai.topics_btn_title" title="Список тем: перегенерация, переименование, удаление, чаты без темы" data-i18n="ai.topics_btn">Темы…</button>
+          <button id="btnGroupAll" class="pick" data-i18n-title="ai.group_all_title" title="Автоматически сгруппировать все обработанные чаты в темы (без выбора)" data-i18n="ai.group_all">Авто-группировка</button>
         </div>
       </div>
       <div class="row opts">
-        <label class="check"><input type="checkbox" id="dry"> Только просмотр</label>
-        <label class="check"><input type="checkbox" id="prune"> Удалить старые результаты</label>
-        <label class="check"><input type="checkbox" id="pruneAi"> Удалять сироты из AI-результата</label>
+        <label class="check"><input type="checkbox" id="dry"> <span data-i18n="chat.dry">Только просмотр</span></label>
+        <label class="check"><input type="checkbox" id="prune"> <span data-i18n="chat.prune">Удалить старые результаты</span></label>
+        <label class="check"><input type="checkbox" id="pruneAi"> <span data-i18n="chat.prune_ai">Удалять сироты из AI-результата</span></label>
       </div>
     </section>
 
     <section class="actions">
-      <button id="btnRun" class="primary">ОБРАБОТАТЬ<span id="runSub" class="btn-sub">Только импорт</span></button>
-      <button id="btnStop" disabled>Стоп</button>
-      <button id="btnAi" class="ghost" title="AI-постобработка: processed → enriched (без повторного импорта)">AI-постобработка<span class="btn-sub">Только повторный AI-прогон</span></button>
-      <button id="btnChat" class="ghost" title="Спросить локальную модель по своей коллекции">AI-чат</button>
-      <button id="btnOpen" class="ghost" title="Открыть папку результата обработки (processed)">Открыть результат</button>
-      <button id="btnOpenEnriched" class="ghost" title="Открыть AI-результат (enriched)">Открыть AI-результат</button>
+      <button id="btnRun" class="primary"><span data-i18n="chat.run">ОБРАБОТАТЬ</span><span id="runSub" class="btn-sub" data-i18n="chat.run_sub">Только импорт</span></button>
+      <button id="btnStop" data-i18n="buttons.stop" disabled>Стоп</button>
+      <button id="btnAi" class="ghost" data-i18n-title="ai.post_title" title="AI-постобработка: processed → enriched (без повторного импорта)"><span data-i18n="ai.post">AI-постобработка</span><span class="btn-sub" data-i18n="ai.post_sub">Только повторный AI-прогон</span></button>
+      <button id="btnChat" class="ghost" data-i18n-title="ai.chat_title" title="Спросить локальную модель по своей коллекции" data-i18n="ai.chat">AI-чат</button>
+      <button id="btnOpen" class="ghost" data-i18n-title="chat.open_result_title" title="Открыть папку результата обработки (processed)" data-i18n="chat.open_result">Открыть результат</button>
+      <button id="btnOpenEnriched" class="ghost" data-i18n-title="chat.open_enriched_title" title="Открыть AI-результат (enriched)" data-i18n="chat.open_enriched">Открыть AI-результат</button>
     </section>
 
     <section id="progressSection" class="panel hidden">
-      <div class="stage-label">Импорт</div>
+      <div class="stage-label" data-i18n="chat.import">Импорт</div>
       <div class="progress-track"><div id="bar" class="progress-fill"></div></div>
       <div class="progress-meta">
         <span id="progText" class="mono">0 / 0</span>
@@ -157,7 +157,7 @@
     </section>
 
     <section id="aiProgressSection" class="panel hidden">
-      <div id="aiStageLabel" class="stage-label">AI-постобработка</div>
+      <div id="aiStageLabel" class="stage-label" data-i18n="ai.post">AI-постобработка</div>
       <div class="progress-track"><div id="aiBar" class="progress-fill ai-fill"></div></div>
       <div class="progress-meta">
         <span id="aiProgText" class="mono">0 / 0</span>
@@ -169,36 +169,36 @@
   <section id="page-ai" class="tab-page">
     <section class="panel">
       <div class="row">
-        <label for="aiDir">Папка:</label>
+        <label for="aiDir" data-i18n="obs.folder">Папка:</label>
         <input id="aiDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
-        <button id="btnAiDir" class="pick" title="Выбрать папку">Выбрать</button>
+        <button id="btnAiDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
       </div>
       <div class="row opts">
         <label class="check"><input type="checkbox" id="aiIncludeText" checked>
-          Включать содержимое текстовых файлов (.txt, .md)</label>
+          <span data-i18n="ai.include_text">Включать содержимое текстовых файлов (.txt, .md)</span></label>
       </div>
-      <p class="ai-note">Модель — чат-модель (qwen2.5). Результат: <span class="mono">&lt;папка&gt;_обзор.md</span>
-        рядом с карточкой проекта. Исходные файлы не изменяются.</p>
+      <p class="ai-note"><span data-i18n="ai.note_a">Модель — чат-модель (qwen2.5). Результат:</span> <span class="mono">&lt;папка&gt;_обзор.md</span>
+        <span data-i18n="ai.note_b">рядом с карточкой проекта. Исходные файлы не изменяются.</span></p>
     </section>
 
     <section class="actions">
-      <button id="btnAiScan" class="ghost" title="Показать список папок с карточками">🔍 Показать папки</button>
-      <button id="btnAiRun" class="primary" title="Сформировать обзоры выбранных папок чат-моделью">🤖 Сформировать обзоры</button>
-      <button id="btnAiOpen" class="ghost" title="Открыть папку в проводнике">Открыть папку</button>
+      <button id="btnAiScan" class="ghost" data-i18n-title="ai.scan_folders_title" title="Показать список папок с карточками" data-i18n="ai.scan_folders">🔍 Показать папки</button>
+      <button id="btnAiRun" class="primary" data-i18n-title="ai.run_title" title="Сформировать обзоры выбранных папок чат-моделью" data-i18n="ai.run">🤖 Сформировать обзоры</button>
+      <button id="btnAiOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
     </section>
 
     <section id="aiFoldersSection" class="panel hidden">
-      <div class="stage-label">Папки</div>
+      <div class="stage-label" data-i18n="ai.folders">Папки</div>
       <div id="aiFolderList" class="topic-list review-list"></div>
       <div class="row opts review-opts">
-        <button id="btnAiCheckAll" class="ghost">Выбрать все</button>
-        <button id="btnAiCheckNone" class="ghost">Снять все</button>
-        <span id="aiFolderCount" class="dim">Выбрано: 0</span>
+        <button id="btnAiCheckAll" class="ghost" data-i18n="buttons.select_all">Выбрать все</button>
+        <button id="btnAiCheckNone" class="ghost" data-i18n="buttons.select_none">Снять все</button>
+        <span id="aiFolderCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
       </div>
     </section>
 
     <section id="aiReviewSection" class="panel hidden">
-      <div class="stage-label">Сформированные обзоры</div>
+      <div class="stage-label" data-i18n="ai.reviews">Сформированные обзоры</div>
       <div id="aiReviewList" class="obs-result"></div>
     </section>
   </section>
@@ -210,21 +210,21 @@
   <div id="promptModal" class="modal hidden">
     <div class="modal-box">
       <div class="modal-head">
-        <span>Промпты</span>
-        <button id="btnPromptClose" class="modal-close" title="Закрыть">×</button>
+        <span data-i18n="modal.prompts">Промпты</span>
+        <button id="btnPromptClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
       </div>
       <div class="tabs">
-        <button id="tabImport" class="tab active">Импорт</button>
-        <button id="tabAi" class="tab">AI-постобработка</button>
-        <button id="tabTopic" class="tab">Объединение в тему</button>
-        <button id="tabMap" class="tab">Карта тем</button>
+        <button id="tabImport" class="tab active" data-i18n="modal.tab_import">Импорт</button>
+        <button id="tabAi" class="tab" data-i18n="ai.post">AI-постобработка</button>
+        <button id="tabTopic" class="tab" data-i18n="modal.tab_topic">Объединение в тему</button>
+        <button id="tabMap" class="tab" data-i18n="modal.tab_map">Карта тем</button>
       </div>
       <textarea id="promptText" spellcheck="false"></textarea>
       <div class="modal-actions">
-        <button id="btnPromptReset" class="ghost">Восстановить стандартный</button>
+        <button id="btnPromptReset" class="ghost" data-i18n="modal.reset_prompt">Восстановить стандартный</button>
         <span class="spacer"></span>
-        <button id="btnPromptCancel">Отмена</button>
-        <button id="btnPromptSave" class="primary">Сохранить</button>
+        <button id="btnPromptCancel" data-i18n="buttons.cancel">Отмена</button>
+        <button id="btnPromptSave" class="primary" data-i18n="buttons.save">Сохранить</button>
       </div>
     </div>
   </div>
@@ -232,16 +232,16 @@
   <div id="topicModal" class="modal hidden">
     <div class="modal-box topic-box">
       <div class="modal-head">
-        <span id="topicModalHead">Объединить чаты в тему</span>
-        <button id="btnTopicClose" class="modal-close" title="Закрыть">×</button>
+        <span id="topicModalHead" data-i18n="modal.topic_head">Объединить чаты в тему</span>
+        <button id="btnTopicClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
       </div>
-      <input id="topicFilter" type="text" spellcheck="false" placeholder="Поиск по названию…">
+      <input id="topicFilter" type="text" spellcheck="false" placeholder="Поиск по названию…" data-i18n-placeholder="modal.search_placeholder">
       <div id="topicList" class="topic-list"></div>
       <div class="modal-actions">
-        <span id="topicCount" class="dim">Выбрано: 0</span>
+        <span id="topicCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
         <span class="spacer"></span>
-        <button id="btnTopicCancel">Отмена</button>
-        <button id="btnTopicCreate" class="primary" disabled>Создать справку</button>
+        <button id="btnTopicCancel" data-i18n="buttons.cancel">Отмена</button>
+        <button id="btnTopicCreate" class="primary" disabled data-i18n="modal.create_topic">Создать справку</button>
       </div>
     </div>
   </div>
@@ -249,28 +249,33 @@
   <div id="topicManageModal" class="modal hidden">
     <div class="modal-box topic-manage-box">
       <div class="modal-head">
-        <span>Темы</span>
-        <button id="btnTopicManageClose" class="modal-close" title="Закрыть">×</button>
+        <span data-i18n="modal.topics">Темы</span>
+        <button id="btnTopicManageClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
       </div>
       <div id="topicManageList" class="topic-list"></div>
       <div class="topic-orphans">
-        <span id="topicOrphansCount" class="dim">Чаты без темы: –</span>
+        <span id="topicOrphansCount" class="dim" data-i18n="modal.orphans0">Чаты без темы: –</span>
         <span class="spacer"></span>
-        <button id="btnTopicOrphansCreate" class="pick" title="Объединить свободные чаты в новую тему">Создать тему из них…</button>
+        <button id="btnTopicOrphansCreate" class="pick" data-i18n-title="modal.orphans_create_title" title="Объединить свободные чаты в новую тему" data-i18n="modal.orphans_create">Создать тему из них…</button>
       </div>
       <div class="modal-actions">
-        <button id="btnTopicManageRefresh" class="ghost">Обновить список</button>
+        <button id="btnTopicManageRefresh" class="ghost" data-i18n="modal.refresh_list">Обновить список</button>
         <span class="spacer"></span>
-        <button id="btnTopicManageClose2">Закрыть</button>
+        <button id="btnTopicManageClose2" data-i18n="buttons.close">Закрыть</button>
       </div>
     </div>
   </div>
 
   <footer id="status" class="status">
     <span id="version" class="version">v-</span>
-    <span id="statusText" class="status-text">Готово. Выберите папки и нажмите «Обработать».</span>
+    <span class="lang-switch">
+      <button id="langRu" class="lang-btn" title="Русский">RU</button>
+      <button id="langEn" class="lang-btn" title="English">EN</button>
+    </span>
+    <span id="statusText" class="status-text" data-i18n="status.ready">Готово. Выберите папки и нажмите «Обработать».</span>
   </footer>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

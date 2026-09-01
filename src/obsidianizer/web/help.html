@@ -89,13 +89,13 @@
       <path d="M3 6.5 L7.2 7.6 L12 21 L3 15.2 Z" fill="#5b21b6"/>
       <path d="M12 1 L7.2 7.6 L3 6.5 Z" fill="#ddd6fe"/>
     </svg>
-    <span class="title">Obsidianizer — Справка</span>
+    <span class="title" data-i18n="help.title">Obsidianizer — Справка</span>
   </div>
 
   <div class="help-tabs">
     <button id="htabObs" class="htab active" data-tab="obsidianize">📁 Obsidianize</button>
-    <button id="htabChat" class="htab" data-tab="chat">💬 Чат-обработка</button>
-    <button id="htabAi" class="htab" data-tab="ai">🤖 AI-анализ</button>
+    <button id="htabChat" class="htab" data-tab="chat" data-i18n="tabs.chat">💬 Чат-обработка</button>
+    <button id="htabAi" class="htab" data-tab="ai" data-i18n="tabs.ai">🤖 AI-анализ</button>
     <button id="htabInt" class="htab" data-tab="integration">🔗 Integration</button>
   </div>
 
@@ -105,26 +105,28 @@
     <div class="int-row">
       <label for="intVault">Vault:</label>
       <input id="intVault" type="text" spellcheck="false" placeholder="D:\Obsidian\MyVault">
-      <button id="btnIntBrowse" class="pick">Обзор</button>
-      <button id="btnIntCheck" class="pick">Проверить</button>
+      <button id="btnIntBrowse" class="pick" data-i18n="help.browse">Обзор</button>
+      <button id="btnIntCheck" class="pick" data-i18n="help.check">Проверить</button>
     </div>
     <ul id="intStatusList" class="int-status">
       <li id="stVault">Vault: —</li>
       <li id="stTemplater">Templater: —</li>
-      <li id="stTemplate">Шаблон обновления: —</li>
+      <li id="stTemplate" data-i18n="help.template_status0">Шаблон обновления: —</li>
       <li id="stCli">Obsidianizer CLI: —</li>
     </ul>
     <div id="intResult" class="dim"></div>
-    <button id="btnIntInstall" class="primary" title="Скопировать шаблон обновления в папку Templater (путь к CLI подставится автоматически)">Установить / Починить интеграцию</button>
-    <button id="btnExtractTemplates" class="pick" style="margin-top:8px;" title="Скопировать файлы ручной настройки (шаблон обновления, shell commands) в выбранную папку">📂 Извлечь шаблоны в Obsidian…</button>
-    <p class="dim" style="margin-top:10px;font-size:12px;">Не хотите давать доступ к папке vault? Нажмите «Извлечь шаблоны в Obsidian» и выберите папку шаблонов Templater — файлы ручной настройки скопируются туда. Подробности — в <code>integration/Obsidianizer Update.md</code>.</p>
+    <button id="btnIntInstall" class="primary" data-i18n-title="help.install_title" title="Скопировать шаблон обновления в папку Templater (путь к CLI подставится автоматически)" data-i18n="help.install">Установить / Починить интеграцию</button>
+    <button id="btnExtractTemplates" class="pick" style="margin-top:8px;" data-i18n-title="help.extract_title" title="Скопировать файлы ручной настройки (шаблон обновления, shell commands) в выбранную папку" data-i18n="help.extract">📂 Извлечь шаблоны в Obsidian…</button>
+    <p class="dim" style="margin-top:10px;font-size:12px;"><span data-i18n="help.no_vault_a">Не хотите давать доступ к папке vault? Нажмите «Извлечь шаблоны в Obsidian» и выберите папку шаблонов Templater — файлы ручной настройки скопируются туда. Подробности — в </span><code>integration/Obsidianizer Update.md</code><span data-i18n="help.no_vault_b">.</span></p>
   </div>
 
   <div class="help-footer">
-    <span class="dim">Подробные инструкции — в README и docs/obsidianize</span>
+    <span class="dim" data-i18n="help.footer">Подробные инструкции — в README и docs/obsidianize</span>
     <span class="spacer"></span>
-    <button id="btnHelpClose" class="primary">Закрыть</button>
+    <button id="btnHelpClose" class="primary" data-i18n="buttons.close">Закрыть</button>
   </div>
+
+  <script src="i18n.js"></script>
 
   <script>
     (function () {
@@ -132,77 +134,154 @@
 
       const HELP = {
         obsidianize: {
-          title: "📁 Obsidianize — основная функция",
-          body:
-            "<p><b>Главная задача приложения</b>: превратить обычную папку " +
-            "проекта (чертежи, PDF, документы, изображения — Markdown не " +
-            "нужен) в структурированную систему карточек с навигацией, " +
-            "комфортную для Obsidian.</p>" +
-            "<ul>" +
-            "<li><b>Просканировать</b> — только смотрит и показывает таблицу: где " +
-            "карточка ок, где устарела, где её ещё нет. <i>Ничего не пишет.</i></li>" +
-            "<li><b>✨ Obsidianize</b> — создаёт и обновляет карточки. Сами ваши " +
-            "файлы не изменяются.</li>" +
-            "<li>Файл <b>&lt;папка&gt;_заметки.md</b> — ваша личная территория " +
-            "(клиент, адрес, дизайнер, комментарии…). Программа создаёт его один " +
-            "раз и <b>никогда не перезаписывает</b>.</li>" +
-            "<li>Если в папке случайно появилась заметка от Obsidian (Ctrl+клик) — " +
-            "без вашего разрешения она не тронется. Включите <b>«Принять " +
-            "существующую заметку как заметки»</b>, и она станет файлом заметок, " +
-            "а на её месте появится карточка.</li>" +
-            "<li>Полоса-разделитель под таблицей тянется мышью: сотни карточек не " +
-            "уведут результаты обработки за экран. Высота запоминается.</li>" +
-            "<li>Это основная функция приложения — Obsidianizer создан в первую " +
-            "очередь ради неё.</li>" +
-            "</ul>",
+          ru: {
+            title: "📁 Obsidianize — основная функция",
+            body:
+              "<p><b>Главная задача приложения</b>: превратить обычную папку " +
+              "проекта (чертежи, PDF, документы, изображения — Markdown не " +
+              "нужен) в структурированную систему карточек с навигацией, " +
+              "комфортную для Obsidian.</p>" +
+              "<ul>" +
+              "<li><b>Просканировать</b> — только смотрит и показывает таблицу: где " +
+              "карточка ок, где устарела, где её ещё нет. <i>Ничего не пишет.</i></li>" +
+              "<li><b>✨ Obsidianize</b> — создаёт и обновляет карточки. Сами ваши " +
+              "файлы не изменяются.</li>" +
+              "<li>Файл <b>&lt;папка&gt;_заметки.md</b> — ваша личная территория " +
+              "(клиент, адрес, дизайнер, комментарии…). Программа создаёт его один " +
+              "раз и <b>никогда не перезаписывает</b>.</li>" +
+              "<li>Если в папке случайно появилась заметка от Obsidian (Ctrl+клик) — " +
+              "без вашего разрешения она не тронется. Включите <b>«Принять " +
+              "существующую заметку как заметки»</b>, и она станет файлом заметок, " +
+              "а на её месте появится карточка.</li>" +
+              "<li>Полоса-разделитель под таблицей тянется мышью: сотни карточек не " +
+              "уведут результаты обработки за экран. Высота запоминается.</li>" +
+              "<li>Это основная функция приложения — Obsidianizer создан в первую " +
+              "очередь ради неё.</li>" +
+              "</ul>",
+          },
+          en: {
+            title: "📁 Obsidianize — the main feature",
+            body:
+              "<p><b>The app's main task</b>: turn an ordinary project folder " +
+              "(drawings, PDFs, documents, images — no Markdown needed) into a " +
+              "structured card system with navigation, comfortable for Obsidian.</p>" +
+              "<ul>" +
+              "<li><b>Scan</b> — only looks and shows the table: which card is ok, " +
+              "which is stale, which does not exist yet. <i>Writes nothing.</i></li>" +
+              "<li><b>✨ Obsidianize</b> — creates and updates cards. Your own files " +
+              "are not modified.</li>" +
+              "<li>The <b>&lt;folder&gt;_заметки.md</b> file is your personal territory " +
+              "(client, address, designer, comments…). The program creates it once " +
+              "and <b>never overwrites</b> it.</li>" +
+              "<li>If a note accidentally appeared in the folder from Obsidian " +
+              "(Ctrl+click) — it will not be touched without your permission. Enable " +
+              "<b>«Adopt an existing note as notes»</b>, and it will become the notes " +
+              "file, with a card in its place.</li>" +
+              "<li>The splitter bar under the table is dragged with the mouse: " +
+              "hundreds of cards will not push the results off-screen. " +
+              "The height is remembered.</li>" +
+              "<li>This is the app's main feature — Obsidianizer was created " +
+              "primarily for it.</li>" +
+              "</ul>",
+          },
         },
         chat: {
-          title: "💬 Chat Processing — экспортированные чаты",
-          body:
-            "<p>Вторая функция: обработка <b>экспортированных чатов и других " +
-            "Markdown-материалов</b> — структурирование, метаданные, медиа и " +
-            "опциональное AI-обогащение (резюме, теги — через локальную LLM " +
-            "Ollama).</p>" +
-            "<ul>" +
-            "<li><b>Источник</b> — сырые экспорты. <b>Результат обработки</b> " +
-            "(processed) — чистый импорт. <b>AI-результат</b> (enriched) — " +
-            "обогащённое хранилище, <i>его и открывайте в Obsidian</i>.</li>" +
-            "<li><b>ОБРАБОТАТЬ</b> — чистый импорт: модель не вызывается, файлы " +
-            "не изменяются в источнике.</li>" +
-            "<li><b>AI-постобработка</b> — отдельный прогон модели по processed: " +
-            "резюме, теги. Уже обработанные файлы не пересчитываются.</li>" +
-            "<li><b>Объединить в тему…</b> — слить выбранные чаты в одну обзорную " +
-            "заметку (enriched/topics). <b>Авто-группировка</b> — разобрать всю " +
-            "коллекцию на темы автоматически.</li>" +
-            "<li><b>Стоп</b> — корректная остановка: текущий файл завершится, " +
-            "остальные пропустятся.</li>" +
-            "<li>Один из основных сценариев — обработка экспортов из приложения " +
-            "<b><a href='https://github.com/Nordggs/Project_AI_Base' target='_blank'>AI Chat Exporter</a></b> " +
-            "(отдельный проект того же автора): экспорт чатов ChatGPT, Claude, " +
-            "DeepSeek, Gemini, Qwen в Markdown. Подойдёт и любая другая папка " +
-            "с Markdown.</li>" +
-            "</ul>",
+          ru: {
+            title: "💬 Chat Processing — экспортированные чаты",
+            body:
+              "<p>Вторая функция: обработка <b>экспортированных чатов и других " +
+              "Markdown-материалов</b> — структурирование, метаданные, медиа и " +
+              "опциональное AI-обогащение (резюме, теги — через локальную LLM " +
+              "Ollama).</p>" +
+              "<ul>" +
+              "<li><b>Источник</b> — сырые экспорты. <b>Результат обработки</b> " +
+              "(processed) — чистый импорт. <b>AI-результат</b> (enriched) — " +
+              "обогащённое хранилище, <i>его и открывайте в Obsidian</i>.</li>" +
+              "<li><b>ОБРАБОТАТЬ</b> — чистый импорт: модель не вызывается, файлы " +
+              "не изменяются в источнике.</li>" +
+              "<li><b>AI-постобработка</b> — отдельный прогон модели по processed: " +
+              "резюме, теги. Уже обработанные файлы не пересчитываются.</li>" +
+              "<li><b>Объединить в тему…</b> — слить выбранные чаты в одну обзорную " +
+              "заметку (enriched/topics). <b>Авто-группировка</b> — разобрать всю " +
+              "коллекцию на темы автоматически.</li>" +
+              "<li><b>Стоп</b> — корректная остановка: текущий файл завершится, " +
+              "остальные пропустятся.</li>" +
+              "<li>Один из основных сценариев — обработка экспортов из приложения " +
+              "<b><a href='https://github.com/Nordggs/Project_AI_Base' target='_blank'>AI Chat Exporter</a></b> " +
+              "(отдельный проект того же автора): экспорт чатов ChatGPT, Claude, " +
+              "DeepSeek, Gemini, Qwen в Markdown. Подойдёт и любая другая папка " +
+              "с Markdown.</li>" +
+              "</ul>",
+          },
+          en: {
+            title: "💬 Chat Processing — exported chats",
+            body:
+              "<p>The second feature: processing <b>exported chats and other " +
+              "Markdown materials</b> — structuring, metadata, media and optional " +
+              "AI enrichment (summaries, tags — via the local Ollama LLM).</p>" +
+              "<ul>" +
+              "<li><b>Source</b> — raw exports. <b>Processing result</b> " +
+              "(processed) — clean import. <b>AI result</b> (enriched) — the " +
+              "enriched storage, <i>open this one in Obsidian</i>.</li>" +
+              "<li><b>PROCESS</b> — clean import: the model is not called, files " +
+              "are not modified in the source.</li>" +
+              "<li><b>AI post-processing</b> — a separate model run over processed: " +
+              "summaries, tags. Already processed files are not recomputed.</li>" +
+              "<li><b>Build topic…</b> — merge the selected chats into one overview " +
+              "note (enriched/topics). <b>Auto-grouping</b> — split the whole " +
+              "collection into topics automatically.</li>" +
+              "<li><b>Stop</b> — a graceful stop: the current file will finish, " +
+              "the rest will be skipped.</li>" +
+              "<li>One of the main scenarios is processing exports from the " +
+              "<b><a href='https://github.com/Nordggs/Project_AI_Base' target='_blank'>AI Chat Exporter</a></b> " +
+              "app (a separate project by the same author): exporting ChatGPT, " +
+              "Claude, DeepSeek, Gemini, Qwen chats to Markdown. Any other folder " +
+              "with Markdown works too.</li>" +
+              "</ul>",
+          },
         },
         ai: {
-          title: "🤖 AI-анализ — работа с любыми материалами",
-          body:
-            "<p>Третья функция: локальная LLM для <b>интеллектуальной работы с " +
-            "материалами в любой выбранной вами папке</b> — результат обработки " +
-            "чатов, проектные папки, каталог исследований или целый vault.</p>" +
-            "<ul>" +
-            "<li><b>Просканировать</b> — список папок; отметьте нужные " +
-            "галочками.</li>" +
-            "<li><b>Сформировать обзор</b> — модель анализирует каждую выбранную " +
-            "папку и сохраняет обзор в <b>&lt;папка&gt;_обзор.md</b> рядом с " +
-            "карточкой. Обзор автоматически встраивается в секцию AI Review " +
-            "карточки. Источники не изменяются.</li>" +
-            "<li>Возможности: <b>поиск</b> сведений, <b>обзор</b> материалов, " +
-            "<b>суммирование</b> заметок, <b>анализ</b> нескольких заметок " +
-            "вместе.</li>" +
-            "<li><b>Включать содержимое текстовых файлов</b> — модель прочитает и " +
-            "тексты (обзор подробнее, но дольше).</li>" +
-            "<li>Модель — та же, что и для AI-постобработки (Ollama).</li>" +
-            "</ul>",
+          ru: {
+            title: "🤖 AI-анализ — работа с любыми материалами",
+            body:
+              "<p>Третья функция: локальная LLM для <b>интеллектуальной работы с " +
+              "материалами в любой выбранной вами папке</b> — результат обработки " +
+              "чатов, проектные папки, каталог исследований или целый vault.</p>" +
+              "<ul>" +
+              "<li><b>Просканировать</b> — список папок; отметьте нужные " +
+              "галочками.</li>" +
+              "<li><b>Сформировать обзор</b> — модель анализирует каждую выбранную " +
+              "папку и сохраняет обзор в <b>&lt;папка&gt;_обзор.md</b> рядом с " +
+              "карточкой. Обзор автоматически встраивается в секцию AI Review " +
+              "карточки. Источники не изменяются.</li>" +
+              "<li>Возможности: <b>поиск</b> сведений, <b>обзор</b> материалов, " +
+              "<b>суммирование</b> заметок, <b>анализ</b> нескольких заметок " +
+              "вместе.</li>" +
+              "<li><b>Включать содержимое текстовых файлов</b> — модель прочитает и " +
+              "тексты (обзор подробнее, но дольше).</li>" +
+              "<li>Модель — та же, что и для AI-постобработки (Ollama).</li>" +
+              "</ul>",
+          },
+          en: {
+            title: "🤖 AI analysis — working with any materials",
+            body:
+              "<p>The third feature: a local LLM for <b>intelligent work with the " +
+              "materials in any folder you choose</b> — chat processing results, " +
+              "project folders, a research catalog or a whole vault.</p>" +
+              "<ul>" +
+              "<li><b>Scan</b> — a list of folders; check the ones you need.</li>" +
+              "<li><b>Generate overview</b> — the model analyzes each selected " +
+              "folder and saves the overview to <b>&lt;folder&gt;_обзор.md</b> next " +
+              "to the card. The overview is automatically embedded into the AI " +
+              "Review section of the card. Sources are not modified.</li>" +
+              "<li>Capabilities: <b>searching</b> for information, <b>reviewing</b> " +
+              "materials, <b>summarizing</b> notes, <b>analyzing</b> several notes " +
+              "together.</li>" +
+              "<li><b>Include text file contents</b> — the model will also read " +
+              "the texts (a more detailed overview, but slower).</li>" +
+              "<li>The model is the same as for AI post-processing (Ollama).</li>" +
+              "</ul>",
+          },
         },
       };
 
@@ -218,15 +297,22 @@
         });
         if (isInt) refreshIntegration();
         else {
-          const h = HELP[tab] || HELP.obsidianize;
+          const h = (HELP[tab] || HELP.obsidianize)[window.I18N_LANG] || HELP.obsidianize.ru;
           body.innerHTML = "<h3>" + h.title + "</h3>" + h.body;
         }
       }
 
       // initial section from the URL hash (#obsidianize | #chat | #ai)
-      const initial = (location.hash || "#obsidianize").slice(1);
-      showHelpTab(initial);
+      let currentTab = (location.hash || "#obsidianize").slice(1);
+      showHelpTab(currentTab);
       window.showHelpTab = showHelpTab;
+
+      function applyLang(resolved) {
+        window.initLang(resolved === "en" ? "en" : "ru");
+        window.applyI18n(document);
+        showHelpTab(currentTab);
+      }
+      applyLang("ru");
 
       document.getElementById("htabObs").addEventListener("click", function () { showHelpTab("obsidianize"); });
       document.getElementById("htabChat").addEventListener("click", function () { showHelpTab("chat"); });
@@ -251,6 +337,7 @@
             if (d && d.integration_vault && !document.getElementById("intVault").value.trim()) {
               document.getElementById("intVault").value = d.integration_vault;
             }
+            applyLang(d && d.lang_resolved === "en" ? "en" : "ru");
           });
         }
       }
@@ -269,7 +356,7 @@
           (s.templates_folder ? "  (" + s.templates_folder + ")" : "");
         document.getElementById("stTemplater").className = s.templater_installed ? "ok" : "err";
         document.getElementById("stTemplate").textContent =
-          "Шаблон обновления: " + mark(s.template_installed);
+          t("help.template_status") + mark(s.template_installed);
         document.getElementById("stTemplate").className = s.template_installed ? "ok" : "err";
         document.getElementById("stCli").textContent =
           "Obsidianizer CLI: " + mark(s.cli_exists) + (s.cli_path ? "  (" + s.cli_path + ")" : "");
@@ -287,8 +374,7 @@
 
       function refreshIntegration() {
         if (!api || !api.obs_integration_status) {
-          document.getElementById("intResult").textContent =
-            "Статус недоступен вне приложения.";
+          document.getElementById("intResult").textContent = t("help.no_api");
           return;
         }
         api.obs_integration_status({ vault: document.getElementById("intVault").value.trim() })
@@ -300,8 +386,8 @@
             renderStatus(s);
             intRepairPending = false;
             document.getElementById("intResult").textContent = s.vault_found
-              ? (s.template_installed ? "Интеграция установлена." : "Шаблон не установлен — нажмите «Установить».")
-              : "Выберите папку Obsidian vault (в ней должна быть .obsidian).";
+              ? (s.template_installed ? t("help.int_installed") : t("help.template_missing"))
+              : t("help.pick_vault");
           });
       }
 
@@ -309,8 +395,7 @@
         if (!api || !api.obs_integration_install) return;
         const vault = document.getElementById("intVault").value.trim();
         if (!vault) {
-          document.getElementById("intResult").textContent =
-            "Укажите папку Obsidian vault.";
+          document.getElementById("intResult").textContent = t("help.need_vault");
           return;
         }
         api.obs_integration_install({ vault: vault, repair: intRepairPending })
@@ -320,16 +405,15 @@
             if (!r || r.ok === false) {
               if (r && r.exists) {
                 intRepairPending = true;
-                res.textContent = "Шаблон уже установлен. Нажмите ещё раз, чтобы перезаписать (Repair).";
+                res.textContent = t("help.repair_hint");
               } else {
-                res.textContent = (r && r.error) || "Не удалось установить интеграцию.";
+                res.textContent = (r && r.error) || t("help.install_failed");
               }
               refreshIntegration();
               return;
             }
-            res.textContent = "✓ Установлено: " + r.target +
-              " · Осталось: в Obsidian откройте Настройки → Горячие клавиши, найдите команду Templater «Obsidianizer Update», проверьте или назначьте клавишу (например, Alt+3). " +
-              (r.hint || "");
+            res.textContent = t("help.installed", { target: r.target }) +
+              t("help.next_steps") + (r.hint || "");
             refreshIntegration();
           });
       }
@@ -342,8 +426,7 @@
 
       function extractTemplates() {
         if (!api || !api.extract_templates) {
-          document.getElementById("intResult").textContent =
-            "Статус недоступен вне приложения.";
+          document.getElementById("intResult").textContent = t("help.no_api");
           return;
         }
         api.choose_folder("obsidianize").then(function (path) {
@@ -353,15 +436,15 @@
               const res = document.getElementById("intResult");
               if (!r || r.ok === false) {
                 intExtractPending = Boolean(r && r.conflicts);
-                res.textContent = (r && r.error) || "Не удалось скопировать.";
+                res.textContent = (r && r.error) || t("help.copy_failed");
                 res.className = r && r.conflicts ? "warn" : "err";
                 return;
               }
               intExtractPending = false;
               const over = r.overwritten && r.overwritten.length
-                ? " (перезаписано: " + r.overwritten.length + ")" : "";
+                ? t("help.overwritten", { n: r.overwritten.length }) : "";
               res.textContent =
-                "✓ Скопировано файлов: " + r.copied.length + over + " → " + r.target;
+                t("help.copied", { n: r.copied.length }) + over + " → " + r.target;
               res.className = "ok";
             });
         });

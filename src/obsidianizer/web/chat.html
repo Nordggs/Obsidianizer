@@ -49,7 +49,7 @@
 </head>
 <body class="chat-window">
   <header id="chatTop">
-    <span>AI-чат</span>
+    <span data-i18n="ai.chat">AI-чат</span>
     <span id="chatModelLabel" class="dim mono">–</span>
   </header>
 
@@ -58,27 +58,29 @@
     <div id="chatLog" class="chat-log"></div>
     <div id="chatFound" class="chat-found hidden">
       <div class="chat-found-head">
-        <span id="chatFoundTitle" class="dim">Источники</span>
+        <span id="chatFoundTitle" class="dim" data-i18n="chat.sources">Источники</span>
         <span class="spacer"></span>
-        <button id="btnChatFoundTheme" class="pick" disabled>Добавить в тему…</button>
+        <button id="btnChatFoundTheme" class="pick" disabled data-i18n="chat.add_to_topic_btn">Добавить в тему…</button>
       </div>
       <div id="chatFoundList" class="chat-found-list"></div>
       <div id="chatFoundMore" class="chat-found-more hidden">
-        <button id="btnChatFoundMore" class="ghost">Показать ещё</button>
+        <button id="btnChatFoundMore" class="ghost" data-i18n="chat.show_more">Показать ещё</button>
       </div>
     </div>
     <div class="chat-input-row">
       <textarea id="chatInput" spellcheck="false" rows="2"
+        data-i18n-placeholder="chat.input_placeholder"
         placeholder="Спросите модель… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
-      <button id="btnChatSend" class="primary">Отправить</button>
+      <button id="btnChatSend" class="primary" data-i18n="chat.send">Отправить</button>
     </div>
     <div class="modal-actions">
-      <button id="btnChatAttach" class="ghost" title="Прикрепить заметки из обработанной коллекции к диалогу">Прикрепить заметку…</button>
-      <button id="btnChatClear" class="ghost">Очистить</button>
+      <button id="btnChatAttach" class="ghost" data-i18n-title="chat.attach_title" title="Прикрепить заметки из обработанной коллекции к диалогу" data-i18n="chat.attach">Прикрепить заметку…</button>
+      <button id="btnChatClear" class="ghost" data-i18n="chat.clear">Очистить</button>
       <span class="spacer"></span>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="chat.js"></script>
 </body>
 </html>
