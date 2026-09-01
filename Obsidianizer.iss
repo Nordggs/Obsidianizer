@@ -1,5 +1,5 @@
 #define MyAppName "Obsidianizer"
-#define MyAppVersion "0.5.6"
+#define MyAppVersion "0.5.7"
 #define MyAppPublisher "Nordggs"
 #define MyAppExeName "Obsidianizer.exe"
 
@@ -29,6 +29,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\Obsidianizer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Obsidianizer.exe.config"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Obsidianizer.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Obsidianizer\integration\*"; DestDir: "{localappdata}\Obsidianizer\integration"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Obsidianizer.ico"

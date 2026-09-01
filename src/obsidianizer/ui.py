@@ -90,6 +90,24 @@ def _user_data_dir() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _integration_source_dir() -> Path | None:
+    """Where the ``integration/`` templates ship for THIS install flavor.
+
+    Order matters: LOCALAPPDATA (installer) first — it is the canonical
+    user-writable spot; exe dir next — portable builds keep the folder
+    next to the exe. A source checkout resolves through ``_user_data_dir``
+    (repo root, which contains ``integration/``).
+    """
+
+    candidates = [_user_data_dir() / "integration"]
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / "integration")
+    for cand in candidates:
+        if cand.is_dir():
+            return cand
+    return None
+
+
 LOG_FILE = _user_data_dir() / "obsidianizer.log"
 
 logger = logging.getLogger("obsidianizer.ui")
@@ -629,6 +647,57 @@ class UIApp:
             self._save_settings()
             logger.info("Obsidian integration installed: %s", res.get("target"))
         return res
+
+    def extract_templates(self, opts: dict | None = None) -> dict:
+        """Copy the integration templates into a user-chosen folder.
+
+        ``opts``: ``{"target": str, "force": bool}``. Existing files in the
+        target are never overwritten silently: a name collision aborts with
+        ``conflicts`` and the caller must repeat with ``force=True`` (the
+        same Repair pattern as ``obs_integration_install``). The decision is
+        atomic — either nothing is copied, or everything is.
+        """
+        import shutil
+
+        opts = opts or {}
+        target = str(opts.get("target") or "").strip()
+        if not target:
+            return {"ok": False, "error": "Папка не выбрана"}
+        src = _integration_source_dir()
+        if src is None:
+            return {
+                "ok": False,
+                "error": "Папка integration не найдена — переустановите программу",
+            }
+        dst = Path(target).expanduser()
+        files = sorted(f for f in src.iterdir() if f.is_file())
+        if not files:
+            return {"ok": False, "error": f"В {src} нет файлов шаблонов"}
+
+        conflicts = [f.name for f in files if (dst / f.name).exists()]
+        if conflicts and not opts.get("force"):
+            return {
+                "ok": False,
+                "conflicts": conflicts,
+                "error": "Файлы уже существуют. Повторный клик перезапишет их.",
+            }
+
+        try:
+            dst.mkdir(parents=True, exist_ok=True)
+            for f in files:
+                shutil.copy2(f, dst / f.name)
+        except OSError as exc:
+            return {"ok": False, "error": str(exc)}
+        logger.info(
+            "Integration templates extracted to %s (%d files, force=%s)",
+            dst, len(files), bool(opts.get("force")),
+        )
+        return {
+            "ok": True,
+            "target": str(dst),
+            "copied": [f.name for f in files],
+            "overwritten": conflicts if opts.get("force") else [],
+        }
 
     # ── AI folder review (tab 3) ──────────────────────────────────────────
 

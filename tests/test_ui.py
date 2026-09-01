@@ -1086,3 +1086,69 @@ def test_obs_integration_status_uses_integration_vault(tmp_path):
     assert res["ok"] is True
     assert res["vault_found"] is True
     assert res["vault"] == str(vault)
+
+
+# ── extract_templates (manual Templater setup) ───────────────────────────────
+
+
+def _fake_integration_dir(tmp_path, names):
+    src = tmp_path / "integration"
+    src.mkdir()
+    for name in names:
+        (src / name).write_text(f"content of {name}", encoding="utf-8")
+    return src
+
+
+def test_extract_templates_copies_files(tmp_path, monkeypatch):
+    src = _fake_integration_dir(
+        tmp_path, ["Obsidianizer Update.md", "shell-commands.json"]
+    )
+    monkeypatch.setattr("obsidianizer.ui._integration_source_dir", lambda: src)
+    dst = tmp_path / "templates"
+    app = UIApp()
+    res = app.extract_templates({"target": str(dst)})
+    assert res["ok"] is True
+    assert res["copied"] == ["Obsidianizer Update.md", "shell-commands.json"]
+    assert res["overwritten"] == []
+    assert (
+        dst / "Obsidianizer Update.md"
+    ).read_text(encoding="utf-8") == "content of Obsidianizer Update.md"
+    assert (dst / "shell-commands.json").is_file()
+
+
+def test_extract_templates_conflict_aborts_without_overwrite(tmp_path, monkeypatch):
+    """A name collision must copy NOTHING and leave user files untouched."""
+    src = _fake_integration_dir(tmp_path, ["Obsidianizer Update.md"])
+    monkeypatch.setattr("obsidianizer.ui._integration_source_dir", lambda: src)
+    dst = tmp_path / "templates"
+    dst.mkdir()
+    existing = dst / "Obsidianizer Update.md"
+    existing.write_text("user's own version", encoding="utf-8")
+    app = UIApp()
+    res = app.extract_templates({"target": str(dst)})
+    assert res["ok"] is False
+    assert res["conflicts"] == ["Obsidianizer Update.md"]
+    assert existing.read_text(encoding="utf-8") == "user's own version"
+
+
+def test_extract_templates_force_overwrites(tmp_path, monkeypatch):
+    src = _fake_integration_dir(tmp_path, ["Obsidianizer Update.md"])
+    monkeypatch.setattr("obsidianizer.ui._integration_source_dir", lambda: src)
+    dst = tmp_path / "templates"
+    dst.mkdir()
+    (dst / "Obsidianizer Update.md").write_text("old", encoding="utf-8")
+    app = UIApp()
+    res = app.extract_templates({"target": str(dst), "force": True})
+    assert res["ok"] is True
+    assert res["overwritten"] == ["Obsidianizer Update.md"]
+    assert (
+        dst / "Obsidianizer Update.md"
+    ).read_text(encoding="utf-8") == "content of Obsidianizer Update.md"
+
+
+def test_extract_templates_no_source(tmp_path, monkeypatch):
+    monkeypatch.setattr("obsidianizer.ui._integration_source_dir", lambda: None)
+    app = UIApp()
+    res = app.extract_templates({"target": str(tmp_path / "dst")})
+    assert res["ok"] is False
+    assert "integration" in res["error"]

@@ -116,7 +116,8 @@
     </ul>
     <div id="intResult" class="dim"></div>
     <button id="btnIntInstall" class="primary" title="Скопировать шаблон обновления в папку Templater (путь к CLI подставится автоматически)">Установить / Починить интеграцию</button>
-    <p class="dim" style="margin-top:10px;font-size:12px;">Не хотите давать доступ к папке vault? Установите вручную — скопируйте файлы из папки <code>integration/</code> проекта в папку шаблонов Templater. Подробности — в <code>integration/Obsidianizer Update.md</code>.</p>
+    <button id="btnExtractTemplates" class="pick" style="margin-top:8px;" title="Скопировать файлы ручной настройки (шаблон обновления, shell commands) в выбранную папку">📂 Извлечь шаблоны в Obsidian…</button>
+    <p class="dim" style="margin-top:10px;font-size:12px;">Не хотите давать доступ к папке vault? Нажмите «Извлечь шаблоны в Obsidian» и выберите папку шаблонов Templater — файлы ручной настройки скопируются туда. Подробности — в <code>integration/Obsidianizer Update.md</code>.</p>
   </div>
 
   <div class="help-footer">
@@ -256,6 +257,7 @@
       if (window.pywebview) { initHelpApi(); }
       else { window.addEventListener("pywebviewready", initHelpApi); }
       let intRepairPending = false;
+      let intExtractPending = false;
 
       function renderStatus(s) {
         const mark = (v) => (v ? "✓" : "✗");
@@ -337,6 +339,34 @@
       document.getElementById("btnIntInstall").addEventListener("click", function () {
         installIntegration();
       });
+
+      function extractTemplates() {
+        if (!api || !api.extract_templates) {
+          document.getElementById("intResult").textContent =
+            "Статус недоступен вне приложения.";
+          return;
+        }
+        api.choose_folder("obsidianize").then(function (path) {
+          if (!path) return;
+          api.extract_templates({ target: path, force: intExtractPending })
+            .then(function (r) {
+              const res = document.getElementById("intResult");
+              if (!r || r.ok === false) {
+                intExtractPending = Boolean(r && r.conflicts);
+                res.textContent = (r && r.error) || "Не удалось скопировать.";
+                res.className = r && r.conflicts ? "warn" : "err";
+                return;
+              }
+              intExtractPending = false;
+              const over = r.overwritten && r.overwritten.length
+                ? " (перезаписано: " + r.overwritten.length + ")" : "";
+              res.textContent =
+                "✓ Скопировано файлов: " + r.copied.length + over + " → " + r.target;
+              res.className = "ok";
+            });
+        });
+      }
+      document.getElementById("btnExtractTemplates").addEventListener("click", extractTemplates);
     })();
   </script>
 </body>

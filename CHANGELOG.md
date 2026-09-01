@@ -1,5 +1,18 @@
 # Obsidianizer
 
+## [0.5.7] - 2026-09-02
+
+### Added
+- **Extract templates button** (Help → Integration) — copies the manual
+  Templater setup files (`Obsidianizer Update.md`, `shell-commands.json`)
+  into a user-chosen folder. Existing files are never overwritten silently:
+  a collision reports the conflict and a second click confirms (Repair
+  pattern).
+- The installer now also puts `integration/` into
+  `%LOCALAPPDATA%\Obsidianizer\integration\` so the files are reachable
+  without digging through Program Files. Portable builds keep using the
+  folder next to the exe.
+
 ## [0.5.6] - 2026-08-30
 
 ### Changed
