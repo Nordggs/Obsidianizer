@@ -1,7 +1,5 @@
 # Obsidianizer
 
-![Obsidianizer](docs/images/Obsidianizer%20Заставка.png)
-
 | [Русский](README.ru.md) | **English** |
 
 Obsidianizer is a local tool that prepares project materials for working in
@@ -12,8 +10,6 @@ spreadsheets — no Markdown required) and it builds a structured, navigable
 system of cards that opens comfortably in your vault. It also processes
 exported AI chats into clean, enriched Markdown notes, and connects a local
 LLM (Ollama) for searching, reviewing and summarizing your materials.
-
-![Как работает Obsidianizer](docs/images/Obsidianizer%20схема%20fix.jpg)
 
 ## Three tools in one app
 
