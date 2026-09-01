@@ -20,6 +20,8 @@ import re
 
 import httpx
 
+from .i18n import tr
+
 logger = logging.getLogger("obsidianizer.llm")
 
 
@@ -210,12 +212,12 @@ class LLMClient:
             text = resp.json().get("response", "")
             summary, tags = parse_llm_response(text)
             if not summary and not tags:
-                logger.warning("Ollama вернул пустой ответ — проверь модель/промпт")
+                logger.warning(tr("llm.empty_reply"))
             return summary, tags
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — пропускаю AI-обогащение", exc)
+            logger.warning(tr("llm.unavailable_skip", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama: %s", exc)
+            logger.warning(tr("llm.error", exc=exc))
         return "", []
 
     def analyze(self, content: str) -> dict:
@@ -248,12 +250,12 @@ class LLMClient:
             text = resp.json().get("response", "")
             parsed = parse_ai_response(text)
             if not parsed["summary"] and not parsed["tags"]:
-                logger.warning("Ollama вернул пустой AI-ответ — проверь модель/промпт")
+                logger.warning(tr("llm.empty_ai_reply"))
             return parsed
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — пропуск AI-постобработки", exc)
+            logger.warning(tr("llm.unavailable_skip_ai", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama: %s", exc)
+            logger.warning(tr("llm.error_ai", exc=exc))
         return {"summary": "", "tags": [], "topic": "", "type": ""}
 
     def analyze_topic(self, payload: str) -> dict:
@@ -292,12 +294,12 @@ class LLMClient:
             text = resp.json().get("response", "")
             parsed = parse_topic_response(text)
             if not parsed["summary"] and not parsed["name"]:
-                logger.warning("Ollama вернул пустой topic-ответ — проверь модель/промпт")
+                logger.warning(tr("llm.empty_topic_reply"))
             return parsed
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — пропуск анализа темы", exc)
+            logger.warning(tr("llm.unavailable_topic", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama при анализе темы: %s", exc)
+            logger.warning(tr("llm.error_topic", exc=exc))
         return empty
 
     def analyze_topic_map(self, payload: str) -> list[dict]:
@@ -337,12 +339,12 @@ class LLMClient:
             text = resp.json().get("response", "")
             groups = parse_topic_map(text)
             if not groups:
-                logger.warning("Ollama вернул пустую карту тем — проверь модель/промпт")
+                logger.warning(tr("llm.empty_map_reply"))
             return groups
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — пропуск карты тем", exc)
+            logger.warning(tr("llm.unavailable_map", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama при построении карты тем: %s", exc)
+            logger.warning(tr("llm.error_map", exc=exc))
         return []
 
     def chat(self, messages: list[dict], system: str = "", *, timeout: float | None = None) -> str:
@@ -384,9 +386,9 @@ class LLMClient:
             resp.raise_for_status()
             return str(resp.json().get("message", {}).get("content", "")).strip()
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — чат не выполнен", exc)
+            logger.warning(tr("llm.unavailable_chat", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama в чате: %s", exc)
+            logger.warning(tr("llm.error_chat", exc=exc))
         return ""
 
     def embed(self, texts: list[str]) -> list[list[float]] | None:
@@ -416,9 +418,9 @@ class LLMClient:
                 return None
             return [list(map(float, v)) for v in embs]
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — эмбеддинги не построены", exc)
+            logger.warning(tr("llm.unavailable_embed", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama при построении эмбеддингов: %s", exc)
+            logger.warning(tr("llm.error_embed", exc=exc))
         return None
 
     def list_models(self, timeout: float = 10.0) -> list[str] | None:
@@ -439,7 +441,7 @@ class LLMClient:
             ]
             return sorted(models)
         except httpx.HTTPError as exc:
-            logger.warning("Ollama недоступен (%s) — не удалось получить модели", exc)
+            logger.warning(tr("llm.unavailable_models", exc=exc))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Ошибка Ollama при получении моделей: %s", exc)
+            logger.warning(tr("llm.error_models", exc=exc))
         return None

@@ -39,6 +39,7 @@ import yaml
 from .emit import atomic_write
 from .enrich import build_card, build_frontmatter, compose
 from .events import Event, EventType
+from .i18n import tr
 from .index import build_index_from_dir, frontmatter_of
 from .llm import LLMClient
 
@@ -92,16 +93,30 @@ def split_file(text: str) -> tuple[dict, str] | None:
 
 def _finish_message(report: EnrichReport) -> str:
     counts = (
-        f"AI-обработано={report.processed}, пропущено={report.skipped}, "
-        f"ошибок={len(report.failed)}"
+        f"{tr('ai.processed', n=report.processed)}, {tr('fin.skipped', n=report.skipped)}, "
+        f"{tr('fin.errors', n=len(report.failed))}"
     )
     if report.pruned:
-        counts += f", удалено сирот={len(report.pruned)}"
+        counts += f", {tr('ai.pruned', n=len(report.pruned))}"
     if report.cancelled:
-        return f"AI-постобработка отменена ({counts})"
+        return f"{tr('ai.cancelled')} ({counts})"
     if report.critical_error:
-        return f"AI-критическая ошибка: {report.critical_error} ({counts})"
+        return f"{tr('ai.critical', err=report.critical_error)} ({counts})"
     return counts
+
+
+def _finish_data(report: EnrichReport) -> dict:
+    """Machine-readable AI_FINISHED payload — no message parsing in the UI."""
+
+    return {
+        "mode": "ai",
+        "cancelled": bool(report.cancelled),
+        "critical": report.critical_error or "",
+        "processed": report.processed,
+        "skipped": report.skipped,
+        "errors": len(report.failed),
+        "pruned": len(report.pruned),
+    }
 
 
 def enrich(
@@ -170,12 +185,12 @@ def enrich(
 
                 result = llm.analyze(body)
                 if not result["summary"] and not result["tags"]:
-                    report.failed.append(f"{rel}: пустой ответ модели")
+                    report.failed.append(f"{rel}: {tr('ai.empty_reply')}")
                     emit(
                         EventType.AI_FILE_ERROR,
                         path=rel,
                         index=index,
-                        message="пустой ответ модели",
+                        message=tr("ai.empty_reply"),
                     )
                     continue
 
@@ -208,7 +223,7 @@ def enrich(
                     index=index,
                     message=str(exc),
                 )
-                logger.error("Ошибка AI-постобработки %s: %s", rel, exc)
+                logger.error(tr("ai.file_error", path=rel, err=exc))
 
         if not report.cancelled:
             if prune:
@@ -220,13 +235,14 @@ def enrich(
                     atomic_write(target_root / "_index.md", index_md)
     except Exception as exc:  # noqa: BLE001 - fatal stage failure must still emit AI_FINISHED
         report.critical_error = str(exc)
-        logger.error("Критическая ошибка AI-постобработки: %s", exc)
+        logger.error(tr("ai.critical_log", err=exc))
     finally:
         emit = _make_emitter(on_event, 0)
         emit(
             EventType.AI_FINISHED,
             index=report.processed,
             message=_finish_message(report),
+            data=_finish_data(report),
         )
 
     return report
@@ -312,7 +328,7 @@ def _prune_orphans(
         refs = [m.group(1) for m in _RE_MEDIA.finditer(text)]
         path.unlink()
         removed.append(rel)
-        logger.info("Удалён сирота AI: %s", rel)
+        logger.info(tr("ai.orphan_removed", path=rel))
         for ref in refs:
             if ref.lower().startswith(("http://", "https://", "//", "data:", "#")):
                 continue
@@ -354,11 +370,13 @@ def _make_emitter(on_event: EventCallback, total: int) -> Callable[..., None]:
     """Return a safe emitter bound to the batch total. A broken listener must
     never stop the stage."""
 
-    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "") -> None:
+    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "", data: dict | None = None) -> None:
         if on_event is None:
             return
         try:
-            on_event(Event(type=type_, path=path, index=index, total=total, message=message))
+            on_event(
+                Event(type=type_, path=path, index=index, total=total, message=message, data=data or {})
+            )
         except Exception:  # noqa: BLE001 - listener errors must not kill the batch
             logger.debug("Ошибка обработчика событий", exc_info=True)
 

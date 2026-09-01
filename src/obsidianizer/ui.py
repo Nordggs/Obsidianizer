@@ -242,6 +242,7 @@ class UIApp:
                 "index": event.index,
                 "total": event.total,
                 "message": event.message,
+                "data": event.data,
             }
         )
         # Chat events go to the dedicated chat window (never the main one).

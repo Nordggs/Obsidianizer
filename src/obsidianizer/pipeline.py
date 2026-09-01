@@ -24,6 +24,7 @@ from .manifest import prune as manifest_prune
 from .manifest import read_manifest, write_manifest
 from .models import ProcessedFile, SourceFile
 from .registry import ProcessorRegistry
+from .i18n import tr
 
 logger = logging.getLogger("obsidianizer.pipeline")
 
@@ -40,11 +41,11 @@ def _make_emitter(on_event: EventCallback, total: int) -> Callable[..., None]:
     callback are swallowed and logged.
     """
 
-    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "") -> None:
+    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "", data: dict | None = None) -> None:
         if on_event is None:
             return
         try:
-            on_event(Event(type=type_, path=path, index=index, total=total, message=message))
+            on_event(Event(type=type_, path=path, index=index, total=total, message=message, data=data or {}))
         except Exception:  # noqa: BLE001 - listener errors must not kill the batch
             logger.debug("Ошибка обработчика событий", exc_info=True)
 
@@ -96,14 +97,27 @@ def _finish_message(report: Report) -> str:
     """Build the human-readable summary for the single FINISHED event."""
 
     counts = (
-        f"обработано={report.processed}, пропущено={report.skipped}, "
-        f"ошибок={len(report.failed)}"
+        f"{tr('fin.processed', n=report.processed)}, {tr('fin.skipped', n=report.skipped)}, "
+        f"{tr('fin.errors', n=len(report.failed))}"
     )
     if report.cancelled:
-        return f"отменено с сохранением уже записанных файлов ({counts})"
+        return f"{tr('fin.cancelled')} ({counts})"
     if report.critical_error:
-        return f"критическая ошибка: {report.critical_error} ({counts})"
+        return f"{tr('fin.critical', err=report.critical_error)} ({counts})"
     return counts
+
+
+def _finish_data(report: Report) -> dict:
+    """Machine-readable FINISHED payload — the UI never parses the message."""
+
+    return {
+        "mode": "import",
+        "cancelled": bool(report.cancelled),
+        "critical": report.critical_error or "",
+        "processed": report.processed,
+        "skipped": report.skipped,
+        "errors": len(report.failed),
+    }
 
 
 def run(
@@ -135,7 +149,7 @@ def run(
     try:
         sources = registry.scan(source_root)
         total = len(sources)
-        logger.info("Найдено %d файлов для обработки", total)
+        logger.info(tr("pl.found_files", n=total))
         emit = _make_emitter(on_event, total)
         emit(EventType.SCAN_STARTED, path=str(source_root))
 
@@ -188,7 +202,7 @@ def run(
             except Exception as exc:  # noqa: BLE001 - one bad file must not kill the batch
                 report.failed.append(f"{sf.rel_path}: {exc}")
                 emit(EventType.FILE_ERROR, path=sf.rel_path, index=index, message=str(exc))
-                logger.error("Ошибка обработки %s: %s", sf.rel_path, exc)
+                logger.error(tr("pl.file_error", path=sf.rel_path, err=exc))
 
         if report.cancelled:
             # Stop requested: keep ownership of what was written, never prune
@@ -218,7 +232,7 @@ def run(
                 write_manifest(target_root, current)
     except Exception as exc:  # noqa: BLE001 - fatal run-level failure must still emit FINISHED
         report.critical_error = str(exc)
-        logger.error("Критическая ошибка запуска: %s", exc)
+        logger.error(tr("pl.critical_log", err=exc))
     finally:
         if emit is None:
             # scan itself failed before an emitter existed — emit one anyway
@@ -227,6 +241,7 @@ def run(
             EventType.FINISHED,
             index=report.processed,
             message=_finish_message(report),
+            data=_finish_data(report),
         )
 
     return report
@@ -238,7 +253,7 @@ def _process_one(
 ) -> ProcessedFile:
     processor = registry.processor_for(sf.ext)
     if processor is None:
-        raise ValueError(f"нет процессора для расширения {sf.ext}")
+        raise ValueError(tr("pl.no_processor", ext=sf.ext))
 
     meta = processor.parse(sf)
     meta["process_version"] = PROCESS_VERSION

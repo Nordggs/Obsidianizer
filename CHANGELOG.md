@@ -1,5 +1,17 @@
 # Obsidianizer
 
+## [0.6.1] - 2026-09-02
+
+### Changed
+- **Structured events (stage 2 of i18n)** — `Event` now carries a machine-
+  readable `data` payload (counts, state flags). The UI reads `ev.data`
+  instead of parsing localized message text, so progress/status rendering
+  works identically in RU and EN.
+- **Backend messages localized** — errors and UI-visible log lines from
+  pipeline, postprocess, topics, LLM client and the path guard now follow
+  the active language. Markdown content (cards, topic notes, prompts) is
+  untouched.
+
 ## [0.6.0] - 2026-09-02
 
 ### Added

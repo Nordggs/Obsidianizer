@@ -24,7 +24,7 @@ opens the clustering pass, then one ``TOPIC_FILE_*`` per created topic).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -80,6 +80,9 @@ class Event:
     ``path`` is relative to the source root (or empty for stage events).
     ``index``/``total`` are the 1-based file counters for progress bars.
     ``message`` carries a human-readable detail (e.g. an error description).
+    ``data`` carries machine-readable structured payloads (counts, state
+    flags) so interfaces never have to parse ``message`` text — the message
+    is localized for display only (issue #6, stage 2).
     """
 
     type: EventType
@@ -87,3 +90,4 @@ class Event:
     index: int = 0
     total: int = 0
     message: str = ""
+    data: dict = field(default_factory=dict)

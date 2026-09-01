@@ -17,6 +17,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .i18n import tr
+
 
 class GuardError(Exception):
     """Raised when a path pair layout is unsafe."""
@@ -42,21 +44,12 @@ def check(first: Path, second: Path) -> None:
     b = _normalized(second)
 
     if a == b:
-        raise GuardError(
-            f"Первый и второй путь совпадают: {first}\n"
-            "Запуск запрещён — этап уничтожил бы собственный вход."
-        )
+        raise GuardError(tr("guard.same_path", first=first))
     if _is_within(b, a):
         raise GuardError(
-            f"Второй путь находится внутри первого:\n"
-            f"  первый: {first}\n"
-            f"  второй: {second}\n"
-            "Запуск запрещён — предусмотренные результаты были бы видны как новые входные данные."
+            tr("guard.second_inside_first", first=first, second=second)
         )
     if _is_within(a, b):
         raise GuardError(
-            f"Первый путь находится внутри второго:\n"
-            f"  первый: {first}\n"
-            f"  второй: {second}\n"
-            "Запуск запрещён — этап стал бы сканировать собственные результаты."
+            tr("guard.first_inside_second", first=first, second=second)
         )

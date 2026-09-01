@@ -35,6 +35,7 @@ import yaml
 from .emit import atomic_write
 from .enrich import date_from_meta
 from .events import Event, EventType
+from .i18n import tr
 from .index import build_index_from_dir, frontmatter_of
 from .llm import LLMClient
 from .postprocess import split_file
@@ -107,15 +108,15 @@ def collect_chats(
             candidate = target_root.joinpath(*rel.split("/"))
             resolved = candidate.resolve()
             if root_resolved not in resolved.parents and resolved != root_resolved:
-                raise ValueError("путь за пределами папки processed")
+                raise ValueError(tr("top.path_outside"))
             if not candidate.is_file():
-                raise ValueError("файл не найден")
+                raise ValueError(tr("top.file_missing"))
             parsed = split_file(candidate.read_text(encoding="utf-8", errors="replace"))
             if parsed is None:
-                raise ValueError("не файл Obsidianizer (нет frontmatter)")
+                raise ValueError(tr("top.not_ours"))
             meta, body = parsed
             if not meta.get("source_hash"):
-                raise ValueError("нет маркера владения source_hash")
+                raise ValueError(tr("top.no_hash"))
             chats.append({"rel": rel, "meta": meta, "body": body})
             emit(EventType.TOPIC_FILE_DONE, path=rel, index=index)
         except Exception as exc:  # noqa: BLE001 - one bad file must not kill the batch
@@ -125,7 +126,7 @@ def collect_chats(
                 index=index,
                 message=str(exc),
             )
-            logger.error("Ошибка сбора чата %s: %s", rel, exc)
+            logger.error(tr("top.collect_log", path=rel, err=exc))
     return chats, False
 
 
@@ -252,7 +253,7 @@ def create_topic(
 
     report = TopicReport()
     if not rel_files:
-        report.critical_error = "Не выбраны файлы"
+        report.critical_error = tr("top.no_files")
         _finish(report, on_event)
         return report
     try:
@@ -270,7 +271,7 @@ def create_topic(
             _finish(report, on_event)
             return report
         if not chats:
-            report.critical_error = "Нет читаемых чатов для объединения"
+            report.critical_error = tr("top.no_readable")
             _finish(report, on_event)
             return report
 
@@ -284,7 +285,7 @@ def create_topic(
 
         result = llm.analyze_topic(build_payload(chats))
         if not result.get("name") and not result.get("summary"):
-            report.failed.append("пустой ответ модели")
+            report.failed.append(tr("top.empty_reply"))
             _finish(report, on_event)
             return report
 
@@ -304,7 +305,7 @@ def create_topic(
             atomic_write(enriched_root / "_index.md", index_md)
     except Exception as exc:  # noqa: BLE001 - fatal stage failure must still emit TOPIC_FINISHED
         report.critical_error = str(exc)
-        logger.error("Критическая ошибка объединения в тему: %s", exc)
+        logger.error(tr("top.log.merge_failed", err=exc))
     finally:
         _finish(report, on_event)
     return report
@@ -453,11 +454,11 @@ def update_topic(
     report = TopicReport()
     existing = find_topic_file(enriched_root, topic_id)
     if existing is None:
-        report.critical_error = f"Тема {topic_id} не найдена"
+        report.critical_error = tr("top.not_found_id", id=topic_id)
         _finish(report, on_event)
         return report
     if not rel_files:
-        report.critical_error = "Не выбраны файлы"
+        report.critical_error = tr("top.no_files")
         _finish(report, on_event)
         return report
     try:
@@ -476,7 +477,7 @@ def update_topic(
             _finish(report, on_event)
             return report
         if not chats:
-            report.critical_error = "Нет читаемых чатов для объединения"
+            report.critical_error = tr("top.no_readable")
             _finish(report, on_event)
             return report
 
@@ -489,7 +490,7 @@ def update_topic(
 
         result = llm.analyze_topic(build_payload(chats))
         if not result.get("name") and not result.get("summary"):
-            report.failed.append("пустой ответ модели")
+            report.failed.append(tr("top.empty_reply"))
             _finish(report, on_event)
             return report
 
@@ -514,7 +515,7 @@ def update_topic(
         _rebuild_index(enriched_root)
     except Exception as exc:  # noqa: BLE001 - fatal failure must still emit TOPIC_FINISHED
         report.critical_error = str(exc)
-        logger.error("Критическая ошибка обновления темы: %s", exc)
+        logger.error(tr("top.log.update_failed", err=exc))
     finally:
         _finish(report, on_event)
     return report
@@ -527,18 +528,18 @@ def rename_topic(
 
     path = find_topic_file(enriched_root, topic_id)
     if path is None:
-        return {"ok": False, "error": "Тема не найдена"}
+        return {"ok": False, "error": tr("top.not_found")}
     name = sanitize_name(new_name)
     if not name or name == "Тема" and not str(new_name or "").strip():
-        return {"ok": False, "error": "Пустое имя темы"}
+        return {"ok": False, "error": tr("top.empty_name")}
     topic_dir = enriched_root / TOPICS_DIR
     new_path = topic_dir / f"{name}.md"
     if new_path.resolve() != path.resolve() and new_path.exists():
-        return {"ok": False, "error": "Тема с таким именем уже существует"}
+        return {"ok": False, "error": tr("top.name_exists")}
     try:
         parsed = _split_note(path.read_text(encoding="utf-8", errors="replace"))
         if parsed is None:
-            return {"ok": False, "error": "Не удалось прочитать тему"}
+            return {"ok": False, "error": tr("top.read_failed")}
         meta, body = parsed
         meta["title"] = name
         meta["topic"] = name
@@ -565,7 +566,7 @@ def delete_topic(
 
     path = find_topic_file(enriched_root, topic_id)
     if path is None:
-        return {"ok": False, "error": "Тема не найдена"}
+        return {"ok": False, "error": tr("top.not_found")}
     try:
         path.unlink()
         _rebuild_index(enriched_root)
@@ -773,7 +774,7 @@ def group_all(
             message=str(len(catalog)),
         )
         if not catalog:
-            report.critical_error = "Нет обработанных чатов для авто-группировки"
+            report.critical_error = tr("top.no_processed")
             _finish_group(report, on_event)
             return report
 
@@ -804,7 +805,7 @@ def group_all(
                     EventType.TOPIC_FILE_DONE,
                     path=name,
                     index=i,
-                    message="один чат — тема не создана",
+                    message=tr("top.one_chat"),
                 )
                 continue
 
@@ -818,17 +819,17 @@ def group_all(
                 topic_emit(EventType.TOPIC_FILE_DONE, path=topic.name, index=i, message=topic.created)
             elif topic.skipped:
                 report.skipped += 1
-                topic_emit(EventType.TOPIC_FILE_DONE, path=topic.name, index=i, message="актуальна")
+                topic_emit(EventType.TOPIC_FILE_DONE, path=topic.name, index=i, message=tr("top.uptodate_short"))
             elif topic.critical_error:
                 report.failed.append(topic.critical_error)
                 topic_emit(EventType.TOPIC_FILE_ERROR, path=topic.name, index=i, message=topic.critical_error)
             else:
-                message = "; ".join(topic.failed) or "тема не создана"
+                message = "; ".join(topic.failed) or tr("top.not_created")
                 report.failed.append(message)
                 topic_emit(EventType.TOPIC_FILE_ERROR, path=topic.name, index=i, message=message)
     except Exception as exc:  # noqa: BLE001 - fatal stage failure must still emit TOPIC_FINISHED
         report.critical_error = str(exc)
-        logger.error("Критическая ошибка авто-группировки: %s", exc)
+        logger.error(tr("top.log.group_failed", err=exc))
     finally:
         _finish_group(report, on_event)
     return report
@@ -837,16 +838,33 @@ def group_all(
 def _finish_group(report: GroupReport, on_event: EventCallback) -> None:
     emit = _make_emitter(on_event, 0)
     if report.cancelled:
-        message = "Авто-группировка отменена"
+        message = tr("top.group_cancelled")
+        state = "cancelled"
     elif report.critical_error:
-        message = f"Критическая ошибка: {report.critical_error}"
+        message = tr("top.critical", err=report.critical_error)
+        state = "critical"
     else:
-        message = (
-            f"Авто-группировка: создано={len(report.created)}, "
-            f"актуально={report.skipped}, пропущено={report.one_chat}, "
-            f"ошибок={len(report.failed)}"
+        message = tr(
+            "top.group_summary",
+            created=len(report.created),
+            skipped=report.skipped,
+            one_chat=report.one_chat,
+            errors=len(report.failed),
         )
-    emit(EventType.TOPIC_FINISHED, message=message)
+        state = "done"
+    emit(
+        EventType.TOPIC_FINISHED,
+        message=message,
+        data={
+            "mode": "group",
+            "state": state,
+            "critical": report.critical_error or "",
+            "created": len(report.created),
+            "skipped": report.skipped,
+            "one_chat": report.one_chat,
+            "errors": len(report.failed),
+        },
+    )
 
 
 # ── internals ──────────────────────────────────────────────────────────────
@@ -908,30 +926,45 @@ def _split_note(text: str) -> tuple[dict, str] | None:
 def _finish(report: TopicReport, on_event: EventCallback) -> None:
     emit = _make_emitter(on_event, 0)
     if report.cancelled:
-        message = "Объединение в тему отменено"
+        message = tr("top.merge_cancelled")
+        state = "cancelled"
     elif report.critical_error:
-        message = f"Критическая ошибка: {report.critical_error}"
+        message = tr("top.critical", err=report.critical_error)
+        state = "critical"
     elif report.skipped:
-        message = f"Тема актуальна: {report.name} (чаты не менялись)"
+        message = tr("top.uptodate", name=report.name)
+        state = "uptodate"
     elif report.updated:
-        message = f"Тема обновлена: {report.name}"
+        message = tr("top.updated", name=report.name)
+        state = "updated"
     elif report.created:
-        message = f"Тема создана: {report.name}"
+        message = tr("top.created", name=report.name)
+        state = "created"
     else:
-        message = "Тема не создана"
-    emit(EventType.TOPIC_FINISHED, message=message)
+        message = tr("top.none")
+        state = "none"
+    emit(
+        EventType.TOPIC_FINISHED,
+        message=message,
+        data={
+            "mode": "single",
+            "state": state,
+            "name": report.name,
+            "critical": report.critical_error or "",
+        },
+    )
 
 
 def _make_emitter(on_event: EventCallback, total: int) -> Callable[..., None]:
     """Return a safe emitter bound to the batch total. A broken listener must
     never stop the stage."""
 
-    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "") -> None:
+    def emit(type_: EventType, path: str = "", index: int = 0, message: str = "", data: dict | None = None) -> None:
         if on_event is None:
             return
         try:
             on_event(
-                Event(type=type_, path=path, index=index, total=total, message=message)
+                Event(type=type_, path=path, index=index, total=total, message=message, data=data or {})
             )
         except Exception:  # noqa: BLE001 - listener errors must not kill the batch
             logger.debug("Ошибка обработчика событий", exc_info=True)

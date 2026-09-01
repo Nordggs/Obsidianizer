@@ -196,23 +196,22 @@
 
   function finishAi(ev) {
     setBusy(false);
+    const d = ev.data || {};
     const m = ev.message || "";
     let cls = "ok";
     let status = t("status.done");
-    if (m.indexOf("отменена") !== -1) {
+    if (d.cancelled) {
       cls = "warn";
       status = t("status.cancelled");
-    } else if (m.indexOf("критическая") !== -1) {
+    } else if (d.critical) {
       cls = "err";
       status = t("status.critical");
     }
-    const counts = m.match(/AI-обработано=(\d+), пропущено=(\d+), ошибок=(\d+)/);
-    if (counts) {
-      let summary = t("status.processed_n", { n: counts[1] }) + " · " +
-        t("status.skipped_n", { n: counts[2] }) + " · " +
-        t("status.errors_n", { n: counts[3] });
-      const pruned = m.match(/удалено сирот=(\d+)/);
-      if (pruned) summary += " · " + t("status.orphans_removed_n", { n: pruned[1] });
+    if (typeof d.processed === "number") {
+      let summary = t("status.processed_n", { n: d.processed }) + " · " +
+        t("status.skipped_n", { n: d.skipped }) + " · " +
+        t("status.errors_n", { n: d.errors });
+      if (d.pruned) summary += " · " + t("status.orphans_removed_n", { n: d.pruned });
       if (importMsg) summary = t("status.import_x", { x: importMsg }) + " · " + summary;
       setStatus(status + summary, cls);
     } else {
@@ -227,11 +226,12 @@
 
   function finish(ev) {
     setBusy(false);
+    const d = ev.data || {};
     const m = ev.message || "";
-    if (m.indexOf("отменено") === 0) {
+    if (d.cancelled) {
       setStatus(t("status.cancelled") + m, "warn");
       renderLog("■ " + m, "warn");
-    } else if (m.indexOf("критическая ошибка") === 0) {
+    } else if (d.critical) {
       setStatus(t("status.critical") + m, "err");
       renderLog("■ " + m, "err");
     } else {
@@ -242,16 +242,18 @@
 
   function finishTopic(ev) {
     setBusy(false);
+    const d = ev.data || {};
     const m = ev.message || "";
     let cls = "ok";
     let status = t("status.done");
-    if (m.indexOf("отменено") !== -1) {
+    const st = d.state || "";
+    if (st === "cancelled") {
       cls = "warn";
       status = t("status.cancelled");
-    } else if (m.indexOf("Критическая ошибка") !== -1) {
+    } else if (st === "critical") {
       cls = "err";
       status = t("status.critical");
-    } else if (m.indexOf("актуальна") !== -1) {
+    } else if (st === "uptodate") {
       cls = "dim";
       status = t("status.skipped_prefix");
     }

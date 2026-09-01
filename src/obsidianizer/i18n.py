@@ -64,6 +64,93 @@ _STRINGS: dict[str, dict[str, str]] = {
             "В Obsidian: Настройки → Горячие клавиши → «Obsidianizer Update» "
             "→ назначьте Alt+3."
         ),
+        # ── pipeline.py (stage 2: structured finish + localized log) ────
+        "fin.processed": "обработано={n}",
+        "fin.skipped": "пропущено={n}",
+        "fin.errors": "ошибок={n}",
+        "fin.cancelled": "отменено с сохранением уже записанных файлов",
+        "fin.critical": "критическая ошибка: {err}",
+        "pl.no_processor": "нет процессора для расширения {ext}",
+        "pl.found_files": "Найдено {n} файлов для обработки",
+        "pl.file_error": "Ошибка обработки {path}: {err}",
+        "pl.critical_log": "Критическая ошибка запуска: {err}",
+        # ── postprocess.py ──────────────────────────────────────────────
+        "ai.processed": "AI-обработано={n}",
+        "ai.cancelled": "AI-постобработка отменена",
+        "ai.critical": "AI-критическая ошибка: {err}",
+        "ai.pruned": "удалено сирот={n}",
+        "ai.empty_reply": "пустой ответ модели",
+        "ai.file_error": "Ошибка AI-постобработки {path}: {err}",
+        "ai.critical_log": "Критическая ошибка AI-постобработки: {err}",
+        "ai.orphan_removed": "Удалён сирота AI: {path}",
+        # ── topics.py (UI strings only — Markdown content stays RU) ─────
+        "top.path_outside": "путь за пределами папки processed",
+        "top.file_missing": "файл не найден",
+        "top.not_ours": "не файл Obsidianizer (нет frontmatter)",
+        "top.no_hash": "нет маркера владения source_hash",
+        "top.collect_log": "Ошибка сбора чата {path}: {err}",
+        "top.no_files": "Не выбраны файлы",
+        "top.no_readable": "Нет читаемых чатов для объединения",
+        "top.empty_reply": "пустой ответ модели",
+        "top.not_found_id": "Тема {id} не найдена",
+        "top.not_found": "Тема не найдена",
+        "top.empty_name": "Пустое имя темы",
+        "top.name_exists": "Тема с таким именем уже существует",
+        "top.read_failed": "Не удалось прочитать тему",
+        "top.no_processed": "Нет обработанных чатов для авто-группировки",
+        "top.one_chat": "один чат — тема не создана",
+        "top.uptodate_short": "актуальна",
+        "top.not_created": "тема не создана",
+        "top.group_cancelled": "Авто-группировка отменена",
+        "top.critical": "Критическая ошибка: {err}",
+        "top.group_summary": (
+            "Авто-группировка: создано={created}, актуально={skipped}, "
+            "пропущено={one_chat}, ошибок={errors}"
+        ),
+        "top.merge_cancelled": "Объединение в тему отменено",
+        "top.uptodate": "Тема актуальна: {name} (чаты не менялись)",
+        "top.updated": "Тема обновлена: {name}",
+        "top.created": "Тема создана: {name}",
+        "top.none": "Тема не создана",
+        "top.log.merge_failed": "Критическая ошибка объединения в тему: {err}",
+        "top.log.update_failed": "Критическая ошибка обновления темы: {err}",
+        "top.log.group_failed": "Критическая ошибка авто-группировки: {err}",
+        # ── llm.py (UI-visible warnings) ────────────────────────────────
+        "llm.empty_reply": "Ollama вернул пустой ответ — проверь модель/промпт",
+        "llm.unavailable_skip": "Ollama недоступен ({exc}) — пропускаю AI-обогащение",
+        "llm.error": "Ошибка Ollama: {exc}",
+        "llm.empty_ai_reply": "Ollama вернул пустой AI-ответ — проверь модель/промпт",
+        "llm.unavailable_skip_ai": "Ollama недоступен ({exc}) — пропуск AI-постобработки",
+        "llm.error_ai": "Ошибка Ollama: {exc}",
+        "llm.empty_topic_reply": "Ollama вернул пустой topic-ответ — проверь модель/промпт",
+        "llm.unavailable_topic": "Ollama недоступен ({exc}) — пропуск анализа темы",
+        "llm.error_topic": "Ошибка Ollama при анализе темы: {exc}",
+        "llm.empty_map_reply": "Ollama вернул пустую карту тем — проверь модель/промпт",
+        "llm.unavailable_map": "Ollama недоступен ({exc}) — пропуск карты тем",
+        "llm.error_map": "Ошибка Ollama при построении карты тем: {exc}",
+        "llm.unavailable_chat": "Ollama недоступен ({exc}) — чат не выполнен",
+        "llm.error_chat": "Ошибка Ollama в чате: {exc}",
+        "llm.unavailable_embed": "Ollama недоступен ({exc}) — эмбеддинги не построены",
+        "llm.error_embed": "Ошибка Ollama при построении эмбеддингов: {exc}",
+        "llm.unavailable_models": "Ollama недоступен ({exc}) — не удалось получить модели",
+        "llm.error_models": "Ошибка Ollama при получении моделей: {exc}",
+        # ── guard.py (user-facing path-safety errors) ───────────────────
+        "guard.same_path": (
+            "Первый и второй путь совпадают: {first}\n"
+            "Запуск запрещён — этап уничтожил бы собственный вход."
+        ),
+        "guard.second_inside_first": (
+            "Второй путь находится внутри первого:\n"
+            "  первый: {first}\n"
+            "  второй: {second}\n"
+            "Запуск запрещён — предусмотренные результаты были бы видны как новые входные данные."
+        ),
+        "guard.first_inside_second": (
+            "Первый путь находится внутри второго:\n"
+            "  первый: {first}\n"
+            "  второй: {second}\n"
+            "Запуск запрещён — этап стал бы сканировать собственные результаты."
+        ),
     },
     "en": {
         "err.unknown_template": "unknown template: {template}",
@@ -102,6 +189,93 @@ _STRINGS: dict[str, dict[str, str]] = {
         "int.hint": (
             "In Obsidian: Settings → Hotkeys → «Obsidianizer Update» "
             "→ assign Alt+3."
+        ),
+        # ── pipeline.py ─────────────────────────────────────────────────
+        "fin.processed": "processed={n}",
+        "fin.skipped": "skipped={n}",
+        "fin.errors": "errors={n}",
+        "fin.cancelled": "cancelled, already-written files kept",
+        "fin.critical": "critical error: {err}",
+        "pl.no_processor": "no processor for extension {ext}",
+        "pl.found_files": "Found {n} files to process",
+        "pl.file_error": "Error processing {path}: {err}",
+        "pl.critical_log": "Critical run error: {err}",
+        # ── postprocess.py ──────────────────────────────────────────────
+        "ai.processed": "AI-processed={n}",
+        "ai.cancelled": "AI post-processing cancelled",
+        "ai.critical": "AI critical error: {err}",
+        "ai.pruned": "orphans removed={n}",
+        "ai.empty_reply": "empty model reply",
+        "ai.file_error": "AI post-processing error {path}: {err}",
+        "ai.critical_log": "Critical AI post-processing error: {err}",
+        "ai.orphan_removed": "Removed AI orphan: {path}",
+        # ── topics.py ───────────────────────────────────────────────────
+        "top.path_outside": "path outside the processed folder",
+        "top.file_missing": "file not found",
+        "top.not_ours": "not an Obsidianizer file (no frontmatter)",
+        "top.no_hash": "no source_hash ownership marker",
+        "top.collect_log": "Chat collection error {path}: {err}",
+        "top.no_files": "No files selected",
+        "top.no_readable": "No readable chats to merge",
+        "top.empty_reply": "empty model reply",
+        "top.not_found_id": "Topic {id} not found",
+        "top.not_found": "Topic not found",
+        "top.empty_name": "Empty topic name",
+        "top.name_exists": "A topic with this name already exists",
+        "top.read_failed": "Failed to read the topic",
+        "top.no_processed": "No processed chats for auto-grouping",
+        "top.one_chat": "single chat — no topic created",
+        "top.uptodate_short": "up to date",
+        "top.not_created": "topic not created",
+        "top.group_cancelled": "Auto-grouping cancelled",
+        "top.critical": "Critical error: {err}",
+        "top.group_summary": (
+            "Auto-grouping: created={created}, up-to-date={skipped}, "
+            "single-chat={one_chat}, errors={errors}"
+        ),
+        "top.merge_cancelled": "Topic merge cancelled",
+        "top.uptodate": "Topic up to date: {name} (chats unchanged)",
+        "top.updated": "Topic updated: {name}",
+        "top.created": "Topic created: {name}",
+        "top.none": "No topic created",
+        "top.log.merge_failed": "Critical topic-merge error: {err}",
+        "top.log.update_failed": "Critical topic-update error: {err}",
+        "top.log.group_failed": "Critical auto-grouping error: {err}",
+        # ── llm.py ──────────────────────────────────────────────────────
+        "llm.empty_reply": "Ollama returned an empty reply — check the model/prompt",
+        "llm.unavailable_skip": "Ollama unavailable ({exc}) — skipping AI enrichment",
+        "llm.error": "Ollama error: {exc}",
+        "llm.empty_ai_reply": "Ollama returned an empty AI reply — check the model/prompt",
+        "llm.unavailable_skip_ai": "Ollama unavailable ({exc}) — skipping AI post-processing",
+        "llm.error_ai": "Ollama error: {exc}",
+        "llm.empty_topic_reply": "Ollama returned an empty topic reply — check the model/prompt",
+        "llm.unavailable_topic": "Ollama unavailable ({exc}) — skipping topic analysis",
+        "llm.error_topic": "Ollama error during topic analysis: {exc}",
+        "llm.empty_map_reply": "Ollama returned an empty topic map — check the model/prompt",
+        "llm.unavailable_map": "Ollama unavailable ({exc}) — skipping topic map",
+        "llm.error_map": "Ollama error while building the topic map: {exc}",
+        "llm.unavailable_chat": "Ollama unavailable ({exc}) — chat not executed",
+        "llm.error_chat": "Ollama error in chat: {exc}",
+        "llm.unavailable_embed": "Ollama unavailable ({exc}) — embeddings not built",
+        "llm.error_embed": "Ollama error while building embeddings: {exc}",
+        "llm.unavailable_models": "Ollama unavailable ({exc}) — could not list models",
+        "llm.error_models": "Ollama error while listing models: {exc}",
+        # ── guard.py ────────────────────────────────────────────────────
+        "guard.same_path": (
+            "The first and second paths are the same: {first}\n"
+            "Run forbidden — the stage would destroy its own input."
+        ),
+        "guard.second_inside_first": (
+            "The second path is inside the first one:\n"
+            "  first: {first}\n"
+            "  second: {second}\n"
+            "Run forbidden — the produced results would be seen as new input."
+        ),
+        "guard.first_inside_second": (
+            "The first path is inside the second one:\n"
+            "  first: {first}\n"
+            "  second: {second}\n"
+            "Run forbidden — the stage would scan its own results."
         ),
     },
 }
