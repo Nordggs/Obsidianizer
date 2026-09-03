@@ -18,7 +18,7 @@ it:
 | Data | Where it lives | What the generator does |
 |---|---|---|
 | Project files (facts) | the folder itself | scanned read-only |
-| User fields (клиент, источник, дизайнер, комментарий, …) | `<folder>_заметки.md` frontmatter | **never overwritten**; edited notes mark the card stale so the next update renders fresh About data |
+| User fields (проект, источник, контакт, комментарий, …) | `<folder>_заметки.md` frontmatter | **never overwritten****; edited notes mark the card stale so the next update renders fresh About data |
 | Working notes body | `<folder>_заметки.md` | created once, **never replaced**, embedded via `![[…_заметки]]` |
 | AI review | `<folder>_обзор.md` | embedded when present |
 
@@ -60,8 +60,8 @@ Updated DD Mon YYYY
 
 ## About                                     (only with user fields present)
 > [!info] 📋 Карточка проекта
-> - **Клиент**: ООО Ромашка
-> - **Дизайнер**: Татьяна
+> - **Проект**: ООО Ромашка
+> - **Контакт**: Татьяна
 
 ## Gallery                                   (direct images + known vault path)
 ```img-gallery
@@ -118,7 +118,7 @@ rendered by Obsidian) — see [Technical notes](#technical-notes).
    (добавлен/удалён/изменён файл, структура папок, данные проекта) for stale
    cards. If a foreign note occupies the card name, the row suggests turning
    on **«Принять существующую заметку как заметки»** (`--adopt`).
-4. **Edit user data** in `<folder>_заметки.md` (клиент, источник, дизайнер,
+4. **Edit user data** in `<folder>_заметки.md` (проект, источник, контакт,
    комментарий…). The card is not rewritten — the next scan/update picks the
    changes up.
 5. **Update later**: press the Templater hotkey on a card (one card), or run

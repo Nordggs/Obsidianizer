@@ -304,7 +304,7 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
     assert f"{VERSION_KEY}: {RENDER_VERSION}\n" in card
     assert "cssclasses" not in card
     assert "дата_начала:" not in card
-    assert "клиент:" not in card
+    assert "проект:" not in card
 
     # v5 header — plain markdown, no HTML blocks
     assert "# Оборудование\n" in card
@@ -320,7 +320,7 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
 
     # About falls back to the old card frontmatter when notes absent
     assert "## About\n" in card
-    assert "> - **Клиент**: Петров Пётр +7 (999) 765-43-21" in card
+    assert "> - **Проект**: Петров Пётр +7 (999) 765-43-21" in card
     assert "> - **Адрес**: Москва, ул. Примерная, 1" in card
 
     # Files: single GitHub-style table with opens-with column
@@ -352,7 +352,7 @@ def test_build_card_new_card_defaults(tmp_path):
     assert props[VERSION_KEY] == RENDER_VERSION
     assert len(props[HASH_KEY]) == 12
     assert "дата_начала" not in props
-    assert "клиент" not in props
+    assert "проект" not in props
     assert "cssclasses" not in props  # classic template
 
 
@@ -386,14 +386,14 @@ def test_update_cards_migrates_user_frontmatter_to_notes(tmp_path):
     # Card no longer carries user fields
     new_card = parse_frontmatter(card.read_text(encoding="utf-8"))
     assert new_card[CARD_MARKER_KEY] is True
-    assert "клиент" not in new_card
+    assert "проект" not in new_card
     assert "телефон" not in new_card
 
     # Notes received ALL user fields, incl. unknown ones and block-list tags
     notes_props = parse_frontmatter((root / "Оборудование_заметки.md").read_text(encoding="utf-8"))
     assert notes_props["дата_начала"] == "2026-03-16"
     assert notes_props["источник"] == "Иванов Иван +7 (999) 123-45-67"
-    assert notes_props["клиент"] == "Петров Пётр +7 (999) 765-43-21"
+    assert notes_props["проект"] == "Петров Пётр +7 (999) 765-43-21"
     assert notes_props["телефон"] == "+7 999 123-45-67"
     assert notes_props["карта"] == "https://yandex.ru/maps/?text=Москва"
     assert notes_props["мой_пункт"] == "что-то"
@@ -401,7 +401,7 @@ def test_update_cards_migrates_user_frontmatter_to_notes(tmp_path):
 
     # About section renders from the migrated notes
     body = card.read_text(encoding="utf-8")
-    assert "> - **Клиент**: Петров Пётр +7 (999) 765-43-21" in body
+    assert "> - **Проект**: Петров Пётр +7 (999) 765-43-21" in body
     assert "> - **Телефон**: +7 999 123-45-67" in body
     assert "> - **Карта**: https://yandex.ru/maps/?text=Москва" in body
     assert "> - **Мой_пункт**: что-то" in body
@@ -702,7 +702,7 @@ def test_update_cards_adopt_renames_foreign_note(tmp_path):
     assert card_is_ours(card.read_text(encoding="utf-8"))
     # старый frontmatter стал источником Карточки проекта
     body = card.read_text(encoding="utf-8")
-    assert "> - **Клиент**: ООО Ромашка" in body
+    assert "> - **Проект**: ООО Ромашка" in body
     assert "> - **Адрес**: Москва" in body
 
 
@@ -926,7 +926,7 @@ def test_build_card_github_golden(mock_get_now, tmp_path):
     assert f"{TEMPLATE_KEY}: github" in card
     assert "cssclasses: [github-dashboard]" in card
     # Service-only frontmatter
-    assert "клиент:" not in card.split("---\n")[1]
+    assert "проект:" not in card.split("---\n")[1]
     assert "# Оборудование\n" in card
     # Header — plain markdown, no HTML blocks
     assert "Автоматическая карточка каталога" in card
@@ -985,7 +985,7 @@ def test_about_comes_from_notes_file(tmp_path):
     )
     card2 = build_card(scan, None, ObsidianizeConfig(template="github"), notes_prev=notes_prev)
     assert "## About\n" in card2
-    assert "> - **Клиент**: Иванов" in card2
+    assert "> - **Проект**: Иванов" in card2
     assert "> - **Дата начала**: 2026-01-15" in card2
     assert "| Адрес |" not in card2
     # Subtitle from notes комментарий
@@ -1215,12 +1215,57 @@ def test_project_card_callout_from_notes(tmp_path):
     )
     card = build_card(scan, None, ObsidianizeConfig(template="github"), notes_prev=notes_prev)
     assert "> [!info] 📋 Карточка проекта" in card
-    assert "> - **Клиент**: ООО Ромашка" in card
+    assert "> - **Проект**: ООО Ромашка" in card
     assert "> - **Адрес**: Москва" in card
     assert "> - **Источник**: Иванов" in card
     assert "> - **Дата начала**: 2026-01-15" in card
-    assert "> - **Дизайнер**: Татьяна" in card
+    assert "> - **Контакт**: Татьяна" in card
     assert "> - **Комментарий**: Согласовать" in card
+
+
+def test_legacy_field_keys_remapped_on_read(tmp_path):
+    """v0.5.x notes carrying клиент/дизайнер keep working: the card shows
+    the new Проект/Контакт fields with the same values, and a migration
+    from an old card writes the NEW key names into the notes file."""
+
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+    notes_prev = (
+        "---\n"
+        "клиент: ООО Ромашка\n"
+        "дизайнер: Татьяна\n"
+        "---\n\nзаметки\n"
+    )
+    card = build_card(scan, None, ObsidianizeConfig(template="github"), notes_prev=notes_prev)
+    assert "> - **Проект**: ООО Ромашка" in card
+    assert "> - **Контакт**: Татьяна" in card
+    assert "Клиент:" not in card
+    assert "Дизайнер:" not in card
+
+    # Migration path: old-card keys land in the notes file under new names
+    root2 = _make_equipment(tmp_path / "v2")
+    old_card = root2 / "Оборудование.md"
+    old_card.write_text(
+        "---\n"
+        "клиент: ООО Ромашка\n"
+        "дизайнер: Татьяна\n"
+        f"{CARD_MARKER_KEY}: true\n"
+        f"{HASH_KEY}: deadbeefdead\n"
+        "---\n\nстарое тело\n",
+        encoding="utf-8",
+    )
+    update_cards(root2, ObsidianizeConfig(force=True))
+    notes_props = parse_frontmatter(
+        (root2 / "Оборудование_заметки.md").read_text(encoding="utf-8")
+    )
+    assert notes_props["проект"] == "ООО Ромашка"
+    assert notes_props["контакт"] == "Татьяна"
+    assert "клиент" not in notes_props
+    assert "дизайнер" not in notes_props
+    # and the card renders the new labels from the migrated notes
+    body2 = (root2 / "Оборудование.md").read_text(encoding="utf-8")
+    assert "> - **Проект**: ООО Ромашка" in body2
+    assert "> - **Контакт**: Татьяна" in body2
 
 
 def test_manifest_written_and_diff_detected(tmp_path):

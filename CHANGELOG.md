@@ -1,5 +1,14 @@
 # Obsidianizer
 
+## [0.6.2] - 2026-09-02
+
+### Changed
+- **User field names in notes/cards are now generic** — «клиент» → «проект»,
+  «дизайнер» → «контакт» (privacy gate before the public release). Notes
+  written by v0.5.x keep working: legacy keys are remapped on read, the card
+  shows the new field names with the same values, and migration from an old
+  card writes the new names into the notes file.
+
 ## [0.6.1] - 2026-09-02
 
 ### Changed

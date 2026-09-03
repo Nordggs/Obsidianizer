@@ -92,7 +92,7 @@ opens-with, modified, size, comment), `About` (project fields), `Gallery`,
 `Images`, `AI Review`, `Notes`.
 
 Every card comes with a paired **`<folder>_заметки.md`** notes file — the
-only user-editable layer (client, address, designer, comments…). Obsidianizer
+only user-editable layer (project, address, contact, comments…). Obsidianizer
 never rewrites the notes; editing them marks the card stale so the next
 update rebuilds the rendered part with fresh About data.
 
@@ -119,7 +119,7 @@ and a fresh card appears in its place.
 No. The `<folder>_заметки.md` file is your personal territory: the program
 creates it once and never rewrites it afterwards, no matter what happens.
 
-**I changed the project fields in the notes (client, designer…).**
+**I changed the project fields in the notes (project, contact…).**
 Edit the notes — the next update will honestly mark the card as
 "needs update" and pick up the new data. No phantom "file added/removed"
 lines for unchanged files.

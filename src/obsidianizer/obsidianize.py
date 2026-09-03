@@ -44,15 +44,34 @@ TEMPLATE_KEY = "obsidianizer_template"
 VERSION_KEY = "obsidianizer_version"
 RENDER_VERSION = 8  # bump to auto-migrate existing cards to a new structure
 
-YAML_KEYS = ["дата_начала", "источник", "дизайнер", "клиент", "адрес", "tags", "комментарий"]
+YAML_KEYS = ["дата_начала", "источник", "контакт", "проект", "адрес", "tags", "комментарий"]
 FIELD_LABELS = {
-    "клиент": "Клиент",
+    "проект": "Проект",
     "адрес": "Адрес",
-    "дизайнер": "Дизайнер",
+    "контакт": "Контакт",
     "дата_начала": "Дата начала",
     "источник": "Источник",
     "комментарий": "Комментарий",
 }
+# Legacy user-field names (pre-v0.6.2) — remapped on read so existing vaults
+# keep working without a manual migration. Writing always uses the new keys.
+OLD_KEY_MAP = {"клиент": "проект", "дизайнер": "контакт"}
+
+
+def _map_old_keys(props: dict) -> dict:
+    """Remap legacy frontmatter keys onto the current names.
+
+    Original (current-name) keys always win over remapped legacy values, so a
+    notes file that carries both spellings keeps its up-to-date data.
+    """
+
+    if not props:
+        return props
+    out = {OLD_KEY_MAP.get(k, k): v for k, v in props.items()}
+    for k, v in props.items():
+        if k not in OLD_KEY_MAP:
+            out[k] = v
+    return out
 
 CATEGORY_ORDER = ("drafting", "tables", "docs", "images", "other")
 
@@ -481,6 +500,7 @@ SERVICE_KEYS = {
 def _user_props(props: dict) -> dict:
     """User-owned frontmatter fields (everything except service keys)."""
 
+    props = _map_old_keys(props)
     out: dict = {}
     for key in YAML_KEYS:
         if key in props:
@@ -638,11 +658,11 @@ def _render_dashboard(
 
     # User data source of truth = the notes file; fall back to the old card
     # frontmatter only when notes content was not provided.
-    user_source = parse_frontmatter(notes_prev) if notes_prev else {}
+    user_source = _map_old_keys(parse_frontmatter(notes_prev)) if notes_prev else {}
     if not user_source:
-        user_source = {
-            k: v for k, v in existing.items() if not k.startswith("obsidianizer")
-        }
+        user_source = _map_old_keys(
+            {k: v for k, v in existing.items() if not k.startswith("obsidianizer")}
+        )
 
     digest = folder_fingerprint(folder)
     st = stats or _local_stats(folder, cfg)
@@ -735,7 +755,7 @@ def _render_dashboard(
 
     # ── About: Project Card (from notes frontmatter) ──
     about: list[tuple[str, str]] = []
-    for key in ("клиент", "адрес", "источник", "дата_начала", "дизайнер", "комментарий"):
+    for key in ("проект", "адрес", "источник", "дата_начала", "контакт", "комментарий"):
         if key == "дата_начала":
             raw = user_source.get(key)
             if not raw or str(raw) == _get_now().strftime("%Y-%m-%d"):
@@ -1075,7 +1095,7 @@ _MANIFEST_RE = re.compile(
 def _notes_user_hash(notes_prev: str | None) -> str:
     """sha1 of the user-owned frontmatter of the notes file ("" when empty).
 
-    Included in the manifest so that editing e.g. ``дизайнер`` marks the
+    Included in the manifest so that editing e.g. ``контакт`` marks the
     card stale even when no project file changed at all.
     """
 
@@ -1197,7 +1217,7 @@ def card_status(
 
     ``stale`` covers a changed file fingerprint, a mismatched card template,
     an older renderer version, AND changed user data in the notes file
-    (e.g. ``дизайнер`` edited → the project card must be rebuilt).
+    (e.g. ``контакт`` edited → the project card must be rebuilt).
     """
 
     if not card_path.is_file():
