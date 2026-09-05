@@ -1,5 +1,5 @@
 #define MyAppName "Obsidianizer"
-#define MyAppVersion "0.6.3"
+#define MyAppVersion "0.6.4"
 #define MyAppPublisher "Nordggs"
 #define MyAppExeName "Obsidianizer.exe"
 

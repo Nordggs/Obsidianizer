@@ -1,5 +1,17 @@
 # Obsidianizer
 
+## [0.6.4] - 2026-09-05
+
+### Added
+- **In-app update indicator** — on startup the app quietly checks GitHub
+  Releases (2s after launch, 8s timeout, silent degradation offline) and, if
+  a newer version exists, shows a pulsing green dot next to the version in
+  the status bar. Clicking it opens a dialog with the current/new version
+  and a button to open the release page in the system browser. No
+  auto-update; drafts are ignored, pre-releases count (this project ships
+  every release as Pre-release). The blink style is shared 1:1 with Project
+  AI Base. Strings localized (RU/EN).
+
 ## [0.6.3] - 2026-09-05
 
 ### Changed

@@ -1212,6 +1212,38 @@
     if (api && api.set_language) api.set_language(lang);
   }
 
+  // ── Update check (GitHub Releases) ──────────────────────────────────────
+
+  var _lastUpdate = null;
+
+  function checkUpdate() {
+    if (!api || !api.check_update) return;
+    api.check_update().then(function (res) {
+      _lastUpdate = res;
+      if (res && res.available) {
+        var dot = $("updateDot");
+        dot.classList.remove("hidden");
+        dot.title = window.t("update.title") + ": v" + res.latest;
+      }
+    }).catch(function () {});
+  }
+
+  function showUpdateModal() {
+    if (!_lastUpdate || !_lastUpdate.available) return;
+    $("updCurrent").textContent = "v" + _lastUpdate.current;
+    $("updLatest").textContent = _lastUpdate.latest;
+    $("updateModal").classList.remove("hidden");
+  }
+
+  function closeUpdate() {
+    $("updateModal").classList.add("hidden");
+  }
+
+  function openUpdateRelease() {
+    if (_lastUpdate && _lastUpdate.url) api.open_external(_lastUpdate.url);
+    closeUpdate();
+  }
+
   function init() {
     api = window.pywebview.api;
     api.defaults().then(function (d) {
@@ -1341,10 +1373,20 @@
     $("btnChat").addEventListener("click", openChatModal);
     $("btnAi").disabled = false;
 
+    $("updateDot").addEventListener("click", showUpdateModal);
+    $("btnUpdateClose").addEventListener("click", closeUpdate);
+    $("btnUpdateSkip").addEventListener("click", closeUpdate);
+    $("btnUpdateOpen").addEventListener("click", openUpdateRelease);
+    $("updateModal").addEventListener("click", function (e) {
+      if (e.target === $("updateModal")) closeUpdate();
+    });
+
     makeDraggable("promptModal");
     makeDraggable("topicModal");
     makeDraggable("topicManageModal");
+    makeDraggable("updateModal");
 
+    setTimeout(checkUpdate, 2000);
     setTimeout(fadeSplash, 1800);
     setStatus(t("status.ready"), null);
   }

@@ -302,6 +302,33 @@ button.ghost:hover { background: #2a3444; }
 .status-text.warn { color: var(--warn); }
 .status-text.err  { color: var(--err); }
 
+/* ── update dot (new version available on GitHub) ────────────────────── */
+
+/* Blink copied 1:1 from Project AI Base so the visual language matches. */
+.update-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0ea56a;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  animation: updatePulse 1.6s ease-in-out infinite;
+}
+.update-dot.hidden { display: none; }
+
+.update-box { width: 420px; }
+.update-info { padding: 12px 16px 0; line-height: 1.7; }
+.update-box .dim { padding: 0 16px; }
+
+@keyframes updatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* ── prompt editor modal ─────────────────────────────────────────────── */
 
 .modal {

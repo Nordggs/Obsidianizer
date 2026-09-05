@@ -1197,3 +1197,100 @@ def test_bridge_errors_localized(tmp_path, monkeypatch):
     res = app.create_topic({})
     assert res["error"] == "запуск уже выполняется"
     app._busy = False
+
+
+# ── Update check (GitHub Releases) ─────────────────────────────────────────
+
+
+def test_version_tuple_parsing():
+    from obsidianizer.ui import _version_tuple
+
+    assert _version_tuple("v0.6.3") == (0, 6, 3)
+    assert _version_tuple("0.6.3") == (0, 6, 3)
+    assert _version_tuple("0.6.3-beta1") == (0, 6, 3)
+    assert _version_tuple("0.10.0") > _version_tuple("0.9.9")
+    assert _version_tuple("не версия") == (0,)
+
+
+def test_check_update_available(monkeypatch):
+    import obsidianizer.ui as ui_mod
+
+    monkeypatch.setattr(
+        ui_mod,
+        "_fetch_latest_release",
+        lambda: {
+            "tag": "v0.7.0",
+            "url": "https://github.com/Nordggs/Obsidianizer/releases/tag/v0.7.0",
+        },
+    )
+    r = UIApp().check_update()
+    assert r["available"] is True
+    assert r["current"] == ui_mod.__version__
+    assert r["latest"] == "v0.7.0"
+    assert r["url"].startswith("https://github.com/")
+
+
+def test_check_update_not_available(monkeypatch):
+    import obsidianizer.ui as ui_mod
+
+    cur = ui_mod.__version__
+    monkeypatch.setattr(
+        ui_mod, "_fetch_latest_release", lambda: {"tag": cur, "url": "https://x"}
+    )
+    assert UIApp().check_update()["available"] is False
+
+    monkeypatch.setattr(ui_mod, "_fetch_latest_release", lambda: None)
+    r = UIApp().check_update()
+    assert r["available"] is False
+    assert r["current"] == cur
+
+
+def test_fetch_latest_release_parses_and_skips_drafts(monkeypatch):
+    """Draft пропускается, Pre-release считается валидным релизом."""
+    import json as _json
+
+    import obsidianizer.ui as ui_mod
+
+    payload = _json.dumps(
+        [
+            {"draft": True, "tag_name": "v0.8.0-draft", "html_url": "https://d"},
+            {"draft": False, "prerelease": True, "tag_name": "v0.7.0", "html_url": "https://r"},
+            {"draft": False, "tag_name": "v0.6.0", "html_url": "https://o"},
+        ]
+    ).encode()
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return payload
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: FakeResp())
+    assert ui_mod._fetch_latest_release() == {"tag": "v0.7.0", "url": "https://r"}
+
+
+def test_fetch_latest_release_silent_on_network_error(monkeypatch):
+    import obsidianizer.ui as ui_mod
+
+    def boom(*a, **k):
+        raise OSError("offline")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+    assert ui_mod._fetch_latest_release() is None
+
+
+def test_open_external_validates_scheme(monkeypatch):
+    import obsidianizer.ui as ui_mod
+
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    app = UIApp()
+    app.open_external("https://github.com/Nordggs/Obsidianizer/releases")
+    assert opened == ["https://github.com/Nordggs/Obsidianizer/releases"]
+    app.open_external("file:///C:/Windows/System32")
+    app.open_external("not a url")
+    assert len(opened) == 1

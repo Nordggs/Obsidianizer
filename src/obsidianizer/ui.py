@@ -116,6 +116,56 @@ def _lang_resolved(raw: str | None) -> str:
     return resolve_language(raw)
 
 
+# ── Update check (GitHub Releases) ─────────────────────────────────────────
+
+REPO_OWNER = "Nordggs"
+REPO_NAME = "Obsidianizer"
+
+
+def _version_tuple(v) -> tuple:
+    """Numeric version tuple for tag comparison ("v0.6.3-beta1" → (0, 6, 3))."""
+
+    parts = []
+    for p in str(v).lstrip("v").replace("-", ".").split("."):
+        if p.isdigit():
+            parts.append(int(p))
+        else:
+            break
+    return tuple(parts) or (0,)
+
+
+def _fetch_latest_release() -> dict | None:
+    """Latest published release from GitHub, or None on any failure.
+
+    Uses the ``/releases`` LIST (newest first) and skips only drafts —
+    unlike the reference ``/releases/latest`` endpoint, which never returns
+    prereleases, and this project ships every release as Pre-release.
+    A network/timeout/parse error degrades silently to None: an offline or
+    rate-limited app must never break the UI.
+    """
+
+    import json as _json
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(
+            f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
+            "?per_page=10",
+            timeout=8,
+        ) as r:
+            data = _json.load(r)
+    except Exception:  # noqa: BLE001 - offline / rate-limited / bad payload
+        return None
+    for rel in data or []:
+        if not isinstance(rel, dict) or rel.get("draft"):
+            continue
+        tag = (rel.get("tag_name") or "").strip()
+        url = (rel.get("html_url") or "").strip()
+        if tag:
+            return {"tag": tag, "url": url}
+    return None
+
+
 LOG_FILE = _user_data_dir() / "obsidianizer.log"
 
 logger = logging.getLogger("obsidianizer.ui")
@@ -287,6 +337,39 @@ class UIApp:
         _set_lang(self.settings.language)
         self._save_settings()
         return {"ok": True, "lang_resolved": _lang_resolved(self.settings.language)}
+
+    def check_update(self) -> dict:
+        """Compare the running version with the latest GitHub release.
+
+        Errors and unknown releases degrade to ``{"available": False}`` —
+        the UI dot simply stays hidden. Pre-releases count (this project
+        ships every release as Pre-release); drafts are ignored by the
+        fetcher.
+        """
+
+        rel = _fetch_latest_release()
+        if not rel:
+            return {"available": False, "current": __version__}
+        if _version_tuple(rel["tag"]) > _version_tuple(__version__):
+            return {
+                "available": True,
+                "current": __version__,
+                "latest": rel["tag"],
+                "url": rel["url"],
+            }
+        return {"available": False, "current": __version__}
+
+    def open_external(self, url: str) -> dict:
+        """Open a URL in the system browser (http/https only)."""
+
+        import webbrowser
+
+        if isinstance(url, str) and url.startswith(("http://", "https://")):
+            try:
+                webbrowser.open(url)
+            except Exception as exc:  # noqa: BLE001 - never break the UI
+                logger.warning("open_external failed: %s", exc)
+        return {"ok": True}
 
     def choose_folder(self, kind: str = "source") -> str | None:
         """Open a native folder picker; returns the chosen path or None.

@@ -29,6 +29,14 @@
       "buttons.cancel": "Отмена",
       "buttons.save": "Сохранить",
 
+      // ── update ─────────────────────────────────────────────────────────
+      "update.title": "Доступна новая версия",
+      "update.head": "Доступна новая версия",
+      "update.current": "Текущая:",
+      "update.latest": "Новая:",
+      "update.body": "Исправления и улучшения доступны на GitHub.",
+      "update.open_release": "Открыть страницу релиза",
+
       // ── status ─────────────────────────────────────────────────────────
       "status.ready": "Готово. Выберите папки и нажмите «Обработать».",
       "status.done": "Готово: ",
@@ -304,6 +312,14 @@
       "buttons.close": "Close",
       "buttons.cancel": "Cancel",
       "buttons.save": "Save",
+
+      // ── update ─────────────────────────────────────────────────────────
+      "update.title": "New version available",
+      "update.head": "New version available",
+      "update.current": "Current:",
+      "update.latest": "New:",
+      "update.body": "Fixes and improvements are available on GitHub.",
+      "update.open_release": "Open release page",
 
       // ── status ─────────────────────────────────────────────────────────
       "status.ready": "Ready. Select folders and click «Process».",

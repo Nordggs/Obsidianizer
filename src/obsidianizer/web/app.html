@@ -266,8 +266,28 @@
     </div>
   </div>
 
+  <div id="updateModal" class="modal hidden">
+    <div class="modal-box update-box">
+      <div class="modal-head">
+        <span data-i18n="update.head">Доступна новая версия</span>
+        <button id="btnUpdateClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
+      </div>
+      <p class="update-info">
+        <span data-i18n="update.current">Текущая:</span> <span id="updCurrent" class="version"></span><br>
+        <span data-i18n="update.latest">Новая:</span> <span id="updLatest"></span>
+      </p>
+      <p class="dim" data-i18n="update.body">Исправления и улучшения доступны на GitHub.</p>
+      <div class="modal-actions">
+        <button id="btnUpdateSkip" class="ghost" data-i18n="buttons.close">Закрыть</button>
+        <span class="spacer"></span>
+        <button id="btnUpdateOpen" class="primary" data-i18n="update.open_release">Открыть страницу релиза</button>
+      </div>
+    </div>
+  </div>
+
   <footer id="status" class="status">
     <span id="version" class="version">v-</span>
+    <button id="updateDot" class="update-dot hidden" data-i18n-title="update.title" title=""></button>
     <span class="lang-switch">
       <button id="langRu" class="lang-btn" title="Русский">RU</button>
       <button id="langEn" class="lang-btn" title="English">EN</button>
