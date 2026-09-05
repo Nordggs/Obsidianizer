@@ -1,5 +1,25 @@
 # Obsidianizer
 
+## [0.6.3] - 2026-09-05
+
+### Changed
+- **Content-based card freshness** — the card fingerprint (`obsidianizer_hash`)
+  is now computed from file CONTENT (sha1) instead of `mtime`. Cloud sync
+  (Dropbox etc.) and background tools touch mtimes without changing a byte,
+  which made cards permanently stale (`status=stale` with `changed=0`).
+  `mtime` stays in the file metadata for display only ("Modified" / "Updated"
+  columns) and never decides staleness. The hidden manifest now stores
+  `{path: {size, hash}}`, and `card_diff` reports `changed` by content —
+  same-size edits (AAAA→BBBB) are detected, mtime jitter is ignored.
+  One-time effect: the first run rebuilds all existing cards (fingerprint
+  formula change); scans read file contents and take somewhat longer.
+
+### Fixed
+- **Up link on first-level cards** — a card directly under the scan root got
+  a bare `[[..|Up]]` link pointing at the parent FOLDER, which Obsidian
+  cannot open ("file already exists" dialog on click). The link now targets
+  the root card itself (`../<root name>`), same as deeper levels.
+
 ## [0.6.2] - 2026-09-02
 
 ### Changed

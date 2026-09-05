@@ -42,7 +42,7 @@ CARD_MARKER_KEY = "obsidianizer"
 HASH_KEY = "obsidianizer_hash"
 TEMPLATE_KEY = "obsidianizer_template"
 VERSION_KEY = "obsidianizer_version"
-RENDER_VERSION = 8  # bump to auto-migrate existing cards to a new structure
+RENDER_VERSION = 9  # bump to auto-migrate existing cards to a new structure
 
 YAML_KEYS = ["дата_начала", "источник", "контакт", "проект", "адрес", "tags", "комментарий"]
 FIELD_LABELS = {
@@ -617,6 +617,7 @@ def build_card(
     parent_rel: str | None = None,
     stats: dict | None = None,
     notes_prev: str | None = None,
+    content_hashes: dict[str, str] | None = None,
 ) -> str:
     """Compose the full card text for one folder (Project Dashboard v5).
 
@@ -625,9 +626,13 @@ def build_card(
     content; ``notes_prev`` is the current notes-file content whose
     frontmatter feeds the About section and the repo subtitle.
     ``stats`` is the optional ``folder_stats`` entry for this folder.
+    ``content_hashes`` are precomputed content hashes (see
+    :func:`_compute_content_hashes`); computed on demand when omitted.
     """
 
-    return _render_dashboard(folder, prev, cfg, parent_rel, stats, notes_prev)
+    return _render_dashboard(
+        folder, prev, cfg, parent_rel, stats, notes_prev, content_hashes
+    )
 
 
 def _local_stats(folder: FolderScan, cfg: ObsidianizeConfig) -> dict:
@@ -643,6 +648,7 @@ def _render_dashboard(
     parent_rel: str | None = None,
     stats: dict | None = None,
     notes_prev: str | None = None,
+    content_hashes: dict[str, str] | None = None,
 ) -> str:
     """Project Dashboard v5 — GitHub project page structure.
 
@@ -664,7 +670,7 @@ def _render_dashboard(
             {k: v for k, v in existing.items() if not k.startswith("obsidianizer")}
         )
 
-    digest = folder_fingerprint(folder)
+    digest = folder_fingerprint(folder, content_hashes)
     st = stats or _local_stats(folder, cfg)
 
     # ── DIRECT counts for the current folder (single source of truth) ──
@@ -725,11 +731,13 @@ def _render_dashboard(
     if parent_rel is not None:
         if parent_rel:
             parent_name = parent_rel.rsplit("/", 1)[-1]
-            link = f"../{parent_name}"
         else:
-            # Parent is the scanned root
+            # Parent is the scanned root; its card lives at
+            # <root>/<root_name>.md (cards are named after their folder).
+            # A bare ".." would point at the parent FOLDER, which Obsidian
+            # cannot open as a note ("file already exists" on click).
             parent_name = folder.path.parent.name
-            link = ".."
+        link = f"../{parent_name}"
         parts.append(f"| ⬆ [[{link}\\|Up]] |  |  |  |")
     subs = st.get("subfolders") or {}
     if folder.subfolders:
@@ -828,7 +836,9 @@ def _render_dashboard(
     )
     # Hidden change-detection manifest (never rendered by Obsidian)
     manifest = json.dumps(
-        _manifest_payload(folder, notes_prev), ensure_ascii=False, sort_keys=True
+        _manifest_payload(folder, notes_prev, content_hashes),
+        ensure_ascii=False,
+        sort_keys=True,
     )
     parts.append(f"<!-- obsidianizer-manifest: {manifest} -->")
     return "\n".join(parts) + "\n"
@@ -1065,15 +1075,45 @@ def _card_rel_key(folder: FolderScan, rel: str) -> str:
     return rel[len(prefix):] if rel.startswith(prefix) else rel
 
 
-def folder_fingerprint(folder: FolderScan) -> str:
-    """sha1 over sorted file entries (rel, size, mtime), subfolders and the
-    presence of the AI-review file (so the card's review link stays fresh).
+def _compute_content_hashes(folder: FolderScan) -> dict[str, str]:
+    """sha1 of the FULL content of every direct file of the folder.
 
+    Content is the only reliable change indicator: cloud sync (Dropbox etc.)
+    and background tools touch mtimes without changing a single byte, which
+    made mtime-based fingerprints permanently stale. Keyed by the scan-root
+    rel (the same basis :func:`folder_fingerprint` consumes). An unreadable
+    file yields "" — not a valid hash, so it always counts as changed and
+    the card refreshes as soon as the file becomes readable again.
+    """
+
+    hashes: dict[str, str] = {}
+    for f in folder.files:
+        try:
+            h = hashlib.sha1()
+            with open(folder.path / f.name, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    h.update(chunk)
+            hashes[f.rel] = h.hexdigest()[:12]
+        except OSError:
+            hashes[f.rel] = ""
+    return hashes
+
+
+def folder_fingerprint(
+    folder: FolderScan, content_hashes: dict[str, str] | None = None
+) -> str:
+    """sha1 over sorted file entries (rel, size, content hash), subfolders and
+    the presence of the AI-review file (so the card's review link stays fresh).
+
+    Content-based: mtime is NEVER part of the fingerprint (cloud sync makes
+    it unstable); it stays in :class:`FileEntry` for display only.
     File paths are keyed in the card-folder basis, so the fingerprint is
     identical no matter which root the tree was scanned from."""
 
+    if content_hashes is None:
+        content_hashes = _compute_content_hashes(folder)
     items = [
-        f"F:{_card_rel_key(folder, f.rel)}\x00{f.size}\x00{f.mtime_ns}"
+        f"F:{_card_rel_key(folder, f.rel)}\x00{f.size}\x00{content_hashes.get(f.rel, '')}"
         for f in folder.files
     ]
     items += [f"D:{s}" for s in folder.subfolders]
@@ -1108,13 +1148,27 @@ def _notes_user_hash(notes_prev: str | None) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
 
-def _manifest_payload(folder: FolderScan, notes_prev: str | None) -> dict:
+def _manifest_payload(
+    folder: FolderScan,
+    notes_prev: str | None,
+    content_hashes: dict[str, str] | None = None,
+) -> dict:
     # ``base`` pins the basis the file keys were written against (the rel of
     # the card folder from the update root), so card_diff can always align
-    # legacy/future manifests scanned from a different root.
+    # legacy/future manifests scanned from a different root. Every file
+    # entry carries the content hash: card_diff decides "changed" by hash,
+    # never by mtime (see folder_fingerprint).
+    if content_hashes is None:
+        content_hashes = _compute_content_hashes(folder)
     return {
         "base": folder.rel,
-        "files": {_card_rel_key(folder, f.rel): f.size for f in folder.files},
+        "files": {
+            _card_rel_key(folder, f.rel): {
+                "size": f.size,
+                "hash": content_hashes.get(f.rel, ""),
+            }
+            for f in folder.files
+        },
         "folders": list(folder.subfolders),
         "notes": _notes_user_hash(notes_prev),
     }
@@ -1153,6 +1207,7 @@ def card_diff(
     prev_card: str | None,
     folder: FolderScan,
     notes_prev: str | None = None,
+    content_hashes: dict[str, str] | None = None,
 ) -> dict | None:
     """Human-oriented diff between the stored manifest and current state.
 
@@ -1160,13 +1215,25 @@ def card_diff(
     note or a pre-manifest version) — the caller then just reports "stale".
     Both sides are compared in the card-folder basis: scan keys via
     :func:`_card_rel_key`, manifest keys via ``base`` (new manifests) or the
-    deterministic legacy-prefix rule.
+    deterministic legacy-prefix rule. ``changed`` is decided by CONTENT HASH:
+    same-size edits (AAAA→BBBB) are detected, mtime jitter is ignored.
+    Legacy entries (``path → size`` int, no hash) fall back to the old size
+    comparison — a legacy manifest always ends up stale via the fingerprint
+    check anyway and is regenerated in the new format on the next update.
     """
 
     old = _parse_manifest(prev_card or "")
     if old is None:
         return None
-    cur_files = {_card_rel_key(folder, f.rel): f.size for f in folder.files}
+    if content_hashes is None:
+        content_hashes = _compute_content_hashes(folder)
+    cur_files = {
+        _card_rel_key(folder, f.rel): {
+            "size": f.size,
+            "hash": content_hashes.get(f.rel, ""),
+        }
+        for f in folder.files
+    }
     old_raw = old.get("files") or {}
     if "base" in old:
         # New manifest: keys are already card-relative (written via
@@ -1174,10 +1241,23 @@ def card_diff(
         old_files = dict(old_raw)
     else:
         old_files = _align_legacy_manifest_keys(folder, old_raw)
+    # Normalize legacy entries (path → size int) to the current dict shape.
+    old_files = {
+        k: (v if isinstance(v, dict) else {"size": v, "hash": ""})
+        for k, v in old_files.items()
+    }
     added = sorted(set(cur_files) - set(old_files))
     removed = sorted(set(old_files) - set(cur_files))
     changed = sorted(
-        r for r in set(cur_files) & set(old_files) if cur_files[r] != old_files[r]
+        r
+        for r in set(cur_files) & set(old_files)
+        if (
+            old_files[r]["hash"] and cur_files[r]["hash"] != old_files[r]["hash"]
+        )
+        or (
+            not old_files[r]["hash"]
+            and cur_files[r]["size"] != old_files[r]["size"]
+        )
     )
     folders_changed = set(old.get("folders") or []) != set(folder.subfolders)
     notes_changed = (old.get("notes") or "") != _notes_user_hash(notes_prev)
@@ -1212,12 +1292,14 @@ def card_status(
     folder: FolderScan,
     template: str = "github",
     notes_prev: str | None = None,
+    content_hashes: dict[str, str] | None = None,
 ) -> str:
     """One of: ok / stale / missing / conflict.
 
-    ``stale`` covers a changed file fingerprint, a mismatched card template,
-    an older renderer version, AND changed user data in the notes file
-    (e.g. ``контакт`` edited → the project card must be rebuilt).
+    ``stale`` covers a changed file fingerprint (content-based: see
+    :func:`folder_fingerprint`), a mismatched card template, an older
+    renderer version, AND changed user data in the notes file (e.g.
+    ``контакт`` edited → the project card must be rebuilt).
     """
 
     if not card_path.is_file():
@@ -1236,7 +1318,7 @@ def card_status(
         and (manifest.get("notes") or "") != _notes_user_hash(notes_prev)
     ):
         return "stale"
-    if props.get(HASH_KEY) != folder_fingerprint(folder):
+    if props.get(HASH_KEY) != folder_fingerprint(folder, content_hashes):
         return "stale"
     if props.get(TEMPLATE_KEY, "github") != template:
         return "stale"
@@ -1324,10 +1406,19 @@ def update_cards(
         # Notes are read BEFORE the status check: changed user data must
         # mark the card stale even when no project file has changed.
         notes_prev = _read_notes()
+        # Content hashes once per folder: reused by the status check and the
+        # card build so every file is read at most one time per run.
+        content_hashes = _compute_content_hashes(folder)
 
         if prev is not None and card_is_ours(prev):
             if (
-                card_status(card, folder, template=cfg.template, notes_prev=notes_prev)
+                card_status(
+                    card,
+                    folder,
+                    template=cfg.template,
+                    notes_prev=notes_prev,
+                    content_hashes=content_hashes,
+                )
                 == "ok"
                 and not cfg.force
             ):
@@ -1354,7 +1445,9 @@ def update_cards(
             _ensure_notes_file(folder, prev)
             notes_prev = _read_notes()  # may have been created/migrated
 
-        text = build_card(folder, prev, cfg, parent_rel, stats.get(rel), notes_prev)
+        text = build_card(
+            folder, prev, cfg, parent_rel, stats.get(rel), notes_prev, content_hashes
+        )
         if dry_run:
             summary.updated += 1
             if on_progress is not None:

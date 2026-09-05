@@ -1,6 +1,7 @@
 """Folder Obsidianizer tests — read-only contract, card format (golden tests
 on the real "Оборудование" structure), user-data preservation, freshness."""
 
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +13,8 @@ from obsidianizer.obsidianize import (
     RENDER_VERSION,
     TEMPLATE_KEY,
     VERSION_KEY,
+    _compute_content_hashes,
+    _parse_manifest,
     build_card,
     card_is_ours,
     card_path_for,
@@ -489,6 +492,19 @@ def test_build_card_root_has_no_parent_link(tmp_path):
     assert "⬆ Up" not in card
 
 
+def test_build_card_root_child_up_link_targets_root_card(tmp_path):
+    """Прямой ребёнок скан-корня: Up ведёт на КАРТОЧКУ корня (../<имя_корня>),
+    а не на родительскую папку — голый [[..]] Obsidian открыть не может
+    («file already exists» при клике)."""
+    root = _make_equipment(tmp_path)
+    tree = scan_tree(root)
+    card = build_card(
+        tree["Арх"], None, ObsidianizeConfig(template="classic"), parent_rel=""
+    )
+    assert "| ⬆ [[../Оборудование\\|Up]] |  |  |  |" in card
+    assert "[[..\\" not in card
+
+
 def test_images_gallery_and_archive(tmp_path):
     """Gallery = direct images (img-gallery); Images = full subtree archive."""
     root = _make_equipment(tmp_path)
@@ -600,6 +616,60 @@ def test_fingerprint_changes_with_content(tmp_path):
     _touch(root / "новый.dwg")
     after = folder_fingerprint(scan_tree(root)[""])
     assert before != after
+
+
+# --------------------------------------------------------------------------
+# Content-based fingerprint (mtime never decides staleness)
+# --------------------------------------------------------------------------
+
+
+def test_fingerprint_independent_of_mtime(tmp_path):
+    """Dropbox-сценарий: mtime тронут, содержимое не менялось — тот же fingerprint."""
+    root = _make_equipment(tmp_path)
+    fp1 = folder_fingerprint(scan_tree(root)[""])
+    os.utime(root / "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx", (0, 0))
+    fp2 = folder_fingerprint(scan_tree(root)[""])
+    assert fp1 == fp2
+
+
+def test_mtime_changed_content_unchanged_ok(tmp_path):
+    """Jedi-критерий №1: mtime изменился, содержимое нет → карточка ok."""
+    root = _make_equipment(tmp_path)
+    update_cards(root)
+    card = root / "Оборудование.md"
+    assert card_status(card, scan_tree(root)[""]) == "ok"
+
+    os.utime(root / "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx", (0, 0))
+    assert card_status(card, scan_tree(root)[""]) == "ok"
+
+
+def test_same_size_content_changed_stale(tmp_path):
+    """Jedi-критерий №2: AAAA→BBBB при том же размере → stale → update → ok."""
+    root = tmp_path / "Оборудование"
+    _touch(root / "файл.txt", b"AAAA")
+    update_cards(root)
+    card = root / "Оборудование.md"
+    assert card_status(card, scan_tree(root)[""]) == "ok"
+
+    _touch(root / "файл.txt", b"BBBB")  # тот же размер, другое содержимое
+    assert card_status(card, scan_tree(root)[""]) == "stale"
+
+    summary = update_cards(root)
+    assert summary.updated == 1
+    assert card_status(card, scan_tree(root)[""]) == "ok"
+
+
+def test_compute_content_hashes_content_sensitive(tmp_path):
+    """Каждый файл получает 12-символьный hash; разное содержимое → разные hash."""
+    root = tmp_path / "P"
+    _touch(root / "a.txt", b"hello")
+    _touch(root / "b.txt", b"hello")
+    _touch(root / "c.txt", b"world")
+    hashes = _compute_content_hashes(scan_tree(root)[""])
+    assert set(hashes) == {"a.txt", "b.txt", "c.txt"}
+    assert all(len(h) == 12 for h in hashes.values())
+    assert hashes["a.txt"] == hashes["b.txt"]  # одинаковое содержимое
+    assert hashes["a.txt"] != hashes["c.txt"]
 
 
 # --------------------------------------------------------------------------
@@ -1307,6 +1377,39 @@ def test_manifest_written_and_diff_detected(tmp_path):
         "Товар Инструкция instruction-manual.pdf"
     ]
     assert any("удалён" in line for line in format_changes(diff5))
+
+
+def test_manifest_stores_content_hash(tmp_path):
+    """Новый формат manifest: {path: {size, hash}}, mtime не хранится."""
+    root = tmp_path / "P"
+    _touch(root / "file.txt", b"content")
+    update_cards(root)
+    manifest = _parse_manifest((root / "P.md").read_text(encoding="utf-8"))
+    entry = manifest["files"]["file.txt"]
+    assert isinstance(entry, dict)
+    assert entry["size"] == 7
+    assert isinstance(entry["hash"], str) and len(entry["hash"]) == 12
+
+
+def test_card_diff_uses_hash_not_size(tmp_path):
+    """changed определяется по содержимому: same-size правка ловится, mtime-джиттер нет."""
+    from obsidianizer.obsidianize import card_diff, format_changes
+
+    root = tmp_path / "P"
+    _touch(root / "file.txt", b"AAAA")
+    update_cards(root)
+    content = (root / "P.md").read_text(encoding="utf-8")
+
+    # same size, новое содержимое → changed
+    _touch(root / "file.txt", b"BBBB")
+    diff = card_diff(content, scan_tree(root)[""], "")
+    assert diff["changed"] == ["file.txt"]
+    assert "изменён: file.txt" in format_changes(diff)
+
+    # содержимое восстановлено, mtime свежий → изменений нет
+    _touch(root / "file.txt", b"AAAA")
+    diff2 = card_diff(content, scan_tree(root)[""], "")
+    assert diff2["changed"] == []
 
 
 def _card_with_manifest(manifest_obj: dict) -> str:

@@ -412,6 +412,7 @@ class UIApp:
         """
         from .obsidianize import (
             ObsidianizeConfig,
+            _compute_content_hashes,
             card_diff,
             card_path_for,
             card_status,
@@ -449,13 +450,25 @@ class UIApp:
                     except OSError:
                         notes_prev = None
 
-                status = card_status(card_p, folder, template=cfg.template, notes_prev=notes_prev)
+                # Content hashes once per folder: reused by the status check
+                # and the diff so every file is read at most one time.
+                content_hashes = _compute_content_hashes(folder)
+                status = card_status(
+                    card_p,
+                    folder,
+                    template=cfg.template,
+                    notes_prev=notes_prev,
+                    content_hashes=content_hashes,
+                )
 
                 changes: list[str] = []
                 if status == "stale" and card_p.is_file():
                     try:
                         diff = card_diff(
-                            card_p.read_text(encoding="utf-8"), folder, notes_prev
+                            card_p.read_text(encoding="utf-8"),
+                            folder,
+                            notes_prev,
+                            content_hashes,
                         )
                     except OSError:
                         diff = None
