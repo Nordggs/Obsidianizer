@@ -1,5 +1,12 @@
 # Obsidianizer
 
+## [0.6.5] - 2026-09-05
+
+### Changed
+- **Update-indicator test release** — a deliberately published newer release
+  so installed 0.6.4 builds light the update dot and the in-app check can be
+  verified end-to-end. No functional changes (identical code to 0.6.4).
+
 ## [0.6.4] - 2026-09-05
 
 ### Added
