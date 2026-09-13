@@ -26,6 +26,12 @@ obsidianizer.log
 # Local configuration (never commit real config)
 config.yml
 
+# Local ticket system (never commit, never ship)
+_issues-Tickets/
+
+# Local working context (never commit, never ship)
+_context/
+
 # Ownership manifest and generated indexes
 .obsidianizer-manifest.json
 build_new/
