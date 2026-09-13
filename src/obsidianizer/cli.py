@@ -138,6 +138,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="github",
         help="шаблон карточки: github (Project Dashboard, по умолчанию) | classic",
     )
+    folders.add_argument(
+        "--include-md",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="включить .md файлы пользователей в таблицу файлов (по умолчанию: включено)",
+    )
     return p
 
 
@@ -161,6 +167,7 @@ def _run_folders(args: argparse.Namespace) -> int:
         gallery_prefix=getattr(args, "gallery_prefix", "") or "",
         rel_root=getattr(args, "rel", "") or "",
         template=args.template,
+        include_md=getattr(args, "include_md", True),
     )
     try:
         summary = update_cards(

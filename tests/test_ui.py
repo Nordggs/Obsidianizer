@@ -892,6 +892,36 @@ def test_obs_scan_rejects_missing_dir(tmp_path):
     assert r["ok"] is False
 
 
+def test_obs_scan_categories_include_md(tmp_path):
+    """Regression: obs_scan must use _category_of so .md lands in docs."""
+    root = tmp_path / "mixed"
+    root.mkdir()
+    (root / "sub").mkdir(parents=True)
+    (root / "readme.md").write_text("# README", encoding="utf-8")
+    (root / "spec.md").write_text("# Spec", encoding="utf-8")
+    (root / "смета.xlsx").write_text("x", encoding="utf-8")
+    (root / "чертеж.dwg").write_bytes(b"x")
+    (root / "sub" / "notes.md").write_text("# notes", encoding="utf-8")
+    app = _obs_app(tmp_path)
+    r = app.obs_scan(str(root))
+    assert r["ok"] is True
+    by_rel = {f["rel"]: f for f in r["folders"]}
+    root_f = by_rel[""]
+    # 4 files total: readme.md, spec.md, смета.xlsx, чертеж.dwg
+    assert root_f["files"] == 4
+    # .md → docs, .xlsx → tables, .dwg → drafting
+    assert root_f["categories"]["docs"] == 2
+    assert root_f["categories"]["tables"] == 1
+    assert root_f["categories"]["drafting"] == 1
+    # sum of categories must equal total files (no files lost)
+    assert sum(root_f["categories"].values()) == root_f["files"]
+    # subfolder: 1 .md file
+    sub_f = by_rel["sub"]
+    assert sub_f["files"] == 1
+    assert sub_f["categories"]["docs"] == 1
+    assert sum(sub_f["categories"].values()) == sub_f["files"]
+
+
 def test_obs_obsidianize_creates_cards_and_events(tmp_path):
     root = _obs_folder(tmp_path)
     app = _obs_app(tmp_path)

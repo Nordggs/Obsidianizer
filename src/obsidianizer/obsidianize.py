@@ -208,7 +208,7 @@ class ObsidianizeConfig:
     exclude: list[str] = field(
         default_factory=lambda: [".obsidian", ".git", "node_modules", "__pycache__"]
     )
-    include_md: bool = False
+    include_md: bool = True
     img_gallery: bool = True
     vault_root: str = ""  # preferred: vault-relative gallery paths
     gallery_prefix: str = ""  # fallback: "PROJECT/OBSIDIAN/Objects" style prefix

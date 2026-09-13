@@ -495,6 +495,7 @@ class UIApp:
         """
         from .obsidianize import (
             ObsidianizeConfig,
+            _category_of,
             _compute_content_hashes,
             card_diff,
             card_path_for,
@@ -517,12 +518,8 @@ class UIApp:
             folders = []
             for rel, folder in tree.items():
                 counts = {cat: 0 for cat in ("drafting", "tables", "docs", "images", "other")}
-                known: set[str] = set()
-                for cat in ("drafting", "tables", "docs", "images"):
-                    exts = set(cfg.categories.get(cat, []))
-                    known |= exts
-                    counts[cat] = sum(1 for f in folder.files if f.ext in exts)
-                counts["other"] = sum(1 for f in folder.files if f.ext not in known and f.ext != "md")
+                for f in folder.files:
+                    counts[_category_of(f.ext, cfg)] += 1
 
                 card_p = card_path_for(folder)
                 notes_prev: str | None = None

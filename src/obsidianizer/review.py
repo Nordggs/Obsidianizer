@@ -68,8 +68,8 @@ def collect_payload(
                 "category": _CATEGORY_LABELS.get(_category(fe.ext, cfg), "Прочее"),
             }
         )
-    # Text excerpts come from a dedicated pass: scan_tree drops .md by default,
-    # and the card itself must never land in the text excerpts.
+    # Text excerpts come from a dedicated pass (user .md files are scanned
+    # when include_md=True, but the project card must never land in excerpts).
     texts: list[dict] = []
     if include_text:
         for p in sorted(folder.path.iterdir(), key=lambda p: p.name.casefold()):

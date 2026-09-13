@@ -166,10 +166,14 @@ def test_scan_tree_categories_and_filters(tmp_path):
     assert by_ext["png"] == "фото.png"
     assert by_ext["zip"] == "архив.zip"
     assert by_ext["step"] == "модель.step"
-    assert "md" not in by_ext  # .md excluded by default
+    assert by_ext["md"] == "заметка.md"  # .md included by default (include_md=True)
     assert ".hidden.txt" not in by_ext
     assert scan.subfolders == []  # hidden + excluded dropped
     assert [f.name for f in scan.images] == ["скрин.jpg", "фото.png"]
+
+    # explicit include_md=False reverts to old behavior
+    scan_no_md = scan_tree(root, ObsidianizeConfig(include_md=False))[""]
+    assert "md" not in {f.ext for f in scan_no_md.files}
 
 
 def test_scan_tree_sorts_case_insensitive(tmp_path):
@@ -578,10 +582,19 @@ def test_build_card_include_md_puts_md_into_docs(tmp_path):
     assert "[[заметка.md]]" in card
     assert "| 📄 [[заметка.md]] | MD | Obsidian |" in card
 
-    without = build_card(
+    # default config now also includes .md (include_md=True by default)
+    with_default = build_card(
         scan_tree(root, ObsidianizeConfig())[""], None, ObsidianizeConfig(template="classic")
     )
-    assert "[[заметка.md]]" not in without  # нет в таблицах (манифест не считается)
+    assert "[[заметка.md]]" in with_default
+
+    # explicit include_md=False excludes .md
+    without = build_card(
+        scan_tree(root, ObsidianizeConfig(include_md=False))[""],
+        None,
+        ObsidianizeConfig(include_md=False, template="classic"),
+    )
+    assert "[[заметка.md]]" not in without
 
 
 def test_scan_tree_excludes_derived_artifacts(tmp_path):
@@ -594,6 +607,67 @@ def test_scan_tree_excludes_derived_artifacts(tmp_path):
     assert "Оборудование_заметки.md" not in names
     assert "Оборудование_обзор.md" not in names
     assert len(names) == 3  # xlsx × 2 + pdf, никаких производных
+
+
+def test_default_config_includes_md():
+    cfg = ObsidianizeConfig()
+    assert cfg.include_md is True
+
+
+def test_scan_tree_default_includes_user_md(tmp_path):
+    root = tmp_path / "mix"
+    _touch(root / "readme.md", "# README")
+    _touch(root / "notes.md", "# Notes")
+    _touch(root / "смета.xlsx")
+    _touch(root / "фото.png")
+
+    scan = scan_tree(root)[""]
+    md_files = sorted(f.name for f in scan.files if f.ext == "md")
+    assert md_files == ["notes.md", "readme.md"]
+    all_exts = {f.ext for f in scan.files}
+    assert "xlsx" in all_exts
+    assert "png" in all_exts
+
+
+def test_scan_tree_mixed_content_md_regression(tmp_path):
+    root = tmp_path / "regression"
+    _touch(root / "spec.md", "# Spec")
+    _touch(root / "readme.md", "# Readme")
+    _touch(root / "todo.md", "# Todo")
+    _touch(root / "проект_заметки.md", "# notes")  # derived, excluded
+    _touch(root / "проект_обзор.md", "# obzor")  # derived, excluded
+    _touch(root / "смета.xlsx")
+    _touch(root / "чертеж.dwg")
+
+    scan = scan_tree(root)[""]
+    md_files = [f.name for f in scan.files if f.ext == "md"]
+    assert len(md_files) == 3  # ровно 3 пользовательских .md
+    assert sorted(md_files) == ["readme.md", "spec.md", "todo.md"]
+
+    # folder_stats counts .md in docs category
+    stats = folder_stats(scan_tree(root))
+    assert stats[""]["categories_tree"]["docs"]["count"] == 3  # 3 user .md → docs
+    assert stats[""]["categories_tree"]["tables"]["count"] == 1  # xlsx → tables
+    assert stats[""]["categories_tree"]["drafting"]["count"] == 1  # dwg → drafting
+
+    # _category_of classification
+    from obsidianizer.obsidianize import _category_of
+    cfg = ObsidianizeConfig()
+    assert _category_of("md", cfg) == "docs"
+    assert _category_of("xlsx", cfg) == "tables"
+    assert _category_of("dwg", cfg) == "drafting"
+
+
+def test_folder_stats_counts_md(tmp_path):
+    root = tmp_path / "stats"
+    _touch(root / "a.md", "content a")
+    _touch(root / "b.md", "content b")
+    _touch(root / "смета.xlsx")
+    tree = scan_tree(root)
+    stats = folder_stats(tree)
+    assert stats[""]["categories_tree"]["docs"]["count"] == 2
+    assert stats[""]["categories_tree"]["tables"]["count"] == 1
+    assert stats[""]["total_count"] == 3
 
 
 def test_build_card_unknown_extensions_go_to_other(tmp_path):
@@ -936,6 +1010,23 @@ def test_cli_folders_vault_root_gallery(tmp_path):
     assert main(["folders", "--path", str(no_gallery), "--no-gallery"]) == 0
     card = (no_gallery / "Оборудование.md").read_text(encoding="utf-8")
     assert "img-gallery" not in card
+
+
+def test_cli_folders_include_md_by_default(tmp_path):
+    root = _make_equipment(tmp_path)
+    _touch(root / "readme.md", "# README")
+    assert main(["folders", "--path", str(root)]) == 0
+    card = (root / "Оборудование.md").read_text(encoding="utf-8")
+    assert "[[readme.md]]" in card
+    assert "| 📄 [[readme.md]] | MD | Obsidian |" in card
+
+
+def test_cli_folders_no_include_md_flag(tmp_path):
+    root = _make_equipment(tmp_path)
+    _touch(root / "readme.md", "# README")
+    assert main(["folders", "--path", str(root), "--no-include-md"]) == 0
+    card = (root / "Оборудование.md").read_text(encoding="utf-8")
+    assert "[[readme.md]]" not in card
 
 
 # --------------------------------------------------------------------------
