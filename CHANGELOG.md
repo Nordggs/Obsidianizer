@@ -1,5 +1,20 @@
 # Obsidianizer
 
+## [0.6.6] - 2026-09-14
+
+### Fixed
+- **User `.md` files now appear in Folder Obsidianizer cards** — the default
+  for `ObsidianizeConfig.include_md` changed from `False` to `True`. User
+  markdown files are classified as "Documents" (📄) in the Files table and
+  counted in `folder_stats`. Derived artifacts (`*_заметки.md`, `*_обзор.md`)
+  and the project card itself remain excluded.
+- **GUI category totals now match file counts** — `obs_scan` in `ui.py`
+  duplicated category logic and explicitly excluded `.md` from the "other"
+  bucket. Replaced with single-source `_category_of()` so the GUI, CLI, and
+  card renderer all agree on file classification.
+- **CLI flag `--include-md / --no-include-md`** added to `obsidianizer folders`
+  (default: enabled) for explicit control over markdown file inclusion.
+
 ## [0.6.5] - 2026-09-05
 
 ### Changed
