@@ -38,3 +38,9 @@ build_new/
 dist_new/
 release/
 *.zip
+
+# Obsidian vault data (personal, never ship)
+.obsidian/
+BMO/
+Contacts/
+ObsServ/
