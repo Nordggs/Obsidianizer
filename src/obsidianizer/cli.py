@@ -192,6 +192,13 @@ def _run_folders(args: argparse.Namespace) -> int:
         )
         for conflict in summary.conflicts:
             print(f"  ! {conflict}")
+    if summary.failed:
+        print(
+            f"Ошибок (папка пропущена, см. лог с traceback): "
+            f"{len(summary.failed)}"
+        )
+        for rel in summary.failed:
+            print(f"  x {rel}")
     return 0
 
 

@@ -1,5 +1,21 @@
 # Obsidianizer
 
+## [0.6.8] - 2026-09-16
+
+### Fixed
+- **Numeric frontmatter keys no longer abort the scan** — PyYAML (introduced
+  in 0.6.7) parsed unquoted numeric properties such as
+  `50: 20:0020202:10884` as `int` keys, crashing `_user_props` /
+  `_notes_user_hash` with `'int' object has no attribute 'startswith'` and
+  killing the whole `update_cards` run. Keys are now normalized to strings
+  once in `parse_frontmatter()`.
+- **Per-folder error isolation** — a folder whose processing raises is now
+  logged with a traceback, recorded in `summary.failed`, and the run keeps
+  going with the remaining folders instead of dying. This unblocks both the
+  GUI scan and the Templater hotkey, which previously stopped on a single
+  note with unusual frontmatter. `failed` is reported by the CLI and the GUI
+  (`OBS_FINISHED`).
+
 ## [0.6.7] - 2026-09-15
 
 ### Added

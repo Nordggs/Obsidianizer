@@ -2112,3 +2112,79 @@ def test_parse_frontmatter_normal_yaml_still_works():
     props = parse_frontmatter(content)
     assert props["клиент"] == "ООО Ромашка"
     assert props["tags"] == ["a", "b"]
+
+
+# --------------------------------------------------------------------------
+# Regression 0.6.7: PyYAML yields int keys for unquoted numeric properties
+# --------------------------------------------------------------------------
+
+
+def test_parse_frontmatter_numeric_key_normalized():
+    """``50: ...`` must become the string key ``"50"`` (PyYAML gives int)."""
+    content = "---\nдата_начала: 2026-04-29\n50: 20:0020202:10884\n---\n\nbody\n"
+    props = parse_frontmatter(content)
+    assert all(isinstance(k, str) for k in props)
+    assert props["50"] == "20:0020202:10884"
+
+
+def test_user_props_tolerate_non_string_keys():
+    """``_user_props`` / ``_notes_user_hash`` must not crash on int keys."""
+    from obsidianizer.obsidianize import _user_props, _notes_user_hash
+
+    content = (
+        "---\n50: 20:0020202:10884\n"
+        "Диск яндекс импорт: https://drive.google.com/x\n---\n\nbody\n"
+    )
+    props = _user_props(parse_frontmatter(content))
+    assert props.get("50") == "20:0020202:10884"
+    assert isinstance(_notes_user_hash(content), str)
+
+
+def test_update_cards_survives_numeric_frontmatter_key(tmp_path):
+    """Full ``update_cards → card_status → _notes_user_hash → _render_dashboard``
+    chain must survive a real note with a numeric frontmatter key."""
+    root = _make_equipment(tmp_path)
+    update_cards(root)
+
+    notes = root / "Оборудование_заметки.md"
+    injected = notes.read_text(encoding="utf-8").replace(
+        "---\n", "---\n50: 20:0020202:10884\n", 1
+    )
+    notes.write_text(injected, encoding="utf-8")
+    _touch(root / "новый.xlsx")  # force the card stale → full rebuild path
+
+    summary = update_cards(root)
+
+    assert summary.failed == []
+    assert (
+        parse_frontmatter(notes.read_text(encoding="utf-8")).get("50")
+        == "20:0020202:10884"
+    )
+    card = (root / "Оборудование.md").read_text(encoding="utf-8")
+    assert "20:0020202:10884" in card
+
+
+def test_update_cards_isolates_folder_failure(tmp_path, monkeypatch, caplog):
+    """One broken folder must not abort the whole run (logged + ``failed``)."""
+    from obsidianizer import obsidianize as oz
+
+    root = tmp_path / "Root"
+    _touch(root / "Good" / "a.txt")
+    _touch(root / "Bad" / "b.txt")
+
+    real_build = oz.build_card
+
+    def flaky(folder, *args, **kwargs):
+        if folder.path.name == "Bad":
+            raise RuntimeError("boom")
+        return real_build(folder, *args, **kwargs)
+
+    monkeypatch.setattr(oz, "build_card", flaky)
+
+    with caplog.at_level("ERROR", logger="obsidianizer.obsidianize"):
+        summary = update_cards(root)
+
+    assert summary.failed == ["Bad"]
+    assert (root / "Good" / "Good.md").is_file()
+    assert not (root / "Bad" / "Bad.md").is_file()
+    assert any(record.exc_info for record in caplog.records)

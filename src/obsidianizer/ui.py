@@ -682,6 +682,7 @@ class UIApp:
                             "updated": summary.updated,
                             "skipped": summary.skipped,
                             "conflicts": summary.conflicts,
+                            "failed": summary.failed,
                         }
                     ),
                 )

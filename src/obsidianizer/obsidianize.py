@@ -24,12 +24,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
 import yaml
+
+logger = logging.getLogger("obsidianizer.obsidianize")
+
 
 def _get_now() -> datetime:
     """Return current datetime. Can be patched in tests for reproducibility."""
@@ -237,6 +241,7 @@ class UpdateSummary:
     updated: int = 0
     skipped: int = 0
     conflicts: list[str] = field(default_factory=list)
+    failed: list[str] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------
@@ -393,6 +398,14 @@ def parse_frontmatter(content: str) -> dict:
         props = yaml.safe_load(block)
         if not isinstance(props, dict):
             return {}
+        # PyYAML may yield non-string keys (int/bool/None) for unquoted keys
+        # like ``50: ...``. Downstream code assumes ``str`` keys
+        # (``key.startswith(...)``), so normalize once at the single entry
+        # point instead of guarding every consumer.
+        props = {
+            (k if isinstance(k, str) else ("" if k is None else str(k))): v
+            for k, v in props.items()
+        }
         return _normalize_fm_types(props)
     except yaml.YAMLError:
         return _parse_frontmatter_legacy(block)
@@ -1560,6 +1573,95 @@ def _parent_rel(rel: str, cfg: ObsidianizeConfig) -> str | None:
     return None
 
 
+def _process_folder(
+    folder: FolderScan,
+    cfg: ObsidianizeConfig,
+    parent_rel: str | None,
+    stats: dict | None,
+    dry_run: bool,
+) -> tuple[str, str | None]:
+    """Process a single folder's card; returns ``(action, conflict_path)``.
+
+    ``action`` is one of ``created`` / ``updated`` / ``skipped`` / ``conflict``.
+    Raises on any unexpected error — :func:`update_cards` isolates, logs and
+    continues with the remaining folders.
+    """
+
+    card = card_path_for(folder)
+    notes_p = notes_file_path(folder)
+
+    def _read_notes() -> str | None:
+        if not notes_p.exists():
+            return None
+        try:
+            return notes_p.read_text(encoding="utf-8")
+        except OSError:
+            return None
+
+    prev: str | None = None
+    if card.exists():
+        try:
+            prev = card.read_text(encoding="utf-8")
+        except OSError:
+            prev = None
+    # Notes are read BEFORE the status check: changed user data must
+    # mark the card stale even when no project file has changed.
+    notes_prev = _read_notes()
+    # Content hashes once per folder: reused by the status check and the
+    # card build so every file is read at most one time per run.
+    content_hashes = _compute_content_hashes(folder)
+
+    _card_skipped = False
+    if prev is not None and card_is_ours(prev):
+        if (
+            card_status(
+                card,
+                folder,
+                template=cfg.template,
+                notes_prev=notes_prev,
+                content_hashes=content_hashes,
+            )
+            == "ok"
+            and not cfg.force
+        ):
+            _card_skipped = True
+    elif prev is not None and not cfg.force:
+        adopted = False
+        if cfg.adopt and not dry_run and not notes_p.exists():
+            adopted = _adopt_foreign_note(card, notes_p)
+        if not adopted:
+            return "conflict", str(card)
+        # Adopted: the foreign note became our notes file; build fresh.
+        prev = None
+
+    # Order-of-operations safety: the notes file (the user-owned layer,
+    # including migrated frontmatter/manual block) is written BEFORE the
+    # card, so a crash in between can never lose user data.
+    if not dry_run:
+        _ensure_notes_file(folder, prev)
+        notes_prev = _read_notes()  # may have been created/migrated
+
+        # Sync: extract Comments from card table → notes frontmatter.
+        # Runs ALWAYS (even when card will be skipped) to preserve user edits.
+        _sync_comments_to_notes(notes_p, prev, folder)
+        notes_prev = _read_notes()  # re-read with synced comments
+
+    if _card_skipped:
+        return "skipped", None
+
+    text = build_card(
+        folder, prev, cfg, parent_rel, stats, notes_prev, content_hashes
+    )
+    if dry_run:
+        return ("created" if prev is None else "updated"), None
+    changed = write_atomic(card, text)
+    # force counts as an update even when the content is identical:
+    # the card was explicitly rebuilt from the current renderer.
+    if changed or cfg.force:
+        return ("created" if prev is None else "updated"), None
+    return "skipped", None
+
+
 def update_cards(
     root: Path,
     cfg: ObsidianizeConfig | None = None,
@@ -1579,7 +1681,9 @@ def update_cards(
     the root card is processed.
 
     ``on_progress(rel, action)`` is called once per folder with the action
-    taken: ``created`` / ``updated`` / ``skipped`` / ``conflict``.
+    taken: ``created`` / ``updated`` / ``skipped`` / ``conflict`` / ``failed``.
+    A folder whose processing raises is isolated (logged with traceback,
+    recorded in ``summary.failed``) and never aborts the remaining folders.
     """
 
     cfg = cfg or ObsidianizeConfig()
@@ -1593,97 +1697,30 @@ def update_cards(
         tree = {rel: folder for rel, folder in tree.items() if rel == ""}
     summary = UpdateSummary(scanned=len(tree))
     for rel, folder in tree.items():
-        card = card_path_for(folder)
-        parent_rel = _parent_rel(rel, cfg)
-        notes_p = notes_file_path(folder)
-
-        def _read_notes() -> str | None:
-            if not notes_p.exists():
-                return None
-            try:
-                return notes_p.read_text(encoding="utf-8")
-            except OSError:
-                return None
-
-        prev: str | None = None
-        if card.exists():
-            try:
-                prev = card.read_text(encoding="utf-8")
-            except OSError:
-                prev = None
-        # Notes are read BEFORE the status check: changed user data must
-        # mark the card stale even when no project file has changed.
-        notes_prev = _read_notes()
-        # Content hashes once per folder: reused by the status check and the
-        # card build so every file is read at most one time per run.
-        content_hashes = _compute_content_hashes(folder)
-
-        _card_skipped = False
-        if prev is not None and card_is_ours(prev):
-            if (
-                card_status(
-                    card,
-                    folder,
-                    template=cfg.template,
-                    notes_prev=notes_prev,
-                    content_hashes=content_hashes,
-                )
-                == "ok"
-                and not cfg.force
-            ):
-                _card_skipped = True
-        elif prev is not None and not cfg.force:
-            adopted = False
-            if cfg.adopt and not dry_run and not notes_p.exists():
-                adopted = _adopt_foreign_note(card, notes_p)
-            if not adopted:
-                summary.conflicts.append(str(card))
-                if on_progress is not None:
-                    on_progress(rel, "conflict")
-                continue
-            # Adopted: the foreign note became our notes file; build fresh.
-            prev = None
-
-        # Order-of-operations safety: the notes file (the user-owned layer,
-        # including migrated frontmatter/manual block) is written BEFORE the
-        # card, so a crash in between can never lose user data.
-        if not dry_run:
-            _ensure_notes_file(folder, prev)
-            notes_prev = _read_notes()  # may have been created/migrated
-
-            # Sync: extract Comments from card table → notes frontmatter.
-            # Runs ALWAYS (even when card will be skipped) to preserve user edits.
-            _sync_comments_to_notes(notes_p, prev, folder)
-            notes_prev = _read_notes()  # re-read with synced comments
-
-        if _card_skipped:
-            summary.skipped += 1
-            if on_progress is not None:
-                on_progress(rel, "skipped")
-            continue
-
-        text = build_card(
-            folder, prev, cfg, parent_rel, stats.get(rel), notes_prev, content_hashes
-        )
-        if dry_run:
-            summary.updated += 1
-            if on_progress is not None:
-                on_progress(rel, "created" if prev is None else "updated")
-            continue
-        changed = write_atomic(card, text)
-        # force counts as an update even when the content is identical:
-        # the card was explicitly rebuilt from the current renderer.
-        if changed or cfg.force:
-            if prev is None:
-                summary.created += 1
-            else:
-                summary.updated += 1
-        else:
-            summary.skipped += 1
-        if on_progress is not None:
-            action = "created" if prev is None else (
-                "updated" if (changed or cfg.force) else "skipped"
+        try:
+            action, conflict_path = _process_folder(
+                folder, cfg, _parent_rel(rel, cfg), stats.get(rel), dry_run
             )
+        except Exception:  # noqa: BLE001 — isolate a bad folder, keep going
+            summary.failed.append(rel)
+            logger.exception("Obsidianize: папка %s не обработана", rel)
+            if on_progress is not None:
+                on_progress(rel, "failed")
+            continue
+
+        if action == "conflict":
+            summary.conflicts.append(conflict_path or "")
+        elif action == "skipped":
+            summary.skipped += 1
+        elif dry_run:
+            # dry-run accounting preserved: everything that would be written
+            # counts as an update (created stays 0).
+            summary.updated += 1
+        elif action == "created":
+            summary.created += 1
+        else:
+            summary.updated += 1
+        if on_progress is not None:
             on_progress(rel, action)
     return summary
 
