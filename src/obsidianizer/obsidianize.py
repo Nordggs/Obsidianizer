@@ -1122,7 +1122,7 @@ def _files_table(
 
     lines = [
         "\n| File | Type | Opens with | Modified | Size | Comment | Comments |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for f in rows:
         icon = FILE_ICONS[_category_of(f.ext, cfg)]
