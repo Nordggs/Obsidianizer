@@ -332,13 +332,13 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
 
     # Files: single GitHub-style table with opens-with + comments columns
     assert "## Files\n" in card
-    assert "| File | Type | Opens with | Modified | Size | Comment | Comments |" in card
+    assert "| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |" in card
     assert (
-        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]]"
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]]"
         " | XLSX | Excel | сегодня | 1 B |  |  |" in card
     )
     assert (
-        "| 📄 [[Товар Инструкция instruction-manual.pdf|Товар Инструкция instruction-manual.pdf]]"
+        "| 📄 [[Товар Инструкция instruction-manual.pdf]]"
         " | PDF | Obsidian | сегодня | 1 B |  |  |" in card
     )
 
@@ -579,14 +579,14 @@ def test_build_card_include_md_puts_md_into_docs(tmp_path):
     scan = scan_tree(root, cfg)[""]
 
     card = build_card(scan, None, cfg)
-    assert "[[заметка.md|заметка.md]]" in card
-    assert "| 📄 [[заметка.md|заметка.md]] | MD | Obsidian |" in card
+    assert "[[заметка.md]]" in card
+    assert "| 📄 [[заметка.md]] | MD | Obsidian |" in card
 
     # default config now also includes .md (include_md=True by default)
     with_default = build_card(
         scan_tree(root, ObsidianizeConfig())[""], None, ObsidianizeConfig(template="classic")
     )
-    assert "[[заметка.md|заметка.md]]" in with_default
+    assert "[[заметка.md]]" in with_default
 
     # explicit include_md=False excludes .md
     without = build_card(
@@ -594,7 +594,7 @@ def test_build_card_include_md_puts_md_into_docs(tmp_path):
         None,
         ObsidianizeConfig(include_md=False, template="classic"),
     )
-    assert "[[заметка.md|заметка.md]]" not in without
+    assert "[[заметка.md]]" not in without
 
 
 def test_scan_tree_excludes_derived_artifacts(tmp_path):
@@ -677,8 +677,8 @@ def test_build_card_unknown_extensions_go_to_other(tmp_path):
     scan = scan_tree(root)[""]
     card = build_card(scan, None, ObsidianizeConfig(template="classic"))
     files_section = card.split("## Files")[1].split("## ")[0]
-    assert "[[модель.rvt|модель.rvt]]" in files_section
-    assert "[[архив.rar|архив.rar]]" in files_section
+    assert "[[модель.rvt]]" in files_section
+    assert "[[архив.rar]]" in files_section
     assert "| Revit |" in files_section  # .rvt → Revit
     assert "| — |" in files_section  # .rar неизвестен
 
@@ -1017,8 +1017,8 @@ def test_cli_folders_include_md_by_default(tmp_path):
     _touch(root / "readme.md", "# README")
     assert main(["folders", "--path", str(root)]) == 0
     card = (root / "Оборудование.md").read_text(encoding="utf-8")
-    assert "[[readme.md|readme.md]]" in card
-    assert "| 📄 [[readme.md|readme.md]] | MD | Obsidian |" in card
+    assert "[[readme.md]]" in card
+    assert "| 📄 [[readme.md]] | MD | Obsidian |" in card
 
 
 def test_cli_folders_no_include_md_flag(tmp_path):
@@ -1100,9 +1100,9 @@ def test_build_card_github_golden(mock_get_now, tmp_path):
     assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |  |" in card
     assert "## About\n" not in card  # нет данных в заметках — секция скрыта
     assert "## Files\n" in card
-    assert "| File | Type | Opens with | Modified | Size | Comment | Comments |" in card
-    assert "📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |" in card
-    assert "| 📄 [[Товар Инструкция instruction-manual.pdf|Товар Инструкция instruction-manual.pdf]] | PDF | Obsidian | сегодня | 1 B |  |  |" in card
+    assert "| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |" in card
+    assert "📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |" in card
+    assert "| 📄 [[Товар Инструкция instruction-manual.pdf]] | PDF | Obsidian | сегодня | 1 B |  |  |" in card
     assert "## Notes\n" in card
     assert "![[Оборудование_заметки]]" in card
     assert '<footer class="repo-meta">' in card
@@ -1726,21 +1726,21 @@ def test_yaml_dict_special_chars():
 
 def test_extract_user_comments_basic():
     table = """## Files
-| File | Type | Opens with | Modified | Size | Comment | Comments |
+| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |
 | --- | --- | --- | --- | --- | --- | --- |
-| [[src/main.py|main.py]] | PY | — | сегодня | 1 B |  | моя заметка |
-| [[docs/arch.md|arch.md]] | MD | Obsidian | вчера | 2 B |  |  |
+| [[main.py]] | PY | — | сегодня | 1 B |  | моя заметка |
+| [[arch.md]] | MD | Obsidian | вчера | 2 B |  |  |
 """
     result = extract_user_comments(table)
-    assert result["src/main.py"] == "моя заметка"
-    assert result["docs/arch.md"] == ""
+    assert result["main.py"] == "моя заметка"
+    assert result["arch.md"] == ""
 
 
 def test_extract_user_comments_skips_up_row():
-    table = """| File | Type | Opens with | Modified | Size | Comment | Comments |
+    table = """| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |
 | --- | --- | --- | --- | --- | --- | --- |
 | ⬆ [[../Parent|Up]] |  |  |  |  |  |  |
-| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  | test |
+| [[foo.md]] | MD | Obsidian | сегодня | 1 B |  | test |
 """
     result = extract_user_comments(table)
     assert ".." not in result
@@ -1748,9 +1748,9 @@ def test_extract_user_comments_skips_up_row():
 
 
 def test_extract_user_comments_pipe_unescaped():
-    table = """| File | Type | Opens with | Modified | Size | Comment | Comments |
+    table = """| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |
 | --- | --- | --- | --- | --- | --- | --- |
-| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  | hello\\|world |
+| [[foo.md]] | MD | Obsidian | сегодня | 1 B |  | hello\\|world |
 """
     result = extract_user_comments(table)
     assert result["foo.md"] == "hello|world"
@@ -1758,9 +1758,9 @@ def test_extract_user_comments_pipe_unescaped():
 
 def test_extract_user_comments_no_comments_column():
     table = """## Files
-| File | Type | Opens with | Modified | Size | Comment |
+| File | Type | Opens with | Modified | Size | Description (Auto) |
 | --- | --- | --- | --- | --- | --- |
-| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  |
+| [[foo.md]] | MD | Obsidian | сегодня | 1 B |  |
 """
     result = extract_user_comments(table)
     assert result == {}
@@ -1874,8 +1874,8 @@ def test_sync_comments_preserved_on_card_skip(tmp_path):
     card = card_path.read_text(encoding="utf-8")
     # Card already has Comments column (empty) — fill it with a value
     card = card.replace(
-        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |",
-        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  | моя правка |",
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |",
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  | моя правка |",
     )
     card_path.write_text(card, encoding="utf-8")
 
@@ -1996,12 +1996,12 @@ def test_migration_no_comments_keys(tmp_path):
 
 def test_extract_comments_reads_auto_column_not_user():
     table = """## Files
-| File | Type | Opens with | Modified | Size | Comment | Comments |
+| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |
 | --- | --- | --- | --- | --- | --- | --- |
-| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B | авто-описание | пользовательский |
+| [[foo.md]] | MD | Obsidian | сегодня | 1 B | авто-описание | пользовательский |
 """
     result = extract_comments(table)
-    # extract_comments should read Comment (col 5), NOT Comments (col 6)
+    # extract_comments should read Description (col 5), NOT Comments (col 6)
     assert result.get("foo.md") == "авто-описание"
 
 

@@ -1121,7 +1121,7 @@ def _files_table(
     rows = sorted(rows, key=lambda f: (f.ext.lower().lstrip('.'), f.name.casefold()))
 
     lines = [
-        "\n| File | Type | Opens with | Modified | Size | Comment | Comments |",
+        "\n| File | Type | Opens with | Modified | Size | Description (Auto) | Comments |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for f in rows:
@@ -1131,7 +1131,7 @@ def _files_table(
         auto = auto_comments.get(f.name, "")
         user = _truncate_comment(_escape_pipe(file_comments.get(f.rel, "")))
         lines.append(
-            f"| {icon} [[{f.rel}|{f.name}]] | {file_type} | {opener}"
+            f"| {icon} [[{f.name}]] | {file_type} | {opener}"
             f" | {format_rel_date(f.mtime_ns)}"
             f" | {format_size(f.size)} | {auto} | {user} |"
         )
