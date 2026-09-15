@@ -29,6 +29,8 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
+import yaml
+
 def _get_now() -> datetime:
     """Return current datetime. Can be patched in tests for reproducibility."""
     return datetime.now()
@@ -44,7 +46,7 @@ TEMPLATE_KEY = "obsidianizer_template"
 VERSION_KEY = "obsidianizer_version"
 RENDER_VERSION = 9  # bump to auto-migrate existing cards to a new structure
 
-YAML_KEYS = ["дата_начала", "источник", "контакт", "проект", "адрес", "tags", "комментарий"]
+YAML_KEYS = ["дата_начала", "источник", "контакт", "проект", "адрес", "tags", "комментарий", "file_comments", "folder_comments"]
 FIELD_LABELS = {
     "проект": "Проект",
     "адрес": "Адрес",
@@ -362,20 +364,49 @@ def card_is_ours(content: str) -> bool:
     return parse_frontmatter(content).get(CARD_MARKER_KEY) is True
 
 
+def _normalize_fm_types(props: dict) -> dict:
+    """Normalize types after yaml.safe_load() to match custom parser behavior.
+
+    PyYAML YAML 1.1 may return datetime.date for date strings — convert to str.
+    Bool values (true/false) are kept as-is since they match the old parser.
+    """
+    date_key = "дата_начала"
+    if date_key in props and hasattr(props[date_key], "isoformat"):
+        props[date_key] = props[date_key].isoformat()
+    return props
+
+
 def parse_frontmatter(content: str) -> dict:
     """Parse the leading YAML block into typed values (order preserved).
 
-    Handles flat keys, inline lists and block lists (``- item`` lines that
-    belong to the previous key, as Obsidian writes multi-line ``tags``), so
-    user frontmatter data is never silently lost on regeneration.
+    Uses PyYAML safe_load for full YAML compatibility, with type normalization
+    to preserve backward compatibility with the custom parser behavior.
+    Falls back to a tolerant line-by-line parser when PyYAML rejects the block,
+    so user data is never silently lost on edge-case YAML.
     """
 
     m = re.match(r"^---\n([\s\S]*?)\n---", content)
     if not m:
         return {}
+    block = m.group(1)
+    try:
+        props = yaml.safe_load(block)
+        if not isinstance(props, dict):
+            return {}
+        return _normalize_fm_types(props)
+    except yaml.YAMLError:
+        return _parse_frontmatter_legacy(block)
+
+
+def _parse_frontmatter_legacy(block: str) -> dict:
+    """Tolerant line-by-line YAML parser — handles values PyYAML rejects.
+
+    Parses ``key: value`` lines, block-list items (``- item``), and quoted
+    scalars.  Never raises — returns what it managed to extract.
+    """
     props: dict = {}
     cur_key: str | None = None
-    for line in m.group(1).split("\n"):
+    for line in block.split("\n"):
         idx = line.find(":")
         if idx == -1:
             item = line.strip()
@@ -392,7 +423,7 @@ def parse_frontmatter(content: str) -> dict:
         if not key:
             continue
         cur_key = key
-        props[key] = _parse_scalar(line[idx + 1 :].strip())
+        props[key] = _parse_scalar(line[idx + 1:].strip())
     return props
 
 
@@ -405,7 +436,7 @@ def _parse_scalar(raw: str):
         return raw[1:-1]
     if raw.startswith("[") and raw.endswith("]"):
         inner = raw[1:-1]
-        return [s.strip().strip('"\'') for s in inner.split(",") if s.strip()]
+        return [s.strip().strip("\"'") for s in inner.split(",") if s.strip()]
     if raw in ("null", "~"):
         return None
     if raw == "true":
@@ -420,7 +451,7 @@ def _parse_scalar(raw: str):
 
 
 def _split_table_cells(line: str) -> list[str]:
-    """Split a markdown table row into cells, keeping wikilinks whole.
+    r"""Split a markdown table row into cells, keeping wikilinks whole.
 
     Both escaped (``\|``) and raw alias pipes inside ``[[…|…]]`` are masked
     before splitting, so the cell boundary never cuts a link in two.
@@ -434,24 +465,46 @@ def _split_table_cells(line: str) -> list[str]:
     return [c.strip() for c in masked.strip().strip("|").replace("\\|", "\x00").split("|")]
 
 
+def _escape_pipe(text: str) -> str:
+    """Escape | for markdown table cells."""
+    return text.replace("\\", "\\\\").replace("|", "\\|")
+
+
+def _truncate_comment(text: str, max_len: int = 80) -> str:
+    """Truncate long comments with ellipsis."""
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "\u2026"
+
+
 def extract_comments(content: str) -> dict[str, str]:
-    """Collect per-file comments from the card tables.
+    """Collect per-file auto-comments from the Comment column of the Files table.
 
-    The key is the display name (the part after ``|`` in a wikilink), which is
-    stable across card regeneration AND across vault moves, and matches the
-    format produced by the original Templater script.
-
-    Handles both table shapes: old cards had the comment right after the
-    wikilink; the current Files table places it in the LAST column (after
-    «Открывается / Изменено / Размер»). A comment that merely duplicates the
-    «Открывается» value is treated as a migration artifact and ignored.
+    Handles: new English header, old Russian header, and headerless script rows.
+    Key = display name from wikilink. Comment = auto-comment column only.
     """
 
     comments: dict[str, str] = {}
-    new_format = False
+    in_files = False
+    format_version = None  # "new" = English 7-col, "old_compat" = Russian last-col
     for line in content.splitlines():
-        if line.lstrip().startswith("|") and "Открывается" in line and "Файл" in line:
-            new_format = True
+        stripped = line.lstrip()
+        if not stripped.startswith("|"):
+            in_files = False
+            format_version = None
+            continue
+        # Detect new English Files table header
+        if "File" in stripped and "Opens with" in stripped:
+            in_files = True
+            format_version = "new"
+            continue
+        # Detect old Russian table headers
+        if "Файл" in stripped and ("Комментарий" in stripped or "Открывается" in stripped):
+            in_files = True
+            format_version = "old_compat"
+            continue
+        if in_files and "---" in stripped:
+            continue
         m = re.search(r"\[\[([^\]|]*?)(?:\|([^\]|]*))?\]\]", line)
         if not m:
             continue
@@ -459,17 +512,92 @@ def extract_comments(content: str) -> dict[str, str]:
         cells = _split_table_cells(line)
         if not cells:
             continue
-        if new_format:
-            opener = cells[1] if len(cells) >= 2 else ""
-            comment = cells[-1].strip()
-            if comment and comment != opener:
-                comments[name] = comment
-        else:
+        if format_version == "new":
+            if len(cells) >= 6:
+                comment = cells[5].strip()
+                if comment:
+                    comments[name] = comment
+        elif format_version == "old_compat":
+            # Old format: comment is in the cell right after the wikilink
             idx = next((i for i, c in enumerate(cells) if "[[" in c), None)
             if idx is not None and idx + 1 < len(cells):
                 comment = cells[idx + 1].strip()
                 if comment:
                     comments[name] = comment
+        else:
+            # Headerless row (script/legacy) — comment is last cell
+            comment = cells[-1].strip()
+            if comment:
+                comments[name] = comment
+    return comments
+
+
+def extract_user_comments(content: str) -> dict[str, str]:
+    """Extract user-editable Comments column (last column) from the Files table.
+
+    Key = canonical relative path (link target from wikilink = ``f.rel``).
+    Unescapes ``\\|`` → ``|`` so stored values are the original user text.
+    """
+
+    comments: dict[str, str] = {}
+    in_files = False
+    for line in content.splitlines():
+        stripped = line.lstrip()
+        if not stripped.startswith("|"):
+            in_files = False
+            continue
+        if "File" in stripped and "Opens with" in stripped:
+            in_files = True
+            continue
+        if in_files and "---" in stripped:
+            continue
+        if in_files:
+            m = re.search(r"\[\[([^\]|]*?)(?:\\?\|([^\]|]*))?\]\]", line)
+            if not m:
+                continue
+            link_target = m.group(1).strip()
+            if link_target.startswith(".."):
+                continue
+            cells = _split_table_cells(line)
+            if len(cells) >= 7:
+                comment = cells[-1].strip().replace("\x00", "|").replace("\\\\", "\\").replace("\\|", "|")
+                comments[link_target] = comment
+    return comments
+
+
+def extract_folder_comments(
+    content: str, name_to_rel: dict[str, str] | None = None
+) -> dict[str, str]:
+    """Extract user-editable Comments column from the Folders table.
+
+    Key = canonical folder relative path (via ``name_to_rel`` mapping).
+    """
+
+    comments: dict[str, str] = {}
+    in_folders = False
+    for line in content.splitlines():
+        stripped = line.lstrip()
+        if not stripped.startswith("|"):
+            in_folders = False
+            continue
+        if "Name" in stripped and "Updated" in stripped and "Files" in stripped:
+            in_folders = True
+            continue
+        if in_folders and "---" in stripped:
+            continue
+        if in_folders:
+            m = re.search(r"\[\[([^\]|]*?)(?:\\?\|([^\]|]*))?\]\]", line)
+            if not m:
+                continue
+            link_target = m.group(1).strip()
+            if link_target.startswith(".."):
+                continue
+            display = (m.group(2) or m.group(1)).strip()
+            canonical = name_to_rel.get(display, display) if name_to_rel else display
+            cells = _split_table_cells(line)
+            if len(cells) >= 5:
+                comment = cells[-1].strip().replace("\x00", "|").replace("\\\\", "\\").replace("\\|", "|")
+                comments[canonical] = comment
     return comments
 
 
@@ -527,17 +655,19 @@ def _has_user_data(props: dict) -> bool:
 
 
 def _notes_frontmatter(props: dict) -> str:
-    """YAML block for the notes file: standard keys first, then user extras."""
+    """YAML block for the notes file using PyYAML: standard keys first, then user extras."""
 
-    lines = ["---"]
+    ordered = {}
     for key in YAML_KEYS:
-        lines.append(_fmt_yaml_val(key, props.get(key, _default_value(key))).rstrip("\n"))
+        ordered[key] = props.get(key, _default_value(key))
     for key, val in props.items():
         if key in YAML_KEYS or key in SERVICE_KEYS:
             continue
-        lines.append(_fmt_yaml_val(key, val).rstrip("\n"))
-    lines.append("---")
-    return "\n".join(lines)
+        ordered[key] = val
+    yaml_block = yaml.safe_dump(
+        ordered, allow_unicode=True, default_flow_style=False, sort_keys=False
+    ).rstrip("\n")
+    return "---\n" + yaml_block + "\n---"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -560,6 +690,60 @@ def _adopt_foreign_note(card_path: Path, notes_path: Path) -> bool:
         return True
     except OSError:
         return False
+
+
+def _sync_comments_to_notes(
+    notes_path: Path,
+    prev: str | None,
+    folder: FolderScan,
+) -> None:
+    """Extract Comments from card table, merge with notes FM, write back.
+
+    Called ALWAYS (even when card is skipped) to preserve user edits.
+    Table values win over frontmatter (user edits the table).
+    """
+    if not notes_path.exists():
+        return
+    try:
+        notes_content = notes_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    notes_props = parse_frontmatter(notes_content)
+    raw_fc = notes_props.get("file_comments") or {}
+    raw_fdc = notes_props.get("folder_comments") or {}
+    if not isinstance(raw_fc, dict):
+        raw_fc = {}
+    if not isinstance(raw_fdc, dict):
+        raw_fdc = {}
+
+    table_fc = extract_user_comments(prev) if prev else {}
+    name_to_rel = {s: _join_rel(folder.rel, s) for s in folder.subfolders}
+    table_fdc = extract_folder_comments(prev, name_to_rel) if prev else {}
+
+    # Empty table value = user cleared (only for files already in FM).
+    # For new files with no FM history, skip empty entries (no noise).
+    # If table value is a truncated version of the FM value (ends with …),
+    # keep the FM original — the table is a display, not the source of truth.
+    merged_fc = {**raw_fc}
+    for k, v in table_fc.items():
+        if v or k in raw_fc:
+            existing = raw_fc.get(k)
+            if existing and v != existing and v == _truncate_comment(existing):
+                continue  # table value is truncated → preserve FM
+            merged_fc[k] = v
+    merged_fdc = {**raw_fdc}
+    for k, v in table_fdc.items():
+        if v or k in raw_fdc:
+            existing = raw_fdc.get(k)
+            if existing and v != existing and v == _truncate_comment(existing):
+                continue
+            merged_fdc[k] = v
+
+    if merged_fc != raw_fc or merged_fdc != raw_fdc:
+        notes_props["file_comments"] = merged_fc
+        notes_props["folder_comments"] = merged_fdc
+        body = _strip_frontmatter(notes_content).lstrip("\n")
+        write_atomic(notes_path, _notes_frontmatter(notes_props) + "\n\n" + body)
 
 
 def _ensure_notes_file(folder: FolderScan, prev: str | None) -> bool:
@@ -618,6 +802,8 @@ def build_card(
     stats: dict | None = None,
     notes_prev: str | None = None,
     content_hashes: dict[str, str] | None = None,
+    file_comments: dict[str, str] | None = None,
+    folder_comments: dict[str, str] | None = None,
 ) -> str:
     """Compose the full card text for one folder (Project Dashboard v5).
 
@@ -628,10 +814,13 @@ def build_card(
     ``stats`` is the optional ``folder_stats`` entry for this folder.
     ``content_hashes`` are precomputed content hashes (see
     :func:`_compute_content_hashes`); computed on demand when omitted.
+    ``file_comments`` / ``folder_comments`` override values from notes_prev
+    when provided (used by tests and direct callers).
     """
 
     return _render_dashboard(
-        folder, prev, cfg, parent_rel, stats, notes_prev, content_hashes
+        folder, prev, cfg, parent_rel, stats, notes_prev, content_hashes,
+        file_comments=file_comments, folder_comments=folder_comments,
     )
 
 
@@ -649,6 +838,8 @@ def _render_dashboard(
     stats: dict | None = None,
     notes_prev: str | None = None,
     content_hashes: dict[str, str] | None = None,
+    file_comments: dict[str, str] | None = None,
+    folder_comments: dict[str, str] | None = None,
 ) -> str:
     """Project Dashboard v5 — GitHub project page structure.
 
@@ -669,6 +860,13 @@ def _render_dashboard(
         user_source = _map_old_keys(
             {k: v for k, v in existing.items() if not k.startswith("obsidianizer")}
         )
+
+    raw_fc = file_comments if file_comments is not None else (user_source.get("file_comments") or {})
+    raw_fdc = folder_comments if folder_comments is not None else (user_source.get("folder_comments") or {})
+    if not isinstance(raw_fc, dict):
+        raw_fc = {}
+    if not isinstance(raw_fdc, dict):
+        raw_fdc = {}
 
     digest = folder_fingerprint(folder, content_hashes)
     st = stats or _local_stats(folder, cfg)
@@ -726,8 +924,8 @@ def _render_dashboard(
 
     # ── Folders: physical folders only (no categories here) ──
     parts.append("\n## Folders")
-    parts.append("\n| Name | Files | Size | Updated |")
-    parts.append("| --- | --- | --- | --- |")
+    parts.append("\n| Name | Files | Size | Updated | Comments |")
+    parts.append("| --- | --- | --- | --- | --- |")
     if parent_rel is not None:
         if parent_rel:
             parent_name = parent_rel.rsplit("/", 1)[-1]
@@ -738,26 +936,28 @@ def _render_dashboard(
             # cannot open as a note ("file already exists" on click).
             parent_name = folder.path.parent.name
         link = f"../{parent_name}"
-        parts.append(f"| ⬆ [[{link}\\|Up]] |  |  |  |")
+        parts.append(f"| ⬆ [[{link}\\|Up]] |  |  |  |  |")
     subs = st.get("subfolders") or {}
     if folder.subfolders:
         for sub in folder.subfolders:
+            folder_rel = _join_rel(folder.rel, sub)
+            fc = _truncate_comment(_escape_pipe(raw_fdc.get(folder_rel, "")))
             ss = subs.get(sub)
             if ss is None or not ss["count"]:
-                parts.append(f"| 📁 [[./{sub}/{sub}\\|{sub}]] | 0 | 0 B | |")
+                parts.append(f"| 📁 [[./{sub}/{sub}\\|{sub}]] | 0 | 0 B | | {fc} |")
                 continue
             changed = format_rel_date(ss["max_mtime_ns"]) if ss["max_mtime_ns"] else ""
             size_str = format_size(ss["size"])
             parts.append(
-                f"| 📁 [[./{sub}/{sub}\\|{sub}]] | {ss['count']} | {size_str} | {changed} |"
+                f"| 📁 [[./{sub}/{sub}\\|{sub}]] | {ss['count']} | {size_str} | {changed} | {fc} |"
             )
     else:
-        parts.append("| *No folders* | | | |")
+        parts.append("| *No folders* | | | | |")
 
     # ── Files: single table of all direct files (GitHub file list) ──
     parts.append("\n## Files")
     if folder.files:
-        parts.append(_files_table(folder.files, comments, cfg))
+        parts.append(_files_table(folder.files, comments, raw_fc, cfg))
     else:
         parts.append("*Файлов нет*")
 
@@ -890,6 +1090,8 @@ def _default_value(key: str):
         return _get_now().strftime("%Y-%m-%d")
     if key == "tags":
         return []
+    if key in ("file_comments", "folder_comments"):
+        return {}
     return None
 
 
@@ -907,25 +1109,31 @@ def _display_value(val) -> str | None:
 
 
 def _files_table(
-    rows: list[FileEntry], comments: dict[str, str], cfg: ObsidianizeConfig
+    rows: list[FileEntry],
+    auto_comments: dict[str, str],
+    file_comments: dict[str, str],
+    cfg: ObsidianizeConfig,
 ) -> str:
     """Single GitHub-style file table: icon · name · type · opens-with · date · size
-    · comment. ``opens-with`` is a per-extension label (OPENERS)."""
+    · auto-comment · user-comments. ``opens-with`` is a per-extension label (OPENERS)."""
 
     # Sort by extension (without dot) then by name
     rows = sorted(rows, key=lambda f: (f.ext.lower().lstrip('.'), f.name.casefold()))
 
     lines = [
-        "\n| File | Type | Opens with | Modified | Size | Comment |",
-        "| --- | --- | --- | --- | --- |",
+        "\n| File | Type | Opens with | Modified | Size | Comment | Comments |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for f in rows:
         icon = FILE_ICONS[_category_of(f.ext, cfg)]
         file_type = f.ext.lstrip('.').upper() if f.ext else "—"
         opener = OPENERS.get(f.ext, "—")
+        auto = auto_comments.get(f.name, "")
+        user = _truncate_comment(_escape_pipe(file_comments.get(f.rel, "")))
         lines.append(
-            f"| {icon} [[{f.name}]] | {file_type} | {opener} | {format_rel_date(f.mtime_ns)}"
-            f" | {format_size(f.size)} | {comments.get(f.name, '')} |"
+            f"| {icon} [[{f.rel}|{f.name}]] | {file_type} | {opener}"
+            f" | {format_rel_date(f.mtime_ns)}"
+            f" | {format_size(f.size)} | {auto} | {user} |"
         )
     return "\n".join(lines)
 
@@ -1410,6 +1618,7 @@ def update_cards(
         # card build so every file is read at most one time per run.
         content_hashes = _compute_content_hashes(folder)
 
+        _card_skipped = False
         if prev is not None and card_is_ours(prev):
             if (
                 card_status(
@@ -1422,10 +1631,7 @@ def update_cards(
                 == "ok"
                 and not cfg.force
             ):
-                summary.skipped += 1
-                if on_progress is not None:
-                    on_progress(rel, "skipped")
-                continue
+                _card_skipped = True
         elif prev is not None and not cfg.force:
             adopted = False
             if cfg.adopt and not dry_run and not notes_p.exists():
@@ -1444,6 +1650,17 @@ def update_cards(
         if not dry_run:
             _ensure_notes_file(folder, prev)
             notes_prev = _read_notes()  # may have been created/migrated
+
+            # Sync: extract Comments from card table → notes frontmatter.
+            # Runs ALWAYS (even when card will be skipped) to preserve user edits.
+            _sync_comments_to_notes(notes_p, prev, folder)
+            notes_prev = _read_notes()  # re-read with synced comments
+
+        if _card_skipped:
+            summary.skipped += 1
+            if on_progress is not None:
+                on_progress(rel, "skipped")
+            continue
 
         text = build_card(
             folder, prev, cfg, parent_rel, stats.get(rel), notes_prev, content_hashes

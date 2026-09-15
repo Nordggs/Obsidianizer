@@ -322,24 +322,24 @@ def test_build_card_golden_equipment(mock_get_now, tmp_path):
     assert "<p class=" not in card
 
     # Tree: physical folders only, with folder icon
-    assert "| Name | Files | Size | Updated |" in card
-    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
+    assert "| Name | Files | Size | Updated | Comments |" in card
+    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |  |" in card
 
     # About falls back to the old card frontmatter when notes absent
     assert "## About\n" in card
     assert "> - **Проект**: Петров Пётр +7 (999) 765-43-21" in card
     assert "> - **Адрес**: Москва, ул. Примерная, 1" in card
 
-    # Files: single GitHub-style table with opens-with column
+    # Files: single GitHub-style table with opens-with + comments columns
     assert "## Files\n" in card
-    assert "| File | Type | Opens with | Modified | Size | Comment |" in card
+    assert "| File | Type | Opens with | Modified | Size | Comment | Comments |" in card
     assert (
-        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]]"
-        " | XLSX | Excel | сегодня | 1 B |  |" in card
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]]"
+        " | XLSX | Excel | сегодня | 1 B |  |  |" in card
     )
     assert (
-        "| 📄 [[Товар Инструкция instruction-manual.pdf]]"
-        " | PDF | Obsidian | сегодня | 1 B |  |" in card
+        "| 📄 [[Товар Инструкция instruction-manual.pdf|Товар Инструкция instruction-manual.pdf]]"
+        " | PDF | Obsidian | сегодня | 1 B |  |  |" in card
     )
 
     # Notes embed + footer
@@ -487,7 +487,7 @@ def test_build_card_subfolder_has_parent_link(tmp_path):
         if line.startswith("| ⬆"):
             normalized = line.replace("\\|", "\x00")
             cells = normalized.strip().strip("|").split("|")
-            assert len(cells) == 4, f"Up-строка не 4 ячейки: {line!r}"
+            assert len(cells) == 5, f"Up-строка не 5 ячеек: {line!r}"
 
 
 def test_build_card_root_has_no_parent_link(tmp_path):
@@ -579,14 +579,14 @@ def test_build_card_include_md_puts_md_into_docs(tmp_path):
     scan = scan_tree(root, cfg)[""]
 
     card = build_card(scan, None, cfg)
-    assert "[[заметка.md]]" in card
-    assert "| 📄 [[заметка.md]] | MD | Obsidian |" in card
+    assert "[[заметка.md|заметка.md]]" in card
+    assert "| 📄 [[заметка.md|заметка.md]] | MD | Obsidian |" in card
 
     # default config now also includes .md (include_md=True by default)
     with_default = build_card(
         scan_tree(root, ObsidianizeConfig())[""], None, ObsidianizeConfig(template="classic")
     )
-    assert "[[заметка.md]]" in with_default
+    assert "[[заметка.md|заметка.md]]" in with_default
 
     # explicit include_md=False excludes .md
     without = build_card(
@@ -594,7 +594,7 @@ def test_build_card_include_md_puts_md_into_docs(tmp_path):
         None,
         ObsidianizeConfig(include_md=False, template="classic"),
     )
-    assert "[[заметка.md]]" not in without
+    assert "[[заметка.md|заметка.md]]" not in without
 
 
 def test_scan_tree_excludes_derived_artifacts(tmp_path):
@@ -677,8 +677,8 @@ def test_build_card_unknown_extensions_go_to_other(tmp_path):
     scan = scan_tree(root)[""]
     card = build_card(scan, None, ObsidianizeConfig(template="classic"))
     files_section = card.split("## Files")[1].split("## ")[0]
-    assert "[[модель.rvt]]" in files_section
-    assert "[[архив.rar]]" in files_section
+    assert "[[модель.rvt|модель.rvt]]" in files_section
+    assert "[[архив.rar|архив.rar]]" in files_section
     assert "| Revit |" in files_section  # .rvt → Revit
     assert "| — |" in files_section  # .rar неизвестен
 
@@ -1017,8 +1017,8 @@ def test_cli_folders_include_md_by_default(tmp_path):
     _touch(root / "readme.md", "# README")
     assert main(["folders", "--path", str(root)]) == 0
     card = (root / "Оборудование.md").read_text(encoding="utf-8")
-    assert "[[readme.md]]" in card
-    assert "| 📄 [[readme.md]] | MD | Obsidian |" in card
+    assert "[[readme.md|readme.md]]" in card
+    assert "| 📄 [[readme.md|readme.md]] | MD | Obsidian |" in card
 
 
 def test_cli_folders_no_include_md_flag(tmp_path):
@@ -1096,13 +1096,13 @@ def test_build_card_github_golden(mock_get_now, tmp_path):
     # Nav as plain wikilinks
     assert "[[#Folders|Folders]] | [[#Files|Files]] | [[#About|About]] | [[#Notes|Notes]]" in card
     assert "## Folders\n" in card
-    assert "| Name | Files | Size | Updated |" in card
-    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |" in card
+    assert "| Name | Files | Size | Updated | Comments |" in card
+    assert "| 📁 [[./Арх/Арх\\|Арх]] | 0 | 0 B | |  |" in card
     assert "## About\n" not in card  # нет данных в заметках — секция скрыта
     assert "## Files\n" in card
-    assert "| File | Type | Opens with | Modified | Size | Comment |" in card
-    assert "📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |" in card
-    assert "| 📄 [[Товар Инструкция instruction-manual.pdf]] | PDF | Obsidian | сегодня | 1 B |  |" in card
+    assert "| File | Type | Opens with | Modified | Size | Comment | Comments |" in card
+    assert "📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |" in card
+    assert "| 📄 [[Товар Инструкция instruction-manual.pdf|Товар Инструкция instruction-manual.pdf]] | PDF | Obsidian | сегодня | 1 B |  |  |" in card
     assert "## Notes\n" in card
     assert "![[Оборудование_заметки]]" in card
     assert '<footer class="repo-meta">' in card
@@ -1165,9 +1165,9 @@ def test_github_tree_view_with_aggregates(tmp_path):
         tree[""], None, ObsidianizeConfig(template="github"), stats=stats[""]
     )
     # Code table: physical folders with icon, count, size
-    assert "| Name | Files | Size | Updated |" in card
-    assert "| --- | --- | --- | --- |" in card
-    assert "| 📁 [[./под/под\\|под]] | 1 | 512 B | сегодня |" in card
+    assert "| Name | Files | Size | Updated | Comments |" in card
+    assert "| --- | --- | --- | --- | --- |" in card
+    assert "| 📁 [[./под/под\\|под]] | 1 | 512 B | сегодня |  |" in card
 
 
 @patch("obsidianizer.obsidianize._get_now")
@@ -1322,7 +1322,7 @@ def test_review_file_path_agrees_with_review_module(tmp_path):
 
 
 def test_code_table_wikilink_stays_in_one_cell(tmp_path):
-    """The aliased wikilink must be escaped (\|) so the table keeps 4 cells."""
+    r"""The aliased wikilink must be escaped (\|) so the table keeps 4 cells."""
     root = _make_equipment(tmp_path)
     scan = scan_tree(root)[""]
     card = build_card(scan, None, ObsidianizeConfig(template="github"))
@@ -1334,7 +1334,7 @@ def test_code_table_wikilink_stays_in_one_cell(tmp_path):
         # mask the escaped alias pipe, then count real cell separators
         normalized = line.replace("\\|", "\x00")
         cells = normalized.strip().strip("|").split("|")
-        assert len(cells) == 4, f"row split into {len(cells)} cells: {line!r}"
+        assert len(cells) == 5, f"row split into {len(cells)} cells: {line!r}"
         assert "[[" in cells[0] and "]]" in cells[0]
         assert "\\|" in line, f"wikilink pipe not escaped: {line!r}"
 
@@ -1621,3 +1621,494 @@ def test_nav_includes_images_when_images_present(tmp_path):
     assert "[[#Images|Images]]" in card
     assert "## Images" in card
     assert "img-gallery" not in card
+
+
+# --------------------------------------------------------------------------
+# file_comments / folder_comments feature
+# --------------------------------------------------------------------------
+
+from obsidianizer.obsidianize import (
+    _escape_pipe,
+    _truncate_comment,
+    extract_user_comments,
+    extract_folder_comments,
+    _sync_comments_to_notes,
+    _join_rel,
+    notes_file_path,
+    _notes_frontmatter,
+    _default_value,
+    YAML_KEYS,
+)
+
+
+# -- _escape_pipe / _truncate_comment --
+
+
+def test_escape_pipe():
+    assert _escape_pipe("hello") == "hello"
+    assert _escape_pipe("a|b") == r"a\|b"
+    assert _escape_pipe(r"a\|b") == r"a\\\|b"
+
+
+def test_truncate_comment_short():
+    assert _truncate_comment("short") == "short"
+
+
+def test_truncate_comment_exact():
+    assert _truncate_comment("x" * 80) == "x" * 80
+
+
+def test_truncate_comment_long():
+    result = _truncate_comment("x" * 100)
+    assert len(result) == 80
+    assert result.endswith("…")
+
+
+# -- YAML_KEYS / _default_value --
+
+
+def test_yaml_keys_contains_comments():
+    assert "file_comments" in YAML_KEYS
+    assert "folder_comments" in YAML_KEYS
+
+
+def test_default_value_comments_are_empty_dicts():
+    assert _default_value("file_comments") == {}
+    assert _default_value("folder_comments") == {}
+
+
+# -- parse_frontmatter with PyYAML --
+
+
+def test_parse_frontmatter_date_is_string():
+    content = "---\nдата_начала: 2026-03-16\n---\ntext"
+    props = parse_frontmatter(content)
+    assert isinstance(props["дата_начала"], str)
+    assert props["дата_начала"] == "2026-03-16"
+
+
+def test_parse_frontmatter_dict_field():
+    content = '---\nfile_comments:\n  src/main.py: "точка входа"\n  docs/arch.md: "прочитать"\n---\ntext'
+    props = parse_frontmatter(content)
+    assert isinstance(props.get("file_comments"), dict)
+    assert props["file_comments"]["src/main.py"] == "точка входа"
+    assert props["file_comments"]["docs/arch.md"] == "прочитать"
+
+
+def test_parse_frontmatter_empty_dict():
+    content = "---\nfile_comments: {}\n---\ntext"
+    props = parse_frontmatter(content)
+    assert props.get("file_comments") == {}
+
+
+def test_yaml_dict_round_trip():
+    original = {"src/main.py": "точка входа", "docs/arch.md": "прочитать"}
+    props = {"file_comments": original}
+    rendered = _notes_frontmatter(props)
+    parsed = parse_frontmatter(rendered)
+    assert parsed["file_comments"] == original
+
+
+def test_yaml_dict_special_chars():
+    original = {
+        'key:with:colons': 'value:with:colons',
+        'key"quote': 'value"quote',
+        'key\\backslash': 'value\\backslash',
+    }
+    props = {"file_comments": original}
+    rendered = _notes_frontmatter(props)
+    parsed = parse_frontmatter(rendered)
+    assert parsed["file_comments"] == original
+
+
+# -- extract_user_comments --
+
+
+def test_extract_user_comments_basic():
+    table = """## Files
+| File | Type | Opens with | Modified | Size | Comment | Comments |
+| --- | --- | --- | --- | --- | --- | --- |
+| [[src/main.py|main.py]] | PY | — | сегодня | 1 B |  | моя заметка |
+| [[docs/arch.md|arch.md]] | MD | Obsidian | вчера | 2 B |  |  |
+"""
+    result = extract_user_comments(table)
+    assert result["src/main.py"] == "моя заметка"
+    assert result["docs/arch.md"] == ""
+
+
+def test_extract_user_comments_skips_up_row():
+    table = """| File | Type | Opens with | Modified | Size | Comment | Comments |
+| --- | --- | --- | --- | --- | --- | --- |
+| ⬆ [[../Parent|Up]] |  |  |  |  |  |  |
+| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  | test |
+"""
+    result = extract_user_comments(table)
+    assert ".." not in result
+    assert result.get("foo.md") == "test"
+
+
+def test_extract_user_comments_pipe_unescaped():
+    table = """| File | Type | Opens with | Modified | Size | Comment | Comments |
+| --- | --- | --- | --- | --- | --- | --- |
+| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  | hello\\|world |
+"""
+    result = extract_user_comments(table)
+    assert result["foo.md"] == "hello|world"
+
+
+def test_extract_user_comments_no_comments_column():
+    table = """## Files
+| File | Type | Opens with | Modified | Size | Comment |
+| --- | --- | --- | --- | --- | --- |
+| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B |  |
+"""
+    result = extract_user_comments(table)
+    assert result == {}
+
+
+# -- extract_folder_comments --
+
+
+def test_extract_folder_comments_basic():
+    table = """## Folders
+| Name | Files | Size | Updated | Comments |
+| --- | --- | --- | --- | --- |
+| [[./src/src|src]] | 5 | 10 KB | вчера | исходники |
+| [[./tests/tests|tests]] | 3 | 5 KB | сегодня |  |
+"""
+    name_to_rel = {"src": "src", "tests": "tests"}
+    result = extract_folder_comments(table, name_to_rel)
+    assert result["src"] == "исходники"
+    assert result["tests"] == ""
+
+
+def test_extract_folder_comments_canonical_keys():
+    table = """## Folders
+| Name | Files | Size | Updated | Comments |
+| --- | --- | --- | --- | --- |
+| [[./components/components|components]] | 2 | 1 KB | сегодня | UI kit |
+"""
+    name_to_rel = {"components": "src/components"}
+    result = extract_folder_comments(table, name_to_rel)
+    assert "src/components" in result
+    assert result["src/components"] == "UI kit"
+
+
+def test_extract_folder_comments_skips_up():
+    table = """| Name | Files | Size | Updated | Comments |
+| --- | --- | --- | --- | --- |
+| ⬆ [[../Parent|Up]] |  |  |  |  |
+| [[./sub/sub|sub]] | 1 | 1 B | сегодня | test |
+"""
+    name_to_rel = {"sub": "sub"}
+    result = extract_folder_comments(table, name_to_rel)
+    assert ".." not in str(result.keys())
+    assert result.get("sub") == "test"
+
+
+# -- _sync_comments_to_notes --
+
+
+def test_sync_comments_to_notes(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # Create card with user comments in the table
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": "важный файл"}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # Create notes file with empty comments
+    notes_path = notes_file_path(scan)
+    notes_path.write_text("---\nfile_comments: {}\n---\n\n# Заметки\n", encoding="utf-8")
+
+    # Sync should extract from card table → write to notes
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    notes_content = notes_path.read_text(encoding="utf-8")
+    props = parse_frontmatter(notes_content)
+    assert props["file_comments"]["Товар_2шт_Счёт_на_оплату_№_0000001.xlsx"] == "важный файл"
+
+
+def test_sync_comments_empty_clears_fm(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # Card with empty comment (user cleared it)
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": ""}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # Notes has old comment
+    notes_path = notes_file_path(scan)
+    old_fm = '---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: "старый"\n---\n\n# Заметки\n'
+    notes_path.write_text(old_fm, encoding="utf-8")
+
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    # Empty cell = user deleted → FM should have ""
+    assert props["file_comments"]["Товар_2шт_Счёт_на_оплату_№_0000001.xlsx"] == ""
+
+
+def test_sync_comments_no_notes_file(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+    notes_path = notes_file_path(scan)
+    # No notes file → noop, no crash
+    _sync_comments_to_notes(notes_path, None, scan)
+
+
+def test_sync_comments_preserved_on_card_skip(tmp_path):
+    """Even when card is skipped (fresh), comments are synced to notes."""
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # First run: create card + notes
+    update_cards(root, ObsidianizeConfig())
+
+    # Simulate user editing comment in card table
+    card_path = root / "Оборудование.md"
+    card = card_path.read_text(encoding="utf-8")
+    # Card already has Comments column (empty) — fill it with a value
+    card = card.replace(
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |",
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx|Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  | моя правка |",
+    )
+    card_path.write_text(card, encoding="utf-8")
+
+    # Second run: card is fresh → skipped, but comments should be in notes
+    summary = update_cards(root, ObsidianizeConfig())
+    assert summary.skipped >= 1
+
+    notes_path = notes_file_path(scan)
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    fc = props.get("file_comments") or {}
+    assert fc.get("Товар_2шт_Счёт_на_оплату_№_0000001.xlsx") == "моя правка"
+
+
+# -- file_comments round-trip --
+
+
+def test_file_comments_round_trip(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # Build card with comments
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": "важный файл"}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+
+    # Verify comment appears in table
+    assert "важный файл" in card
+    assert "Товар_2шт_Счёт_на_оплату_№_0000001.xlsx" in card
+
+    # Extract and verify
+    extracted = extract_user_comments(card)
+    assert extracted.get("Товар_2шт_Счёт_на_оплату_№_0000001.xlsx") == "важный файл"
+
+
+def test_new_file_empty_comment(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # Build card with empty comments dict
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments={})
+
+    # All comment cells should be empty
+    extracted = extract_user_comments(card)
+    for name, comment in extracted.items():
+        assert comment == "", f"Expected empty comment for {name}, got {comment!r}"
+
+
+# -- pipe round-trip --
+
+
+def test_pipe_in_comment_round_trip(tmp_path):
+    """Full cycle: user text → render → extract → same text."""
+    root = tmp_path / "P"
+    _touch(root / "hello_pworld.txt", b"x")
+    scan = scan_tree(root)[""]
+
+    fc = {"hello_pworld.txt": "hello | world"}
+    card = build_card(scan, None, ObsidianizeConfig(), file_comments=fc)
+
+    # Rendered table should have escaped pipe
+    files_section = card.split("## Files")[1] if "## Files" in card else card
+    assert r"hello \| world" in files_section
+
+    # Extract should return original text
+    extracted = extract_user_comments(card)
+    assert extracted.get("hello_pworld.txt") == "hello | world"
+
+
+# -- folder_comments round-trip --
+
+
+def test_folder_comments_round_trip(tmp_path):
+    root = tmp_path / "P"
+    _touch(root / "sub" / "file.txt", b"x")
+    scan = scan_tree(root)[""]
+
+    fdc = {"sub": "моя подпапка"}
+    card = build_card(scan, None, ObsidianizeConfig(), folder_comments=fdc)
+
+    # Verify in Folders table
+    folders_section = card.split("## Folders")[1].split("##")[0] if "## Folders" in card else ""
+    assert "моя подпапка" in folders_section
+
+    # Extract
+    name_to_rel = {"sub": "sub"}
+    extracted = extract_folder_comments(card, name_to_rel)
+    assert extracted.get("sub") == "моя подпапка"
+
+
+# -- migration: old card without comments keys --
+
+
+def test_migration_no_comments_keys(tmp_path):
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    # Create card without file_comments/folder_comments
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"))
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # Create notes without comments keys
+    notes_path = notes_file_path(scan)
+    notes_path.write_text("---\nкомментарий: тест\n---\n\n# Заметки\n", encoding="utf-8")
+
+    # Sync should not add noise (empty strings from table don't create keys)
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    # No comments in table → no file_comments/folder_comments added
+    assert props.get("file_comments") is None
+    assert props.get("folder_comments") is None
+    # Original key preserved
+    assert props.get("комментарий") == "тест"
+
+
+# -- extract_comments reads auto column (col 5), not user column (col 6) --
+
+
+def test_extract_comments_reads_auto_column_not_user():
+    table = """## Files
+| File | Type | Opens with | Modified | Size | Comment | Comments |
+| --- | --- | --- | --- | --- | --- | --- |
+| [[foo.md|foo.md]] | MD | Obsidian | сегодня | 1 B | авто-описание | пользовательский |
+"""
+    result = extract_comments(table)
+    # extract_comments should read Comment (col 5), NOT Comments (col 6)
+    assert result.get("foo.md") == "авто-описание"
+
+
+# --------------------------------------------------------------------------
+# Audit Blocker 1: truncation must not clobber FM on round-trip
+# --------------------------------------------------------------------------
+
+
+def test_sync_preserves_long_comment_on_round_trip(tmp_path):
+    """Truncated table cell must not overwrite the full FM value."""
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    long_comment = "x" * 100  # > 80 → will be truncated in table render
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": long_comment}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # Simulate: first sync puts full value in FM
+    notes_path = notes_file_path(scan)
+    notes_path.write_text("---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: {}\n---\n\n# Заметки\n".format(long_comment), encoding="utf-8")
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    fc_out = props.get("file_comments") or {}
+    # The full comment must be preserved, not the truncated table value
+    assert fc_out.get("Товар_2шт_Счёт_на_оплату_№_0000001.xlsx") == long_comment
+
+
+def test_sync_preserves_fm_when_table_truncated(tmp_path):
+    """Table value ending with '…' must not overwrite FM original."""
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    full_comment = "Очень длинный комментарий который точно длиннее восьмидесяти символов и будет обрезан"
+    truncated = _truncate_comment(full_comment)
+
+    # Build card with truncated value in table (as the renderer would)
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": truncated}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # FM has the full value
+    notes_path = notes_file_path(scan)
+    notes_path.write_text("---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: '{}'\n---\n\n# Заметки\n".format(full_comment), encoding="utf-8")
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    fc_out = props.get("file_comments") or {}
+    assert fc_out.get("Товар_2шт_Счёт_на_оплату_№_0000001.xlsx") == full_comment
+
+
+def test_sync_accepts_prefix_edit_as_user_intention(tmp_path):
+    """Shortening a comment (not truncation) must be accepted by sync."""
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    old_comment = "TODO: fix parser, remove debug"
+    new_comment = "TODO"
+
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": new_comment}
+    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
+    # FM has the old (longer) value
+    notes_path = notes_file_path(scan)
+    notes_path.write_text("---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: '{}'\n---\n\n# Заметки\n".format(old_comment), encoding="utf-8")
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    fc_out = props.get("file_comments") or {}
+    # User's intentional shortening must be accepted
+    assert fc_out.get("Товар_2шт_Счёт_на_оплату_№_0000001.xlsx") == new_comment
+
+
+# --------------------------------------------------------------------------
+# Audit Blocker 2: PyYAML fallback on edge-case YAML
+# --------------------------------------------------------------------------
+
+
+def test_parse_frontmatter_fallback_colon_in_value():
+    """Value containing ':' must not return {} — legacy parser handles it."""
+    content = "---\nкомментарий: Встреча: 10:00\n---\n\nbody\n"
+    props = parse_frontmatter(content)
+    assert props.get("комментарий") == "Встреча: 10:00"
+
+
+def test_parse_frontmatter_fallback_tab_characters():
+    """Tab-indented values should still parse."""
+    content = "---\nключ: значение\n---\n\nbody\n"
+    props = parse_frontmatter(content)
+    assert props.get("ключ") == "значение"
+
+
+def test_parse_frontmatter_fallback_malformed_yaml():
+    """Completely broken YAML returns {} (legacy parser also can't help)."""
+    content = "---\n{invalid: [yaml\n---\n\nbody\n"
+    props = parse_frontmatter(content)
+    assert isinstance(props, dict)
+
+
+def test_parse_frontmatter_normal_yaml_still_works():
+    """Standard YAML still goes through PyYAML path."""
+    content = "---\nклиент: ООО Ромашка\ntags: [a, b]\n---\n\nbody\n"
+    props = parse_frontmatter(content)
+    assert props["клиент"] == "ООО Ромашка"
+    assert props["tags"] == ["a", "b"]
