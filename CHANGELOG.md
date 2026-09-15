@@ -1,5 +1,20 @@
 # Obsidianizer
 
+## [0.6.7] - 2026-09-15
+
+### Added
+- **Editable Comments column** in Files and Folders tables. User edits are
+  stored in the notes-file frontmatter (`file_comments` / `folder_comments`)
+  and survive card regeneration via a Table→Frontmatter sync mechanism.
+- Files table now has 7 columns (added Comments). Folders table has 5 columns.
+- Wikilinks render as `[[rel|name]]` for correct Obsidian resolution.
+- `_sync_comments_to_notes()` runs on every update (even skipped cards) so
+  user edits are never lost.
+- Truncation guard: `_truncate_comment` values do not overwrite full FM
+  originals; intentional shortening by the user is accepted.
+- PyYAML for frontmatter parse/serialize with a tolerant line-by-line legacy
+  parser fallback on `YAMLError`.
+
 ## [0.6.6] - 2026-09-14
 
 ### Fixed
