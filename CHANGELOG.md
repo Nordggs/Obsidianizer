@@ -3,6 +3,12 @@
 ## [0.6.8] - 2026-09-16
 
 ### Fixed
+- **Files table renders correctly in Obsidian** — wikilinks changed from
+  `[[rel|name]]` to `[[name]]` to avoid `|` inside the link breaking table
+  column parsing. Header renamed `Comment` → `Description (Auto)` (round-trip
+  preservation column; user-editable column remains `Comments`).
+- **Missing separator column in Files table** — 7th column `---` was shifted
+  one position left, causing Modified/Size/Date to collapse.
 - **Numeric frontmatter keys no longer abort the scan** — PyYAML (introduced
   in 0.6.7) parsed unquoted numeric properties such as
   `50: 20:0020202:10884` as `int` keys, crashing `_user_props` /
