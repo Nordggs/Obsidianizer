@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+
+# Test & tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+raw/
+processed/
+*.log
+obsidianizer.log
+
+# Local configuration (never commit real config)
+config.yml
+
+# Local ticket system (never commit, never ship)
+_issues-Tickets/
+
+# Local working context (never commit, never ship)
+_context/
+
+# Ownership manifest and generated indexes
+.obsidianizer-manifest.json
+build_new/
+dist_new/
+release/
+*.zip
+
+# Obsidian vault data (personal, never ship)
+.obsidian/
+BMO/
+Contacts/
+ObsServ/

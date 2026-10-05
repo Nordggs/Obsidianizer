@@ -1,0 +1,780 @@
+# Obsidianizer
+
+## [0.7.2] - 2026-10-05
+
+### Added
+- **Directory selection on tab 1 (TICKET-013)** — Folder Obsidianizer is now a
+  controlled flow: pick a folder → scan → see the directories → adjust the
+  selection → Obsidianize only the selected. Tab 1 reuses the shared
+  `ExclusionFilter` (`Settings`/`config.yml` stays the single source of rules;
+  tab 1 shows them read-only): system directories (`DEFAULT_EXCLUDE_DIRS`)
+  and user exclusions are unchecked by default with a reason badge
+  (`system`/`user`/`hidden`), exclusion of a parent covers the whole subtree,
+  and an explicit check on an excluded directory is a one-shot override that
+  never changes `config.yml`. Checkboxes, counters
+  (Found / Selected / Excluded), context menu (Select all / Deselect /
+  Invert + branch operations + "Add to exclusions"), zero-selection is a
+  safe no-op. CLI: `--select` flag for `folders`. `review_scan` (tab 3) and
+  card rendering (`RENDER_VERSION` still 10) are untouched.
+- **Docs EN+RU** (`docs/obsidianize`) gained a "Directory selection and
+  exclusions" section (Rule vs Selection, default checks, override, cascade,
+  zero selection, `--select`); `AGENTS.md` records that tab-1 selection
+  affects neither fingerprint nor card version.
+
+### Tests
+- 614 tests green, including the new `tests/test_obsidianize_selection.py`
+  (defaults, selection-only generation, subtree cascade, no-op on empty
+  selection, `.git` override idempotency, unpolluted parent, recursive ×
+  selection matrix) plus blocker-regression coverage (strict `scan_tree`
+  untouched, `excluded_dirs` split, `review_scan` unchanged).
+
+## [0.7.1] - 2026-09-23
+
+### Added
+- **Forced Rebuild of old-structure cards (TICKET-003)** — a new `--rebuild`
+  CLI flag, the GUI "Rebuild cards" checkbox and the second Templater command
+  "Obsidianizer Rebuild" regenerate own cards with the current renderer even
+  when they are already up to date. Unlike `--force`, Rebuild never overwrites
+  foreign notes (they stay a conflict). Intended for structure migration, not
+  for regular changes.
+- **Dual-template Integration** — the GUI Integration panel installs/repairs
+  both "Obsidianizer Update" and "Obsidianizer Rebuild" templates and shows a
+  separate status for each; the help window and the manual-extract flow ship
+  the Rebuild template; RU+EN i18n labels for the new checkbox.
+
+### Changed
+- **RENDER_VERSION 9 → 10** — cards written before the `Comments` /
+  `Description (Auto)` columns existed are now detected as stale and migrated
+  to the current 7-column Files table by a plain `Update`, with all user data
+  (notes file, Comments, frontmatter) preserved.
+- **Docs EN+RU** (`docs/obsidianize`, `README`, `AGENTS`) document Update vs
+  Rebuild, the `--rebuild` flag, and the rule that any card-structure change
+  MUST bump `RENDER_VERSION` (otherwise old cards stay `ok` and are skipped).
+
+### Fixed
+- Cards created by older renderers were considered up to date and silently
+  skipped, so the new `Comments` / `Description (Auto)` columns never appeared
+  until the card was deleted; a plain `Update` now migrates them.
+
+### Tests
+- 592 tests green, including version migration, Rebuild vs own/foreign cards,
+  user-Comments preservation, the `--rebuild` CLI flag, dual-template
+  install/status, non-empty shipped Rebuild templates, and RU+EN i18n keys.
+
+## [0.7.0] - 2026-09-22
+
+### Added
+- **Source boundary exclusions (TICKET-006)** — tabs 2-3 skip user-configured
+  directories (by name, at any depth) and file masks (fnmatch): excluded is
+  "not discovered, not processed, not deleted" (retention via the old
+  manifest; `_index.md` hides excluded without deleting files/manifest).
+  Surface: `config.yml` (`exclude_dirs`, `exclude_masks`) + CLI
+  `--exclude-dir/--exclude-mask` (repeatable/CSV, on top of config); GUI has
+  no fields until TICKET-011 (applies settings automatically). Review (tab 3)
+  honours the same semantics (filtered folder list, payload predicate before
+  reads, no `_обзор.md` in excluded). Defaults (behaviour change on upgrade):
+  dirs `.git, node_modules, venv, __pycache__, build, dist, .obsidian`;
+  masks `*.tmp, *.bak, *.log`. Service artifacts (`_index.md`, manifest,
+  `.obsidianizer/`, `topics/`, project card) are allowlisted and never cut.
+- **Source Index (TICKET-007)** — internal representation of discovered
+  Source objects (files + folders incl. empty, no Markdown in Source, no
+  source changes). Identity: `source_id = sha1(source_namespace + rel)`
+  (per-Source persisted `source_namespace` in `config.yml`; rename/move
+  inside Source = new id, reappearance at the same rel = same id;
+  rename-continuity matching comes in TICKET-008). Two-level typology
+  (`kind` FILE/FOLDER + extensible `file_type`; `chat_export` via cheap
+  head read, no second full read; `content_hash` stays `None` at
+  Detection). Excluded objects never enter the Index. In 007 the Index is
+  only built + available (`Report.source_index`, preview layer);
+  consumers switch to it in 008/009 — no behaviour change.
+- **Enrichment Entity, additive ownership (TICKET-008A)** — `EnrichmentEntity`
+  as a logical object (not `.md`; new `enrichment.py` with pure
+  `build_entity()`/`update_entity()` constructors): `source_id` links are
+  written additively beside the old keys (manifest/`ai_hash`/topic keep
+  working; no prune change). Wiring: `pipeline` resolves the id from the
+  SourceIndex into frontmatter, `postprocess` carries it over, `search`
+  stores it beside notes (old `index.json` stays valid, no schema bump).
+  `PROCESS_VERSION` unchanged — old notes are picked up by the 008B
+  backfill. Full key switch and lifecycle — TICKET-008C.
+- **Backfill source_id (TICKET-008B)** — CLI-only `--backfill-source-ids`:
+  additively and idempotently writes `source_id` into old owned notes
+  missing the link (processed + enriched; `topics/`/service notes excluded
+  as aggregates). Surgical frontmatter insert (no YAML round-trip):
+  bodies, Comments, AI-metadata and markers (`source_hash`/
+  `process_version`/`ai_hash`) preserved byte-for-byte; misses reported
+  (`no_source_item`/`no_namespace`/`source_unavailable`), never guessed;
+  identity never minted during backfill; Source untouched.
+- **Continuity & Lifecycle (TICKET-008C)** — rename/move matching
+  (`match_continuity`: exact content hash outranks size/mtime/name;
+  folders match folders only) with transfer (old note `superseded` +
+  successor id) and lifecycle `active → retired → deleted`: always-on
+  reconciliation after every AI run (owners pass a live SourceIndex;
+  without one the pass is skipped, never fails), id-based prune of notes
+  with Pair Guard (an enriched note is deleted only with no live
+  processed twin — no create/delete flap), media stay path-based,
+  freshness stays hash-based (`ai_hash`/`_is_fresh` untouched), topics
+  stay out of id ownership. `retired`/`superseded` notes hide from
+  `_index.md` and search (files kept until explicit prune); a revived id
+  resets to `active`. Deletion only under `--prune`/`--prune-enriched`.
+- **Detector registry + nav rename (TICKET-008D, TECH)** — contract-005 Q4
+  closed architecturally: `register_file_type(ext, file_type, *,
+  predicate=None, priority=0)` (2-argument calls unchanged; extension
+  matches beat content predicates; no match → `unknown`; no new content
+  reads without an explicit predicate registration). Navigation module
+  `index.py` renamed to `nav_index.py` (behaviour-preserving move,
+  exclusion + retired filters intact, no alias); no behaviour change.
+- **Chat Processing → Enrichment migration (TICKET-009)** — one traversal:
+  `build_source_index()` is now the pipeline's only filesystem walk and the
+  candidate list is projected from it (`ProcessorRegistry.project`; `scan()`
+  kept unchanged for the preview). The pipeline iterates candidates that
+  already carry `source_id` (no per-file lookup) and `index_records` carry it.
+  Identity is unified on the frontmatter `source_id` (the Enrichment link);
+  `rel` is only the read/display address. `ChatIndex` keys notes/vectors by
+  `source_id` (on-disk schema bumped v2 → v3: stale rel-keyed views are
+  dropped and rebuilt, never migrated blindly), `SearchCandidate` carries it,
+  and notes without an id are skipped with a report (no rel fallback — run
+  the backfill). Topic membership is a `source_id` list (`chats_rel` kept as
+  the display projection); `topic_hash` stays over `source_hash` (content
+  version, no base change). Legacy Regression Contract: semantic +
+  idempotency tests over a frozen fixture (`test_legacy_chat_contract.py`)
+  and an identity-migration suite (`test_chat_enrichment_migration.py`).
+  Source stays read-only; tab 1 untouched.
+- **AI Enrichment / AI Chat separation (TICKET-010)** — the flat `ollama`
+  block is replaced by three levels: shared `ai.*` (endpoint/credentials +
+  generation defaults `timeout`/`temperature`/`num_ctx`/`limit_chars`),
+  `ai_enrichment.*` (automatic processing: model, import/AI/topic/map prompts
+  + folder review `folders_prompt`) and `ai_chat.*` (interactive session:
+  model, `chat_prompt`, `embed_model`, `search_*`). Each contract has its own
+  model and optional generation overrides (`group.param or ai.param` cascade);
+  separate factories `make_enrichment_client`/`make_chat_client` never read the
+  other group. `chat_prompt` is now editable in the prompt modal (AI Chat
+  section) and `folders_prompt` in the AI Enrichment section. **Declared
+  behaviour change:** folder review now runs on `ai_enrichment.model` (was
+  `chat_model`) — the `model:` value in `<folder>_обзор.md` changes. Old flat
+  `ollama` configs are migrated on load and the block is dropped on save
+  (CLI: `--model` → `ai_enrichment.model`, new `--chat-model` →
+  `ai_chat.model`). New `tests/test_ai_separation.py`.
+- **UI reorganization (TICKET-011)** — the top-level tabs are now
+  `Obsidianize` + `Обработка` (the separate `AI-анализ` tab is gone). The
+  Processing workspace is split into six sub-tabs: **Источник** (source +
+  new GUI exclusion fields wired to TICKET-006), **Обнаружено** (full
+  Detection counters `aggregate`/`detected_total` distinct from the
+  processable candidate list), **Enrichment** (one flow: import + optional
+  AI post-processing; outputs target/enriched; `Связи`/`AI-анализ`
+  disabled placeholders), **AI-настройки** (enrichment model + prompts),
+  **Обзоры папок** (folder review, read-only enrichment-model label) and
+  **Инструменты** (topics, AI Chat, navigation). The AI Chat model is no
+  longer edited in the main panel — it has its own input in the chat window
+  (`set_chat_model`). Exclusions are saved on Scan (`set_exclusions` →
+  `scan`); `scan` gains the additive `aggregate`/`detected_total` fields
+  (existing `total`/`files` unchanged). help.html synced to the new
+  structure; dead `.chat-box`/`.help-box` CSS removed; duplicate
+  `status.scan_error` dropped. New `tests/test_ui_reorg.py`; `dist/`
+  rebuilt via `build-release.bat`.
+- **Legacy Chat Processing removal (TICKET-012)** — migration cleanup, no new
+  features. **Breaking:** the `--all-md` CLI override is removed (unknown
+  argument → error); use `chat_only: false` in `config.yml` instead (the live
+  `chat_only` filter, prune-guard and UI bridge are untouched). Removed the
+  dead in-pipeline LLM path: `llm.summarize` + `parse_llm_response`, the `llm`
+  parameter of `pipeline.run`/`_process_one` (import is LLM-free by contract;
+  AI runs only in stage 2). Prune now follows the identity contract: a note
+  deletes only by dead `source_id`; a note without one — or any note without
+  a live index — is kept, never silently rel-deleted. Config keeps only the
+  three AI groups (legacy flat-`ollama` migrates on load, dropped on save).
+  Docs synced to the new UI/identity model; `dist/` rebuilt.
+
+## [0.6.9] - 2026-09-17
+
+### Added
+- **Content-based chat detection (TICKET-004)** — Chat Processing imports only
+  files detected as AIChat Exporter chats (≥2 structural markers:
+  `schema_version`, `**Источник:**`, `**Stable ID:**`, `hash` comment,
+  `#### 👤/🤖`). Ordinary Markdown, Obsidianizer folder cards and topic notes
+  are never treated as chats. Controlled by the `chat_only` setting
+  (default: `true`); `--all-md` (CLI) or the GUI switch restore legacy
+  behaviour.
+- **Manual file selection** — the Scan preview lists every `.md` with a
+  "detected chat" mark and per-file checkboxes ("All detected" / "Deselect
+  all"); the selection is exhaustive and is passed to the import run.
+
+### Changed
+- Prune is disabled whenever the chat filter or manual selection is active —
+  a filtered run can no longer delete previously processed files.
+
+### Fixed
+- The **Scan** button is now outside the hidden preview block, so it is
+  reachable before the first scan.
+
+### Tests
+- New `tests/test_ticket004_contract.py` (HTML structure, JS contract, i18n
+  and packaged-build integrity contracts).
+
+## [0.6.8] - 2026-09-16
+
+### Fixed
+- **Files table renders correctly in Obsidian** — wikilinks changed from
+  `[[rel|name]]` to `[[name]]` to avoid `|` inside the link breaking table
+  column parsing. Header renamed `Comment` → `Description (Auto)` (round-trip
+  preservation column; user-editable column remains `Comments`).
+- **Missing separator column in Files table** — 7th column `---` was shifted
+  one position left, causing Modified/Size/Date to collapse.
+- **Numeric frontmatter keys no longer abort the scan** — PyYAML (introduced
+  in 0.6.7) parsed unquoted numeric properties such as
+  `50: 20:0020202:10884` as `int` keys, crashing `_user_props` /
+  `_notes_user_hash` with `'int' object has no attribute 'startswith'` and
+  killing the whole `update_cards` run. Keys are now normalized to strings
+  once in `parse_frontmatter()`.
+- **Per-folder error isolation** — a folder whose processing raises is now
+  logged with a traceback, recorded in `summary.failed`, and the run keeps
+  going with the remaining folders instead of dying. This unblocks both the
+  GUI scan and the Templater hotkey, which previously stopped on a single
+  note with unusual frontmatter. `failed` is printed by the CLI, and the
+  `OBS_FINISHED` payload carries it for the GUI.
+
+## [0.6.7] - 2026-09-15
+
+### Added
+- **Editable Comments column** in Files and Folders tables. User edits are
+  stored in the notes-file frontmatter (`file_comments` / `folder_comments`)
+  and survive card regeneration via a Table→Frontmatter sync mechanism.
+- Files table now has 7 columns (added Comments). Folders table has 5 columns.
+- Wikilinks render as `[[rel|name]]` for correct Obsidian resolution.
+- `_sync_comments_to_notes()` runs on every update (even skipped cards) so
+  user edits are never lost.
+- Truncation guard: `_truncate_comment` values do not overwrite full FM
+  originals; intentional shortening by the user is accepted.
+- PyYAML for frontmatter parse/serialize with a tolerant line-by-line legacy
+  parser fallback on `YAMLError`.
+
+## [0.6.6] - 2026-09-14
+
+### Fixed
+- **User `.md` files now appear in Folder Obsidianizer cards** — the default
+  for `ObsidianizeConfig.include_md` changed from `False` to `True`. User
+  markdown files are classified as "Documents" (📄) in the Files table and
+  counted in `folder_stats`. Derived artifacts (`*_заметки.md`, `*_обзор.md`)
+  and the project card itself remain excluded.
+- **GUI category totals now match file counts** — `obs_scan` in `ui.py`
+  duplicated category logic and explicitly excluded `.md` from the "other"
+  bucket. Replaced with single-source `_category_of()` so the GUI, CLI, and
+  card renderer all agree on file classification.
+- **CLI flag `--include-md / --no-include-md`** added to `obsidianizer folders`
+  (default: enabled) for explicit control over markdown file inclusion.
+
+## [0.6.5] - 2026-09-05
+
+### Changed
+- **Update-indicator test release** — a deliberately published newer release
+  so installed 0.6.4 builds light the update dot and the in-app check can be
+  verified end-to-end. No functional changes (identical code to 0.6.4).
+
+## [0.6.4] - 2026-09-05
+
+### Added
+- **In-app update indicator** — on startup the app quietly checks GitHub
+  Releases (2s after launch, 8s timeout, silent degradation offline) and, if
+  a newer version exists, shows a pulsing green dot next to the version in
+  the status bar. Clicking it opens a dialog with the current/new version
+  and a button to open the release page in the system browser. No
+  auto-update; drafts are ignored, pre-releases count (this project ships
+  every release as Pre-release). The blink style is shared 1:1 with Project
+  AI Base. Strings localized (RU/EN).
+
+## [0.6.3] - 2026-09-05
+
+### Changed
+- **Content-based card freshness** — the card fingerprint (`obsidianizer_hash`)
+  is now computed from file CONTENT (sha1) instead of `mtime`. Cloud sync
+  (Dropbox etc.) and background tools touch mtimes without changing a byte,
+  which made cards permanently stale (`status=stale` with `changed=0`).
+  `mtime` stays in the file metadata for display only ("Modified" / "Updated"
+  columns) and never decides staleness. The hidden manifest now stores
+  `{path: {size, hash}}`, and `card_diff` reports `changed` by content —
+  same-size edits (AAAA→BBBB) are detected, mtime jitter is ignored.
+  One-time effect: the first run rebuilds all existing cards (fingerprint
+  formula change); scans read file contents and take somewhat longer.
+
+### Fixed
+- **Up link on first-level cards** — a card directly under the scan root got
+  a bare `[[..|Up]]` link pointing at the parent FOLDER, which Obsidian
+  cannot open ("file already exists" dialog on click). The link now targets
+  the root card itself (`../<root name>`), same as deeper levels.
+
+## [0.6.2] - 2026-09-02
+
+### Changed
+- **User field names in notes/cards are now generic** — «клиент» → «проект»,
+  «дизайнер» → «контакт» (privacy gate before the public release). Notes
+  written by v0.5.x keep working: legacy keys are remapped on read, the card
+  shows the new field names with the same values, and migration from an old
+  card writes the new names into the notes file.
+
+## [0.6.1] - 2026-09-02
+
+### Changed
+- **Structured events (stage 2 of i18n)** — `Event` now carries a machine-
+  readable `data` payload (counts, state flags). The UI reads `ev.data`
+  instead of parsing localized message text, so progress/status rendering
+  works identically in RU and EN.
+- **Backend messages localized** — errors and UI-visible log lines from
+  pipeline, postprocess, topics, LLM client and the path guard now follow
+  the active language. Markdown content (cards, topic notes, prompts) is
+  untouched.
+
+## [0.6.0] - 2026-09-02
+
+### Added
+- **RU/EN interface localization** (stage 1 of the i18n effort) — every
+  button, label, tooltip, placeholder, status and error message switches
+  live via the RU|EN toggle in the footer. The choice persists in
+  `config.yml`; a fresh install auto-detects the language from the OS locale.
+- New i18n infrastructure: `web/i18n.js` (JS string tables + `t()` +
+  `applyI18n()`) and `i18n.py` (`tr()`) for backend messages.
+
+### Fixed principles
+- **UI language ≠ data language**: Markdown cards, LLM prompts and the
+  Templater template stay in Russian regardless of the UI language.
+- Backend progress/log message decoupling (structured events) is planned
+  for the follow-up release.
+
+## [0.5.7] - 2026-09-02
+
+### Added
+- **Extract templates button** (Help → Integration) — copies the manual
+  Templater setup files (`Obsidianizer Update.md`, `shell-commands.json`)
+  into a user-chosen folder. Existing files are never overwritten silently:
+  a collision reports the conflict and a second click confirms (Repair
+  pattern).
+- The installer now also puts `integration/` into
+  `%LOCALAPPDATA%\Obsidianizer\integration\` so the files are reachable
+  without digging through Program Files. Portable builds keep using the
+  folder next to the exe.
+
+## [0.5.6] - 2026-08-30
+
+### Changed
+- **Obsidian Integration button** now opens the Help window with integration
+  instructions instead of checking the vault. The vault check/install flow
+  remains available inside the Help window's Integration tab.
+
+## [0.5.5] - 2026-08-30
+
+### Fixed
+- **PermissionError on launch when installed to Program Files** — log and
+  config now write to `%LOCALAPPDATA%\Obsidianizer\` instead of the
+  installation directory. The uninstaller also cleans up this folder.
+
+## [0.5.4] - 2026-08-30
+
+### Security
+- **Sanitized all personal data** from source code, docs, and git history:
+  test fixtures now use generic names (А. В., Д. З.), dummy phone numbers
+  (`+7 (999) 123-45-67`), and placeholder paths (`PROJECT/OBSIDIAN/Objects`,
+  `D:\Path\To\...`). Git history rewritten via `git filter-repo`; old
+  tags (v0.3.0–v0.5.3) removed. First public-ready release.
+
+## [0.5.3] - 2026-08-29
+
+### Fixed
+- **Integration tab: Browse button now works** — `api` was captured as `null`
+  before the `pywebviewready` event; the same root cause affected Check and
+  Install buttons (#2, #3).
+- **Scan table: ✓ instead of ?** for ok status in the scan results (#1).
+- **Integration vault isolated** from the Obsidianize working directory —
+  new `integration_vault` setting prevents the two tabs from overwriting
+  each other's paths.
+
+### Added
+- **`integration/` folder** for manual Templater / Shell Commands setup:
+  instruction (`Obsidianizer Update.md`), Templater template with
+  `{{CLI_PATH}}` placeholder, and a Shell Commands plugin config stub
+  in the real plugin format (#4).
+- Help window Integration tab now mentions the manual setup option.
+
+## [0.5.2] - 2026-08-28
+
+### Documentation release — product repositioning
+- README (EN+RU) fully restructured around what the app actually is:
+  **Obsidianizer — a local tool for preparing project materials for working
+  in Obsidian**, with three tools in one app:
+  1. **Obsidianize** (primary) — ordinary project folders → cards,
+     navigation, galleries;
+  2. **Chat Processing** — exported chats **and other Markdown materials**
+     (one common scenario, not a required source) — with a dedicated
+     **AI Chat Exporter** section linking the sibling project
+     (github.com/Nordggs/Project_AI_Base) and the
+     ACE → Markdown → Chat Processing → Obsidian chain;
+  3. **AI Analysis** — search/review/summarize in **any folder the user
+     points at** (chat results, project folders, the whole vault), not just
+     chat-processing output.
+- The "local preprocessor" wording moved out of the intro (kept for the
+  architecture/development docs); the Obsidian-integration section became a
+  step-by-step scenario (install → point at vault → Install → check/assign
+  the hotkey → Alt+3) with an explicit responsibility boundary:
+  **Obsidianizer never edits your vault's hotkeys.json** — `Alt+3` is an
+  example, the user checks and assigns the key in Obsidian.
+- Floating Help window texts and `obsidianizer-refresh.md` synced with the
+  same positioning; hotkey-check step added.
+- `AGENTS.md`: product positioning fixed as a rule (order and framing for
+  docs, UI labels and release notes).
+
+## [0.5.1] - 2026-08-28
+
+### Fixed
+- **Packaging: the EXE crashed on first run from a downloaded archive**
+  (`RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize`).
+  Root cause: Windows Mark-of-the-Web — archives downloaded from GitHub
+  carry the zone marker on every unpacked file, and the .NET Framework
+  host refuses to load blocked assemblies, so the WinForms backend of
+  pywebview failed to start. Fixed by shipping `Obsidianizer.exe.config`
+  (with `loadFromRemoteSources enabled`) **next to the EXE**:
+  - `build-release.bat` automates the whole build and always copies the
+    config;
+  - `Obsidianizer.iss` delivers it for the installer too;
+  - verified with a MOTW simulation (zone markers forced on every file of
+    the packaged build — the app starts).
+- `v0.5.0` note: that build is affected — unpacking and running it from a
+  downloaded archive crashes; use **v0.5.1** or run `Unblock-File` on the
+  extracted folder.
+
+## [0.5.0] - 2026-08-28
+
+### Added
+- **Obsidian Integration** — one-button setup of the Templater hotkey:
+  - 🔗 «Obsidian Integration» button on the Obsidianize tab: copies the
+    update template into the vault's Templater folder **with the real
+    Obsidianizer path substituted automatically** (no manual path editing,
+    no PATH entries);
+  - floating Help window gains an **🔗 Integration** tab with a live
+    status checklist — vault ✓/✗, Templater ✓/✗, template ✓/✗, CLI ✓/✗ —
+    and an Install / Repair button (an existing template is never
+    overwritten without an explicit second click);
+  - missing Templater is reported as guidance, not an error.
+- **The frozen EXE doubles as the CLI**: `Obsidianizer.exe folders …`
+  proxies into the same engine as `obsidianizer-cli.bat`, so installed
+  builds need no bat files.
+- `src/obsidianizer/integration.py`: CLI resolution (frozen vs source),
+  Templater folder detection (reads the plugin's `data.json`, falls back
+  to `<vault>/templates`), atomic template install with JS-escaped paths.
+
+New feature release: the 0.4.x line (recovery, fixes, docs, restyle) is
+complete and stable.
+
+## [0.4.5] - 2026-08-28
+
+### Fixed
+- The splash screen rendered at its native 1408×768 size — larger than the
+  startup window: the `#splash` CSS block was accidentally missing from
+  v0.4.1 (the div and the fade-out JS were in place, the styles were not).
+  The full splash stylesheet is now in place with the image capped at
+  `min(70%, 900px)` width and 70% height — centered on the `#0b0f17`
+  background, visibly inside the window, same feel as AI Chat Exporter.
+
+## [0.4.4] - 2026-08-28
+
+### Changed
+- The startup window size now matches **AI Chat Exporter** (1300×750,
+  background `#0b0f17`) — the splash screen renders identically in both
+  apps instead of overflowing a smaller window.
+
+### Added
+- The "?" help is now a **floating native window** (like the AI-chat
+  window): it can be dragged anywhere — including outside the main
+  window's bounds — and stays on top. The "?" button passes the active
+  tab; the help window has its own tab switcher (Obsidianize /
+  Чат-обработка / AI-анализ), reads the initial section from the URL
+  hash, and follows `showHelpTab` pushes when already open. Replaces the
+  in-window modal, which could never leave the app's bounds.
+
+## [0.4.3] - 2026-08-28
+
+### Fixed
+- The card-table resize divider broke after v0.4.2 (the tab became a
+  flex column with its own scroll, and Chromium scroll anchoring shifted
+  content mid-drag). The page returned to whole-window scrolling (settings,
+  table and log scroll together, as requested) and the divider now uses an
+  absolute cursor-position calculation, immune to scrolling.
+- The status footer (version + scan summary) stays pinned via
+  `position: sticky; bottom: 0` — visible on every tab while the whole
+  window scrolls.
+
+### Changed
+- Scrollbars re-themed to the AI Chat Exporter palette (dark track
+  `#0b0f17`, thumb `#2a3444` → `#4a5568` on hover) — applies to every
+  scrollable area including the card table, log and modals.
+- The template dropdown (`github/classic`) is dark-themed too
+  (`select` + `option`), no more default white OS rendering.
+
+## [0.4.2] - 2026-08-28
+
+### Changed
+- The status footer is now **pinned to the bottom of the window** on every
+  tab (the tab content scrolls inside its own area, mirroring AI Chat
+  Exporter's layout) — the scan summary ("проверено N · требуют обновления:
+  M") never scrolls away again.
+- The version marker moved to the **bottom-left corner** of that same
+  footer (11px, `#4a5568`, selectable — exact AI Chat Exporter style),
+  always visible on all tabs.
+- The header subtitle now matches the AI Chat Exporter style exactly
+  (10px, 0.6 opacity, caps text, no letter-spacing).
+
+## [0.4.1] - 2026-08-28
+
+### Changed
+- Full visual restyle to match **AI Chat Exporter**: the palette moved from
+  the neutral VS theme to the ACE dark-blue one (`#0b0f17` background,
+  `#121826→#0e1420` gradient panels with 14px radius, `#1f2a3a` borders),
+  the accent is now `#2f6bff`, status colors `#0ea56a`/`#f0b400`/`#ff5555`,
+  and the font is Inter (system-ui fallback). Buttons, inputs, checkboxes,
+  dropdowns, topic/chat lists, modals (12px radius, `#2a3345` border) and
+  ~30 hardcoded colors were re-skinned to the same palette.
+- Header is a topbar now: `Obsidianizer` + `LOCAL PROJECT CARDS` subtitle
+  (AI Chat Exporter style), version moved to the right edge.
+
+### Added
+- Splash screen on GUI start — `Obsidianizer Заставка.png` (fullscreen,
+  fades out after ~1.8 s), mirroring AI Chat Exporter's splash.
+- `Obsidianizer.ico` in the repo root (multi-size, generated from
+  `Obsidianizer ярлык.png`) for the Windows shortcut icon, plus
+  `<link rel="icon">` and `icon.png` in the web assets; README documents
+  how to attach the icon to a shortcut.
+
+## [0.4.0] - 2026-08-28
+
+### Added
+- Context-sensitive Help: a "?" button pinned to the right of the tab bar
+  opens a plain-language reference for the **active** tab (Obsidianize /
+  Чат-обработка / AI-анализ). The icon next to the "?" follows the current
+  tab; the modal is closable via ×, backdrop click or Esc and is draggable.
+- The Obsidianize tab got the Obsidian crystal mark (inline SVG, purple
+  gradient) instead of the generic folder emoji; the chat 💬 and robot 🤖
+  marks stay.
+
+First minor release: the 0.3.x line (recovery → fixes → docs) is complete,
+feature development continues on 0.4.x.
+
+## [0.3.9] - 2026-08-28
+
+### Added
+- Draggable divider between the Obsidianize scan table and the log: with
+  hundreds of cards the table no longer pushes the processing results off
+  screen — pull the divider up/down to resize the table area (120 px … 80%
+  of the window), the chosen height persists across GUI restarts.
+- The scan table scrolls internally and keeps its header row visible
+  (sticky header) while scrolling long lists.
+
+## [0.3.8] - 2026-08-28
+
+### Documentation release
+- README (EN+RU): new «Common situations» subsection in Folder Obsidianizer —
+  plain-language answers (no code, no flags) to the questions every new user
+  hits: a folder without a card, an accidental Obsidian-created note
+  (Ctrl+click) and how adoption turns it into the notes file, the never-
+  overwritten notes promise, honest stale marking after notes edits, no
+  update pressure, and zero writes until an explicit run.
+- `docs/obsidianize.md` + `.ru.md`: the same scenarios woven into the user
+  flow sections with the actual status vocabulary (missing / conflict /
+  stale / ok).
+
+## [0.3.7] - 2026-08-28
+
+### Documentation release
+- README (EN+RU): new «Folder Obsidianizer» and «Obsidian integration
+  (Templater hotkey)» sections — what project cards are, where the
+  `_заметки.md` user layer lives, the 4-step hotkey setup (template
+  location, `cli.bat` path, hotkey, self-diagnostics Notice), the `folders`
+  CLI block with every flag, and the 3-tab GUI description (Obsidianize /
+  Чат-обработка / AI-анализ).
+- `docs/obsidianize.md` + `.ru.md` fully rewritten for the current
+  RENDER_VERSION=8 card (Folders / Files / About / Gallery / Images /
+  AI Review / Notes semantics, `⬆ Up` escaped row, Gallery vs Images rules,
+  files-table sorting), a zero-to-fragrant user flow, the Templater and
+  Shell commands refresh paths, and a technical appendix (manifest `base`,
+  card-folder basis, deterministic legacy alignment, `--no-recursive`
+  aggregates, `obsidianizer.log` scan diffs).
+- `obsidian/obsidianizer-refresh.md` actualized: `--rel` in both hotkey
+  variants, self-diagnostics Notice, explicit "replace the cli path"
+  instruction, updated in-card section list.
+- `AGENTS.md`: Folder Obsidianizer section synced with the current renderer
+  (v5 structure, RENDER_VERSION = 8, basis independence, scoped-update
+  aggregates, test coverage).
+
+Release summary: v0.3.4 fixed the broken `⬆ Up` table row, v0.3.5 fixed the
+Scanner ↔ Templater basis desync (no more phantom «добавлен/удалён»), v0.3.6
+fixed `--no-recursive` zeroing the Folders table. 12 test-vault cards rebuilt
+and verified (all `version: 8`, manifest `base` present, Up rows 4-cell,
+no zero aggregates).
+
+## [0.3.6] - 2026-08-28
+
+### Fixed
+- `--no-recursive` (Templater hotkey) zeroed the Folders table: the tree was
+  trimmed to the root entry BEFORE `folder_stats`, so every subfolder row
+  rendered `0 / 0 B / empty` while a GUI (recursive) run showed real values.
+  Stats are now computed on the full subtree; the trim only scopes the
+  card-writing loop. Regression test pins real aggregates and the
+  "only the root card is written" contract.
+
+## [0.3.5] - 2026-08-28
+
+### Fixed
+- Scanner ↔ Templater basis desync: manifest file keys and the folder
+  fingerprint silently depended on the scan root. A card updated from its
+  own folder (Templater hotkey) and then scanned from the project root
+  produced «добавлен/удалён» for every file and a permanent stale status.
+  Fix, both sides now compare in the card-folder basis:
+  - `folder_fingerprint` keys files card-relatively (basis-independent;
+    existing cards become stale once and regenerate on the next update);
+  - `_manifest_payload` writes card-relative keys plus a `base` field
+    (the card rel from the update root, for diagnostics);
+  - `card_diff` aligns legacy manifests (no `base`) with a deterministic
+    prefix rule: if any stored key carries the scan-root prefix, strip it
+    from every key — no intersection counting.
+- `_MANIFEST_RE` gained `re.DOTALL` so a multiline JSON dump can never
+  silently break manifest parsing (defensive; current dumps are single-line).
+
+### Added
+- `obs_scan` logs every stale-card diff to `obsidianizer.log` (scan root,
+  folder rel, added/removed/changed counters) for post-mortem checks.
+
+## [0.3.4] - 2026-08-27
+
+### Fixed
+- The "⬆ Up" row in the Folders table rendered a raw alias pipe
+  (`[[../X|Up]]`), which the Markdown table parser treated as a cell
+  separator — the row split into 6 cells and broke the table. The pipe is
+  now escaped (`[[../X\|Up]]`), matching the folder-row pattern; the table
+  keeps exactly 4 cells. Test extended with a structural cell-count check;
+  the root card (no Up row) is covered by the existing test.
+
+## [0.3.3] - 2026-08-27
+
+### Added
+- Folder Obsidianizer UI (v5.12): «Базовый путь галереи (для проектов вне
+  Vault)» input with persistence, «Принять существующую заметку как
+  заметки» checkbox (adopt), ⚠ change rows under stale folders in the scan
+  table (from `obs_scan` `changes`), a hint row for adoptable foreign
+  notes, and a one-line scan summary in the status bar. Values restore from
+  `defaults()` and persist on change.
+
+## [0.3.2] - 2026-08-27
+
+### Added
+- Folder Obsidianizer backend for v5.12 GUI parity: automatic vault root
+  detection (`_find_vault_root` walks up to `.obsidian`) when neither
+  vault_root nor gallery_prefix is set; `set_obsidianize_gallery_prefix`
+  bridge method; `obs_obsidianize` passes `adopt` and `gallery_prefix`.
+- Smarter scan (`obs_scan`): per-folder `changes` list produced from the
+  card's hidden manifest diff (`card_diff` / `format_changes` — added /
+  removed / changed files, folder structure, project data), `adoptable`
+  flag for foreign notes without a notes file, and a one-line summary
+  (checked / unchanged / need update).
+
+## [0.3.1] - 2026-08-27
+
+### Added
+- `obsidianizer folders` flags `--adopt`, `--gallery-prefix`, `--rel`
+  (v5.12 infrastructure): adopt a foreign note into `<имя>_заметки.md`
+  (1:1 rename), fallback vault path prefix for the `img-gallery` block when
+  the project lives outside the vault, and the vault-relative root path for
+  the "⬆ Up" link on local single-card updates. Unblocks the Obsidian
+  Templater hotkey, which already passes these flags.
+
+## [0.3.0] - 2026-08-27
+
+### Added
+- Stable recovery point after a catastrophic `git stash` + `reset --hard`
+  (full 3-tab GUI restored, 288 tests green). The card core
+  (`obsidianize.py`) carries the v5.11/v5.12 structure with
+  `RENDER_VERSION = 8` (Folders / Files / About / Gallery / Images / Notes).
+- Recovery safety nets: branches `recovery-pre-v5.11` (pre-v5.11 state) and
+  `recovery-current-v5.11` (state with v5.11/v5.12 CLI/UI bits), plus
+  `backup-before-recovery` on the base commit; tagged `v0.3.0`.
+- Two-stage output: `processed/` (import) and `enriched/` (import + LLM).
+- Persistent GUI state: `config.yml` is the single store for paths, model,
+  Ollama toggle and prune / dry-run flags. `Settings.save()` merges into the
+  existing file and writes atomically; the GUI saves on every confirmed
+  change, on run and on window close, so a reopened window restores exactly
+  the state it was closed in. Each `Выбрать` picker opens in its own last-used
+  directory with a nearest-existing-parent fallback.
+- AI toggle: the «Использовать Ollama» checkbox became «AI-постобработка» —
+  Ollama is treated as the implementation detail of the AI layer. When the
+  toggle is off, the model / prompt settings hide inside a collapsible
+  `#aiDetails` block; turning it on reveals the model combo box and the
+  `Изменить…` prompt button, with a grey «Локальная модель через Ollama» note.
+  Action buttons gained subtitles: «ОБРАБОТАТЬ» shows «Импорт + AI» /
+  «Только импорт», the secondary AI button shows «Только повторный AI-прогон».
+- Model picker + prompt editor behind the AI toggle: the model field is a
+  combo box — free-text input plus a drop-down of installed Ollama models
+  (custom list, not a `datalist`, so every model stays visible; `list_models`,
+  refreshed on demand via `GET /api/tags`; names only, the current model is
+  always kept, unreachable Ollama shows a status instead of breaking the UI).
+  The `Изменить…` button opens a modal editor with import / AI tabs, per-kind
+  `set_prompt` / `reset_prompt` (built-in `DEFAULT_PROMPT` / `DEFAULT_AI_PROMPT`
+  are never overwritten; `{content}` stays the single substitution point).
+- AI stage (`obsidianizer ai`): reads processed notes and writes the enriched
+  vault; incremental via `ai_hash` marker — a note is skipped when its
+  `ai_hash` matches the processed `source_hash`.
+- `--enriched DIR` / `--prune-enriched` options; orphan pruning is marker-gated
+  (only files carrying `ai_hash` whose pair is gone from processed, plus media
+  no other note references).
+- Separation guarantee: adjacent-stage folder pairs must not overlap
+  (`(source, target)`, `(target, enriched)`, `(source, enriched)`).
+- AI-stage events: `AI_SCAN_STARTED`, `AI_FILE_STARTED`, `AI_FILE_DONE`,
+  `AI_FILE_SKIPPED`, `AI_FILE_ERROR`, `AI_FINISHED` (replaces the old
+  `LLM_STARTED`).
+- Topic builder («Объединить в тему…»): select several processed chats in a
+  modal (checkbox list with search) and merge them into one knowledge topic
+  note at `enriched/topics/<Name>.md`. A single LLM call produces
+  NAME / SUMMARY / DECISIONS / KEY_FACTS / ARTIFACTS plus per-service source
+  links back to the source chats; the file name comes from the model's NAME
+  block (sanitized). Incremental via `topic_hash` (hash of the selected chats'
+  `source_hash` values): an unchanged selection skips the LLM call. New
+  `topic_prompt` template (third tab of the prompt editor), `TOPIC_*` events
+  and bridge methods `list_chats()` / `create_topic()`.
+- «ОБРАБОТАТЬ» is now a pure import: it no longer starts the AI stage
+  automatically. AI runs only on explicit actions — the per-file
+  «AI-постобработка» button or «Объединить в тему…». The button subtitle is
+  fixed to «Только импорт».
+- Auto-grouping («Авто-группировка»): cluster the whole processed collection
+  into topics with no manual selection. A `map_prompt` pass groups the chat
+  cards (title/source/date + snippet) into topics via `TOPIC:`/`IDS:` blocks;
+  large collections are split into payload-sized chunks and already-discovered
+  topic names are fed back so the same theme keeps its name. Each cluster of
+  two or more chats then goes through the same `create_topic` path (incremental
+  via `topic_hash`); single-chat clusters are skipped, existing topics are
+  never deleted. New `map_prompt` template (fourth tab of the prompt editor),
+  `TOPIC_MAP_STARTED` event and bridge method `group_all()`.
+- Desktop GUI (`obsidianizer ui`, pywebview): source/target pickers, Ollama
+  toggle + model, dry-run/prune switches, progress bar, current file, color
+  log, final summary, open-target button. Pure frontend over the same core.
+- Honest stop: `pipeline.run` gains `cancel_check` (polled between files only;
+  the current file — including a long Ollama call — is allowed to finish).
+- Guaranteed single `FINISHED` in every path (normal, per-file error, cancel,
+  fatal run-level error). `Report.cancelled` only on user cancel;
+  `Report.critical_error` records fatal errors.
+- Root launcher `Obsidianizer.py` / `Obsidianizer.bat`: double-click starts
+  the GUI straight from the repo root — no package install required;
+  `Obsidianizer.py --check` prints diagnostics without opening a window.
+
+## [0.2.0] - Unreleased
+
+### Added
+- Bilingual documentation (RU + EN): `README.ru.md`, `AGENTS.ru.md`,
+  `CHANGELOG.ru.md`, `docs/*.ru.md`; bilingual policy in `AGENTS.md`.
+- Event contract (`events.py`): `SCAN_STARTED`, `FILE_STARTED`, `LLM_STARTED`,
+  `FILE_DONE`, `FILE_SKIPPED`, `FILE_ERROR`, `FINISHED`. `pipeline.run` accepts
+  an optional `on_event` callback; core stays presentation-agnostic.
+- Placeholder for the future GUI shell (`ui.py`) and `assets/` directory.
+- Architecture docs: "UI layer" section with the event protocol.
+
+## [0.1.0] - Unreleased
+
+### Added
+- Repository scaffold: src layout, pyproject, tests, docs, AGENTS contract.
+- Core pipeline: scan → extract → enrich → emit.
+- Safety: guard (no source/target overlap), ownership manifest, atomic writes.
+- Markdown processor for AI-chat raw exports (metadata extraction + summary/tags
+  via Ollama, graceful degradation when the LLM is unavailable).
+- Incremental processing via `source_hash` in the output frontmatter.
+- `_index.md` generation for vault navigation.

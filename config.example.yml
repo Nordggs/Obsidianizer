@@ -1,0 +1,247 @@
+# Obsidianizer — local configuration template.
+# Copy this file to config.yml and adjust. CLI arguments take precedence.
+# config.yml is git-ignored; never commit real paths.
+
+# Source folder with raw files (default: ./raw)
+source: ./raw
+
+# Source-record identity (TICKET-007). The namespace is the identity of the
+# Source record; `source` above is its mutable path field. Moving an existing
+# Source keeps the namespace (ids are stable); a new Source gets a new UUID —
+# even for the same physical directory. Assigned automatically on first use;
+# deleting config.yml loses identity (a new namespace is minted with a warning).
+# Normally you never edit this by hand.
+source_namespace: ""
+
+# Target folder with processed, Obsidian-ready files (default: ./processed)
+# Stage 1 output: import only, never modified by the AI stage.
+target: ./processed
+
+# AI-enriched vault (default: ./enriched). Stage 2 output: import + LLM
+# summaries/tags/topic/type plus topic notes (enriched/topics/*.md) built from
+# several chats at once. Pointing Obsidian here gives the final knowledge base.
+# Must not be inside `target`.
+enriched: ./enriched
+
+# Persistent GUI state. The UI reads these on startup and writes them back on
+# every confirmed change, on run and on window close — so the app restores
+# exactly the state it was closed in. CLI flags still take precedence.
+llm_enabled: true            # use Ollama for summary/tags/topic/type
+prune: false                 # delete stale Obsidianizer-owned files in processed
+prune_enriched: false        # delete orphaned AI results (ai_hash-marked) + media
+dry_run: false               # preview only: compute and report, write nothing
+
+# Source boundary exclusions (TICKET-006, tabs 2-3 only).
+# Excluded = "not discovered, not processed, not deleted".
+# Directories match by name at any depth; masks are fnmatch file-name
+# patterns. GUI has no fields until TICKET-011 — behaviour comes from here.
+exclude_dirs: [.git, node_modules, venv, __pycache__, build, dist, .obsidian]
+exclude_masks: ["*.tmp", "*.bak", "*.log"]
+
+# ── AI configuration (TICKET-010): one shared infrastructure level plus two
+# independent runtime contracts. ─────────────────────────────────────────────
+# `ai`            — shared: endpoint/credentials + generation defaults.
+# `ai_enrichment` — automatic processing (import summaries, AI post-processing,
+#                   topics, auto-grouping, folder review).
+# `ai_chat`       — interactive assistant (AI Chat + semantic search).
+# Each contract has its own model/prompts; a generation parameter left empty
+# (`null`) inherits the shared `ai` default. The two contracts never read each
+# other's group. When Ollama is unavailable, files are still processed with
+# metadata only.
+
+ai:
+  endpoint: http://localhost:11434
+  timeout: 180
+  # Maximum characters of file content sent to the model (from the top).
+  limit_chars: 6000
+  temperature: 0.2
+  num_ctx: 8192
+
+ai_enrichment:
+  model: deepseek-r1:14b
+  # Optional per-contract generation overrides; null/empty inherits from `ai`.
+  timeout: null
+  temperature: null
+  num_ctx: null
+  limit_chars: null
+  # Prompt templates are edited in the GUI via the "Изменить…" button (and on
+  # the CLI they live here). {content} is the single substitution point for the
+  # file/chat body — keep it.
+  prompt: |
+    Ты анализируешь содержимое файла заметок.
+
+    Выполни два действия:
+    1. Напиши краткое саммари (1-2 предложения) — о чём материал, что обсуждалось.
+    2. Предложи 3-5 тегов (ключевых слов), отражающих тематику.
+
+    Ответ формулируй на русском языке. Названия технологий, библиотек и продуктов
+    оставляй в оригинальном написании.
+
+    Формат ответа строго:
+
+    SUMMARY:
+    <саммари>
+
+    TAGS:
+    тег1, тег2, тег3
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  ai_prompt: |
+    Проанализируй диалог.
+
+    SUMMARY:
+    Кратко (3–5 предложений) опиши тему разговора, главные выводы и принятые
+    решения. Если есть незавершённые задачи или следующие шаги — укажи их.
+    Не пересказывай разговор по порядку и не выдумывай информацию.
+
+    TAGS:
+    Дай 3–7 коротких тегов по теме разговора.
+
+    TOPIC:
+    Короткая тема разговора (2–4 слова).
+
+    TYPE:
+    Один из: обсуждение, вопрос, планирование, обучение, отладка, проект, идея, другое.
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  # Topic-analysis prompt: several chats merged into one topic note
+  # (enriched/topics/<Name>.md via "Объединить в тему…"). {content} is the
+  # whole assembled group of chats.
+  topic_prompt: |
+    Проанализируй несколько разговоров, объединённых в один файл
+    (каждый помечен заголовком «## Файл»). Составь по всей группе единую справку.
+
+    NAME:
+    Короткое название темы (2–5 слов, на русском, без кавычек и спецсимволов).
+
+    SUMMARY:
+    3–5 предложений: что обсуждалось во всех разговорах вместе и главные выводы.
+
+    DECISIONS:
+    - Список решений, принятых в этих разговорах. Каждый пункт с новой строки
+      с «- ». Если решений нет — напиши «- Нет».
+
+    KEY_FACTS:
+    - Список ключевых фактов и договорённостей. Каждый пункт с новой строки
+      с «- ». Если фактов нет — напиши «- Нет».
+
+    ARTIFACTS:
+    - Список артефактов: файлы, скрипты, функции и объекты, о которых шла речь.
+      Каждый пункт с новой строки с «- ». Если артефактов нет — напиши «- Нет».
+
+    Не выдумывай информацию — используй только то, что есть в разговорах.
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  # Topic-map prompt: auto-grouping of the whole processed collection into
+  # topics by title ("Авто-группировка"). {content} is the list of chat cards
+  # with 1-based indices.
+  map_prompt: |
+    Ниже список чатов с номерами. Сгруппируй их в темы по содержанию.
+
+    Каждый чат относится только к одной теме. Чаты, которые не подходят ни к
+    одной теме, не включай ни в какую. Названия тем формулируй коротко (2–5 слов,
+    на русском). Если уже есть «Уже выделенные темы» — используй те же названия,
+    когда тема совпадает.
+
+    Формат ответа строго, по одному блоку на тему:
+
+    TOPIC:
+    <название темы>
+
+    IDS:
+    <номера чатов через запятую>
+
+    Не выдумывай номера — используй только те, что есть в списке.
+
+    Содержимое:
+    ---
+    {content}
+    ---
+  # Folder review (tab 3): <folder name>_обзор.md. Automatic Enrichment
+  # operation (not AI Chat); runs on the enrichment model.
+  folders_prompt: |
+    Ты — архитектурный аналитик проектной документации.
+    Проанализируй папку проекта по данным ниже: карточка проекта (если есть), состав
+    файлов по категориям, подпапки, содержимое текстовых файлов (если включено).
+
+    Дай структурированный обзор на русском языке в формате Markdown:
+
+    ## Назначение
+    Что это за проект и чем занимается (по карточке и содержимому).
+
+    ## Состав
+    Кратко: категории файлов с примерами названий, подпапки, общее число файлов.
+    Не перечисляй каждый файл — только характерные примеры и их количество.
+
+    ## Ключевые детали
+    Что известно из текстовых материалов: параметры, решения, характеристики,
+    используемые материалы/оборудование. Если текстов нет — так и напиши.
+
+    ## Незакрытые вопросы и риски
+    Чего не хватает, что противоречиво или требует внимания. Если таких пунктов
+    нет — напиши «Явных проблем не выявлено».
+
+    Правила:
+    - Используй ТОЛЬКО данные из карточки и файлов — не выдумывай факты.
+    - Если информации мало — честно напиши, чего не хватает.
+    - Не упоминай «карточку проекта» как источник в самом обзоре.
+    - Без маркдаун-блоков и оглавления; заголовки секций — как в шаблоне выше.
+
+ai_chat:
+  model: qwen2.5:latest
+  # Optional per-contract generation overrides; null/empty inherits from `ai`.
+  timeout: null
+  temperature: null
+  num_ctx: null
+  limit_chars: null
+  # Embedding model for the semantic search layer (incremental index under
+  # enriched/.obsidianizer/). Requires `ollama pull nomic-embed-text`.
+  embed_model: nomic-embed-text:latest
+  # How many candidate chats the search returns (the chat prompt sees the top 10).
+  search_top_k: 30
+  # The top-K chats whose FULL texts are attached to the chat prompt as a
+  # fallback, capped by search_full_chars (distributed evenly across them).
+  search_full_k: 3
+  search_full_chars: 9000
+  # Max fragment length (best matching chunk) shown per candidate in the prompt.
+  search_frag_chars: 600
+  # System prompt for the interactive assistant (also editable in the GUI).
+  chat_prompt: |
+    Ты — локальный AI-ассистент в Obsidian-хранилище пользователя.
+
+    Твоя главная задача — анализировать результаты поиска по коллекции чатов и
+    помогать ориентироваться в ней. В системный контекст тебе подаются найденные
+    чаты (заголовок, путь rel, фрагмент) в порядке убывания релевантности, а для
+    самых релевантных — и полные тексты диалогов.
+
+    Правила ответа:
+    - Отвечай на русском языке, кратко и по делу.
+    - Отвечай ТОЛЬКО на основании предоставленных источников. Если вопрос
+      касается хранилища: скажи, сколько чатов нашлось, перечисли релевантные с
+      путём (rel) и краткой причиной, почему они подходят; отметь наиболее
+      вероятные. Ссылайся ТОЛЬКО на чаты из переданного списка — не выдумывай rel
+      и не добавляй чаты, которых нет в списке.
+    - Если вопрос требует конкретного решения или итога (что выбрали, какой
+      вариант, что решили) — ищи ответ в содержимом диалогов, особенно ближе к
+      концу обсуждения, где обычно зафиксировано итоговое решение. Приведи
+      подтверждающий фрагмент из диалога.
+    - Если спрашивают про выбор снаряжения или билда (реликвия, руна, амулет,
+      оружие, специализация) — ищи в полных текстах таблицы «Снаряжение»/«Билд»
+      и называй конкретные предметы из них (например «Реликвия: Реки»).
+    - Проверяй ВСЕ переданные источники, а не только первый: ответ может лежать
+      во втором-третьем чате.
+    - Если найдены лишь частичные совпадения — так и скажи и покажи то, что есть.
+    - Если результатов нет совсем — честно сообщи об этом и предложи уточнить
+      запрос (другие слова, синонимы, другой провайдер).
+    - Если вопрос не касается хранилища — отвечай из общих знаний.
+    - Не говори «информации недостаточно», не сделав попытки опереться на
+      переданные результаты поиска.

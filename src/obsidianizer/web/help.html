@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidianizer — Справка</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; }
+    .help-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 0;
+    }
+    .help-topbar svg.tab-ico { width: 18px; height: 22px; }
+    .help-topbar .title { font-size: 16px; font-weight: 700; }
+    .help-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 10px 16px 0;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .help-tabs .htab {
+      background: #1f2a3a;
+      border: 1px solid #2a3444;
+      color: var(--dim);
+      border-radius: 10px 10px 0 0;
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .help-tabs .htab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .help-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 18px;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .help-body h3 { margin: 0 0 12px; font-size: 15px; }
+    .help-body p { margin: 0 0 10px; }
+    .help-body ul { margin: 0; padding-left: 20px; }
+    .help-body li { margin-bottom: 8px; }
+    .help-body b { color: var(--fg); }
+    .help-body i { color: var(--dim); }
+    .help-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--panel-border);
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .help-footer .dim { font-size: 11.5px; }
+    .help-footer .spacer { flex: 1; }
+    .hidden { display: none !important; }
+    .int-section { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+    .int-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .int-row label { color: var(--dim); white-space: nowrap; }
+    .int-row input { flex: 1; background: var(--inner); border: 1px solid var(--inner-border);
+      color: var(--fg); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); }
+    .int-status { list-style: none; margin: 0 0 12px; padding: 10px 12px;
+      background: var(--inner); border: 1px solid var(--inner-border); border-radius: 10px; }
+    .int-status li { padding: 3px 0; font-size: 13px; }
+    .int-status li.ok { color: var(--ok); }
+    .int-status li.err { color: var(--err); }
+    #intResult { margin-bottom: 12px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="help-topbar">
+    <svg class="tab-ico" viewBox="0 0 24 28" aria-hidden="true">
+      <defs>
+        <linearGradient id="obsGradH" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#a78bfa"/>
+          <stop offset="1" stop-color="#6d28d9"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 1 L21 6.5 L21 15.2 L12 21 L3 15.2 L3 6.5 Z" fill="url(#obsGradH)"/>
+      <path d="M12 1 L21 6.5 L16 10.8 L7.2 7.6 Z" fill="#c4b5fd" opacity="0.9"/>
+      <path d="M7.2 7.6 L16 10.8 L12 21 Z" fill="#8b5cf6"/>
+      <path d="M3 6.5 L7.2 7.6 L12 21 L3 15.2 Z" fill="#5b21b6"/>
+      <path d="M12 1 L7.2 7.6 L3 6.5 Z" fill="#ddd6fe"/>
+    </svg>
+    <span class="title" data-i18n="help.title">Obsidianizer — Справка</span>
+  </div>
+
+  <div class="help-tabs">
+    <button id="htabObs" class="htab active" data-tab="obsidianize">📁 Obsidianize</button>
+    <button id="htabProc" class="htab" data-tab="proc" data-i18n="tabs.proc">🧩 Обработка</button>
+    <button id="htabInt" class="htab" data-tab="integration">🔗 Integration</button>
+  </div>
+
+  <div id="helpBody" class="help-body"></div>
+
+  <div id="intSection" class="int-section hidden">
+    <div class="int-row">
+      <label for="intVault">Vault:</label>
+      <input id="intVault" type="text" spellcheck="false" placeholder="D:\Obsidian\MyVault">
+      <button id="btnIntBrowse" class="pick" data-i18n="help.browse">Обзор</button>
+      <button id="btnIntCheck" class="pick" data-i18n="help.check">Проверить</button>
+    </div>
+    <ul id="intStatusList" class="int-status">
+      <li id="stVault">Vault: —</li>
+      <li id="stTemplater">Templater: —</li>
+      <li id="stTemplate" data-i18n="help.template_status0">Шаблон обновления: —</li>
+      <li id="stRebuildTemplate" data-i18n="help.rebuild_template_status0">Шаблон пересборки: —</li>
+      <li id="stCli">Obsidianizer CLI: —</li>
+    </ul>
+    <div id="intResult" class="dim"></div>
+    <button id="btnIntInstall" class="primary" data-i18n-title="help.install_title" title="Скопировать шаблон обновления в папку Templater (путь к CLI подставится автоматически)" data-i18n="help.install">Установить / Починить интеграцию</button>
+    <button id="btnExtractTemplates" class="pick" style="margin-top:8px;" data-i18n-title="help.extract_title" title="Скопировать файлы ручной настройки (шаблон обновления, shell commands) в выбранную папку" data-i18n="help.extract">📂 Извлечь шаблоны в Obsidian…</button>
+    <p class="dim" style="margin-top:10px;font-size:12px;"><span data-i18n="help.no_vault_a">Не хотите давать доступ к папке vault? Нажмите «Извлечь шаблоны в Obsidian» и выберите папку шаблонов Templater — файлы ручной настройки скопируются туда. Подробности — в </span><code>integration/Obsidianizer Update.md</code><span data-i18n="help.no_vault_b">.</span></p>
+  </div>
+
+  <div class="help-footer">
+    <span class="dim" data-i18n="help.footer">Подробные инструкции — в README и docs/obsidianize</span>
+    <span class="spacer"></span>
+    <button id="btnHelpClose" class="primary" data-i18n="buttons.close">Закрыть</button>
+  </div>
+
+  <script src="i18n.js"></script>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const HELP = {
+        obsidianize: {
+          ru: {
+            title: "📁 Obsidianize — основная функция",
+            body:
+              "<p><b>Главная задача приложения</b>: превратить обычную папку " +
+              "проекта (чертежи, PDF, документы, изображения — Markdown не " +
+              "нужен) в структурированную систему карточек с навигацией, " +
+              "комфортную для Obsidian.</p>" +
+              "<ul>" +
+              "<li><b>Просканировать</b> — только смотрит и показывает таблицу: где " +
+              "карточка ок, где устарела, где её ещё нет. <i>Ничего не пишет.</i></li>" +
+              "<li><b>✨ Obsidianize</b> — создаёт и обновляет карточки. Сами ваши " +
+              "файлы не изменяются.</li>" +
+              "<li>Файл <b>&lt;папка&gt;_заметки.md</b> — ваша личная территория " +
+              "(проект, адрес, контакт, комментарии…). Программа создаёт его один " +
+              "раз и <b>никогда не перезаписывает</b>.</li>" +
+              "<li>Если в папке случайно появилась заметка от Obsidian (Ctrl+клик) — " +
+              "без вашего разрешения она не тронется. Включите <b>«Принять " +
+              "существующую заметку как заметки»</b>, и она станет файлом заметок, " +
+              "а на её месте появится карточка.</li>" +
+              "<li>Полоса-разделитель под таблицей тянется мышью: сотни карточек не " +
+              "уведут результаты обработки за экран. Высота запоминается.</li>" +
+              "<li>Это основная функция приложения — Obsidianizer создан в первую " +
+              "очередь ради неё.</li>" +
+              "</ul>",
+          },
+          en: {
+            title: "📁 Obsidianize — the main feature",
+            body:
+              "<p><b>The app's main task</b>: turn an ordinary project folder " +
+              "(drawings, PDFs, documents, images — no Markdown needed) into a " +
+              "structured card system with navigation, comfortable for Obsidian.</p>" +
+              "<ul>" +
+              "<li><b>Scan</b> — only looks and shows the table: which card is ok, " +
+              "which is stale, which does not exist yet. <i>Writes nothing.</i></li>" +
+              "<li><b>✨ Obsidianize</b> — creates and updates cards. Your own files " +
+              "are not modified.</li>" +
+              "<li>The <b>&lt;folder&gt;_заметки.md</b> file is your personal territory " +
+              "(project, address, contact, comments…). The program creates it once " +
+              "and <b>never overwrites</b> it.</li>" +
+              "<li>If a note accidentally appeared in the folder from Obsidian " +
+              "(Ctrl+click) — it will not be touched without your permission. Enable " +
+              "<b>«Adopt an existing note as notes»</b>, and it will become the notes " +
+              "file, with a card in its place.</li>" +
+              "<li>The splitter bar under the table is dragged with the mouse: " +
+              "hundreds of cards will not push the results off-screen. " +
+              "The height is remembered.</li>" +
+              "<li>This is the app's main feature — Obsidianizer was created " +
+              "primarily for it.</li>" +
+              "</ul>",
+          },
+        },
+        proc: {
+          ru: {
+            title: "🧩 Обработка — рабочее пространство",
+            body:
+              "<p>Раздел «Обработка» состоит из шести частей — это не шесть " +
+              "отдельных конвейеров, а один поток: источник → обнаружение → " +
+              "обогащение → результат.</p>" +
+              "<ul>" +
+              "<li><b>1. Источник</b> — папка с вашими файлами и <b>исключения</b> " +
+              "(каталоги/маски). Исключённые объекты не обнаруживаются и не " +
+              "обрабатываются; в источнике ничего не удаляется и не перемещается.</li>" +
+              "<li><b>2. Обнаружено</b> — что найдено: счётчики по типам (чаты, " +
+              "документы, изображения, CAD, таблицы, папки) по всему источнику и " +
+              "список объектов, доступных для текущей обработки (выбор галочками).</li>" +
+              "<li><b>3. Enrichment</b> — единый поток обогащения: <b>ОБРАБОТАТЬ</b> " +
+              "(импорт, при желании AI) и <b>AI-постобработка</b> (повторный AI-прогон). " +
+              "Здесь же выходы: <b>Результат</b> (processed) и <b>AI-результат</b> " +
+              "(enriched) — их создаёт Obsidianizer. Связи и AI-анализ — задел на " +
+              "будущее (пока недоступны).</li>" +
+              "<li><b>4. AI-настройки</b> — модель и промпты <b>AI Enrichment</b> " +
+              "(импорт, постобработка, темы, обзоры папок). Модель <b>AI Chat</b> " +
+              "настраивается в окне чата.</li>" +
+              "<li><b>5. Обзоры папок</b> — анализ папок моделью AI Enrichment → " +
+              "<b>&lt;папка&gt;_обзор.md</b> рядом с карточкой. Источники не " +
+              "изменяются.</li>" +
+              "<li><b>6. Инструменты</b> — <b>Темы</b> (объединить/список/" +
+              "авто-группировка), <b>AI Chat</b>, <b>Навигация</b> (открыть " +
+              "результат / AI-результат).</li>" +
+              "</ul>" +
+              "<p>Основной сценарий: Источник → <b>Сканировать</b> → Обнаружено " +
+              "(выбор) → Enrichment → <b>ОБРАБОТАТЬ</b> → результат.</p>",
+          },
+          en: {
+            title: "🧩 Processing — the workspace",
+            body:
+              "<p>The «Processing» area has six parts — not six separate pipelines, " +
+              "but one flow: source → detection → enrichment → result.</p>" +
+              "<ul>" +
+              "<li><b>1. Source</b> — the folder with your files and the " +
+              "<b>exclusions</b> (directories/masks). Excluded objects are not " +
+              "discovered or processed; nothing in the source is deleted or moved.</li>" +
+              "<li><b>2. Detected</b> — what was found: counters by type (chats, " +
+              "documents, images, CAD, tables, folders) over the whole source, plus " +
+              "the list of objects available for the current operation (checkbox " +
+              "selection).</li>" +
+              "<li><b>3. Enrichment</b> — one enrichment flow: <b>PROCESS</b> " +
+              "(import, optionally AI) and <b>AI post-processing</b> (re-run AI). " +
+              "Outputs live here too: <b>Result</b> (processed) and <b>AI result</b> " +
+              "(enriched) — created by Obsidianizer. Relations and AI analysis are " +
+              "future work (not available yet).</li>" +
+              "<li><b>4. AI settings</b> — model and prompts for <b>AI Enrichment</b> " +
+              "(import, post-processing, topics, folder review). The <b>AI Chat</b> " +
+              "model is configured in the chat window.</li>" +
+              "<li><b>5. Folder review</b> — analyze folders with the AI Enrichment " +
+              "model → <b>&lt;folder&gt;_обзор.md</b> next to the card. Sources are " +
+              "not modified.</li>" +
+              "<li><b>6. Tools</b> — <b>Topics</b> (build/list/auto-group), " +
+              "<b>AI Chat</b>, <b>Navigation</b> (open result / AI result).</li>" +
+              "</ul>" +
+              "<p>Main scenario: Source → <b>Scan</b> → Detected (select) → " +
+              "Enrichment → <b>PROCESS</b> → result.</p>",
+          },
+        },
+      };
+
+      const body = document.getElementById("helpBody");
+
+      function showHelpTab(tab) {
+        const intSection = document.getElementById("intSection");
+        const isInt = tab === "integration";
+        body.classList.toggle("hidden", isInt);
+        intSection.classList.toggle("hidden", !isInt);
+        document.querySelectorAll(".htab").forEach(function (t) {
+          t.classList.toggle("active", t.dataset.tab === tab);
+        });
+        if (isInt) refreshIntegration();
+        else {
+          const h = (HELP[tab] || HELP.obsidianize)[window.I18N_LANG] || HELP.obsidianize.ru;
+          body.innerHTML = "<h3>" + h.title + "</h3>" + h.body;
+        }
+      }
+
+      // initial section from the URL hash (#obsidianize | #proc | #integration)
+      let currentTab = (location.hash || "#obsidianize").slice(1);
+      showHelpTab(currentTab);
+      window.showHelpTab = showHelpTab;
+
+      function applyLang(resolved) {
+        window.initLang(resolved === "en" ? "en" : "ru");
+        window.applyI18n(document);
+        showHelpTab(currentTab);
+      }
+      applyLang("ru");
+
+      document.getElementById("htabObs").addEventListener("click", function () { showHelpTab("obsidianize"); });
+      document.getElementById("htabProc").addEventListener("click", function () { showHelpTab("proc"); });
+      document.getElementById("htabInt").addEventListener("click", function () { showHelpTab("integration"); });
+
+      document.getElementById("btnHelpClose").addEventListener("click", function () {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.close_help_window) {
+          window.pywebview.api.close_help_window();
+        } else {
+          window.close();
+        }
+      });
+
+      // ── Integration tab ──────────────────────────────────────────────────
+
+      let api = null;
+      function initHelpApi() {
+        api = window.pywebview.api;
+        if (api && api.defaults) {
+          api.defaults().then(function (d) {
+            if (d && d.integration_vault && !document.getElementById("intVault").value.trim()) {
+              document.getElementById("intVault").value = d.integration_vault;
+            }
+            applyLang(d && d.lang_resolved === "en" ? "en" : "ru");
+          });
+        }
+      }
+      if (window.pywebview) { initHelpApi(); }
+      else { window.addEventListener("pywebviewready", initHelpApi); }
+      let intRepairPending = false;
+      let intExtractPending = false;
+
+      function renderStatus(s) {
+        const mark = (v) => (v ? "✓" : "✗");
+        document.getElementById("stVault").textContent =
+          "Vault: " + mark(s.vault_found) + (s.vault ? "  (" + s.vault + ")" : "");
+        document.getElementById("stVault").className = s.vault_found ? "ok" : "err";
+        document.getElementById("stTemplater").textContent =
+          "Templater: " + mark(s.templater_installed) +
+          (s.templates_folder ? "  (" + s.templates_folder + ")" : "");
+        document.getElementById("stTemplater").className = s.templater_installed ? "ok" : "err";
+        document.getElementById("stTemplate").textContent =
+          t("help.template_status") + mark(s.template_installed);
+        document.getElementById("stTemplate").className = s.template_installed ? "ok" : "err";
+        document.getElementById("stRebuildTemplate").textContent =
+          t("help.rebuild_template_status") + mark(s.rebuild_template_installed);
+        document.getElementById("stRebuildTemplate").className = s.rebuild_template_installed ? "ok" : "err";
+        document.getElementById("stCli").textContent =
+          "Obsidianizer CLI: " + mark(s.cli_exists) + (s.cli_path ? "  (" + s.cli_path + ")" : "");
+        document.getElementById("stCli").className = s.cli_exists ? "ok" : "err";
+      }
+
+      function browseIntVault() {
+        if (!api || !api.choose_folder) return;
+        api.choose_folder("obsidianize").then(function (path) {
+          if (!path) return;
+          document.getElementById("intVault").value = path;
+          api.set_int_vault(path).then(refreshIntegration);
+        });
+      }
+
+      function refreshIntegration() {
+        if (!api || !api.obs_integration_status) {
+          document.getElementById("intResult").textContent = t("help.no_api");
+          return;
+        }
+        api.obs_integration_status({ vault: document.getElementById("intVault").value.trim() })
+          .then(function (s) {
+            if (!s || s.ok === false) return;
+            if (!document.getElementById("intVault").value.trim() && s.vault) {
+              document.getElementById("intVault").value = s.vault;
+            }
+            renderStatus(s);
+            intRepairPending = false;
+            const bothInstalled = s.template_installed && s.rebuild_template_installed;
+            document.getElementById("intResult").textContent = s.vault_found
+              ? (bothInstalled ? t("help.int_installed") : t("help.template_missing"))
+              : t("help.pick_vault");
+          });
+      }
+
+      function installIntegration() {
+        if (!api || !api.obs_integration_install) return;
+        const vault = document.getElementById("intVault").value.trim();
+        if (!vault) {
+          document.getElementById("intResult").textContent = t("help.need_vault");
+          return;
+        }
+        api.obs_integration_install({ vault: vault, repair: intRepairPending })
+          .then(function (r) {
+            intRepairPending = false;
+            const res = document.getElementById("intResult");
+            if (!r || r.ok === false) {
+              if (r && r.exists) {
+                intRepairPending = true;
+                res.textContent = t("help.repair_hint");
+              } else {
+                res.textContent = (r && r.error) || t("help.install_failed");
+              }
+              refreshIntegration();
+              return;
+            }
+            res.textContent = t("help.installed", { target: r.target }) +
+              t("help.next_steps") + (r.hint || "");
+            refreshIntegration();
+          });
+      }
+
+      document.getElementById("btnIntCheck").addEventListener("click", refreshIntegration);
+      document.getElementById("btnIntBrowse").addEventListener("click", browseIntVault);
+      document.getElementById("btnIntInstall").addEventListener("click", function () {
+        installIntegration();
+      });
+
+      function extractTemplates() {
+        if (!api || !api.extract_templates) {
+          document.getElementById("intResult").textContent = t("help.no_api");
+          return;
+        }
+        api.choose_folder("obsidianize").then(function (path) {
+          if (!path) return;
+          api.extract_templates({ target: path, force: intExtractPending })
+            .then(function (r) {
+              const res = document.getElementById("intResult");
+              if (!r || r.ok === false) {
+                intExtractPending = Boolean(r && r.conflicts);
+                res.textContent = (r && r.error) || t("help.copy_failed");
+                res.className = r && r.conflicts ? "warn" : "err";
+                return;
+              }
+              intExtractPending = false;
+              const over = r.overwritten && r.overwritten.length
+                ? t("help.overwritten", { n: r.overwritten.length }) : "";
+              res.textContent =
+                t("help.copied", { n: r.copied.length }) + over + " → " + r.target;
+              res.className = "ok";
+            });
+        });
+      }
+      document.getElementById("btnExtractTemplates").addEventListener("click", extractTemplates);
+    })();
+  </script>
+</body>
+</html>

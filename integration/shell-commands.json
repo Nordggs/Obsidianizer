@@ -1,0 +1,18 @@
+{
+  "obsidianizer-refresh": {
+    "platform_specific_commands": {
+      "default": "\"C:\\Obsidianizer\\Obsidianizer.exe\" folders --path \"{{file_path:absolute}}\" --no-recursive --adopt --vault-root \"{{vault_path}}\" --rel \"{{file_path:relative}}\""
+    },
+    "shells": {},
+    "alias": "Obsidianizer: Refresh card",
+    "confirm_execution": false,
+    "ignore_error_codes": [],
+    "output_channels": {
+      "stdout": "notification",
+      "stderr": "notification"
+    },
+    "output_channel_order": "stdout-first",
+    "events": {},
+    "command_palette_availability": "enabled"
+  }
+}

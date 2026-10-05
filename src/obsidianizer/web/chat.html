@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-чат — Obsidianizer</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    /* Full-window chat layout (no modal chrome, no drag) */
+    html, body { height: 100%; }
+    body.chat-window { display: flex; flex-direction: column; }
+    #chatTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--panel-border);
+      font-weight: 600;
+    }
+    #chatBody { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    #chatContext {
+      margin: 10px 16px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    #chatContext:empty { display: none; }
+    #chatLog { flex: 1; min-height: 0; }
+    #chatLog, #chatLog * { user-select: text; -webkit-user-select: text; }
+    #chatInput { flex: 1; }
+    #btnChatSend { align-self: stretch; }
+    .chat-text { flex: 1; }
+    .chat-copy {
+      background: transparent;
+      border: none;
+      color: var(--dim);
+      font-size: 12px;
+      line-height: 1;
+      padding: 2px 6px;
+      opacity: 0;
+      cursor: pointer;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    .chat-line:hover .chat-copy { opacity: 1; }
+    .chat-copy:hover { color: var(--accent); }
+    .chat-copy.copied { color: #7ec97e; opacity: 1; }
+  </style>
+</head>
+<body class="chat-window">
+  <header id="chatTop">
+    <span data-i18n="ai.chat">AI-чат</span>
+    <span class="chat-model-wrap">
+      <label for="chatModelInput" class="dim" data-i18n="ai.chat_model">Модель (AI Chat):</label>
+      <input id="chatModelInput" type="text" spellcheck="false" placeholder="qwen2.5:latest"
+        data-i18n-title="ai.chat_model_title" title="Модель для AI-чата и поиска по коллекции">
+    </span>
+  </header>
+
+  <div id="chatBody">
+    <div id="chatContext" class="chat-context"></div>
+    <div id="chatLog" class="chat-log"></div>
+    <div id="chatFound" class="chat-found hidden">
+      <div class="chat-found-head">
+        <span id="chatFoundTitle" class="dim" data-i18n="chat.sources">Источники</span>
+        <span class="spacer"></span>
+        <button id="btnChatFoundTheme" class="pick" disabled data-i18n="chat.add_to_topic_btn">Добавить в тему…</button>
+      </div>
+      <div id="chatFoundList" class="chat-found-list"></div>
+      <div id="chatFoundMore" class="chat-found-more hidden">
+        <button id="btnChatFoundMore" class="ghost" data-i18n="chat.show_more">Показать ещё</button>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chatInput" spellcheck="false" rows="2"
+        data-i18n-placeholder="chat.input_placeholder"
+        placeholder="Спросите модель… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
+      <button id="btnChatSend" class="primary" data-i18n="chat.send">Отправить</button>
+    </div>
+    <div class="modal-actions">
+      <button id="btnChatAttach" class="ghost" data-i18n-title="chat.attach_title" title="Прикрепить заметки из обработанной коллекции к диалогу" data-i18n="chat.attach">Прикрепить заметку…</button>
+      <button id="btnChatClear" class="ghost" data-i18n="chat.clear">Очистить</button>
+      <span class="spacer"></span>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>

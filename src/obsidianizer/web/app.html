@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidianizer</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="splash"><img src="splash.png" alt="Obsidianizer"></div>
+
+  <header>
+    <div class="title">
+      Obsidianizer
+      <span class="subtitle">LOCAL PROJECT CARDS</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button id="tabNavObs" class="tab active" data-page="obsidianize">
+      <svg class="tab-ico" viewBox="0 0 24 28" aria-hidden="true">
+        <defs>
+          <linearGradient id="obsGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a78bfa"/>
+            <stop offset="1" stop-color="#6d28d9"/>
+          </linearGradient>
+        </defs>
+        <path d="M12 1 L21 6.5 L21 15.2 L12 21 L3 15.2 L3 6.5 Z" fill="url(#obsGrad)"/>
+        <path d="M12 1 L21 6.5 L16 10.8 L7.2 7.6 Z" fill="#c4b5fd" opacity="0.9"/>
+        <path d="M7.2 7.6 L16 10.8 L12 21 Z" fill="#8b5cf6"/>
+        <path d="M3 6.5 L7.2 7.6 L12 21 L3 15.2 Z" fill="#5b21b6"/>
+        <path d="M12 1 L7.2 7.6 L3 6.5 Z" fill="#ddd6fe"/>
+      </svg>
+      Obsidianize
+    </button>
+    <button id="tabNavProc" class="tab" data-page="proc" data-i18n="tabs.proc">🧩 Обработка</button>
+    <button id="tabNavHelp" class="tab tab-help" data-i18n-title="tabs.help_title" title="Справка по текущей вкладке">
+      <span id="tabHelpIcon"></span><span class="help-q">?</span>
+    </button>
+  </nav>
+
+  <section id="page-obsidianize" class="tab-page active">
+    <section class="panel">
+      <div class="row">
+        <label for="obsDir" data-i18n="obs.folder">Папка:</label>
+        <input id="obsDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
+        <button id="btnObsDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+      </div>
+      <div class="row">
+        <label for="obsVaultRoot" data-i18n="obs.vault_root">Корень Obsidian (для галереи):</label>
+        <input id="obsVaultRoot" type="text" spellcheck="false" placeholder="необязательно" data-i18n-placeholder="obs.optional">
+        <button id="btnObsVaultRoot" class="pick" data-i18n-title="obs.pick_vault_root" title="Выбрать корень хранилища" data-i18n="buttons.pick">Выбрать</button>
+      </div>
+      <div class="row">
+        <label for="obsGalleryPrefix" data-i18n-title="obs.gallery_prefix_title" title="Запасной базовый путь галереи, когда проекты вне Vault и «Корень Obsidian» не задан. Пример: PROJECT/OBSIDIAN/Objects" data-i18n="obs.gallery_prefix">Базовый путь галереи (для проектов вне Vault):</label>
+        <input id="obsGalleryPrefix" type="text" spellcheck="false" placeholder="PROJECT/OBSIDIAN/Objects">
+      </div>
+      <div class="row opts">
+        <label class="check"><input type="checkbox" id="obsRecursive" checked> <span data-i18n="obs.recursive">Вложенные папки</span></label>
+        <label class="check"><input type="checkbox" id="obsGallery" checked> <span data-i18n="obs.gallery">Галерея</span></label>
+        <label class="check"><input type="checkbox" id="obsAdopt" data-i18n-title="obs.adopt_title" title="Если существует чужая заметка с именем папки (без маркера) — переименовать её в <имя>_заметки.md, сохранив содержимое, и создать карточку"><span data-i18n="obs.adopt">Принять существующую заметку как заметки</span></label>
+        <label class="check"><input type="checkbox" id="obsRebuild" data-i18n-title="obs.rebuild_title" title="Принудительно пересоздать свои карточки по актуальным правилам текущей версии (миграция старой структуры); чужие заметки не трогаются"><span data-i18n="obs.rebuild">Пересобрать карточки (Rebuild)</span></label>
+        <span class="field-label" data-i18n="obs.template">Шаблон карточки:</span>
+        <select id="obsTemplate" data-i18n-title="obs.template_title" title="github — Project Dashboard (README-стиль) | classic — старый формат таблиц">
+          <option value="github">github (Project Dashboard)</option>
+          <option value="classic">classic</option>
+        </select>
+      </div>
+      <p class="ai-note"><span data-i18n="obs.no_change_a">Исходные файлы не изменяются: создаются/обновляются только карточки</span> <span class="mono">.md</span><span data-i18n="obs.no_change_b">.</span></p>
+    </section>
+
+    <section class="actions">
+      <button id="btnObsScan" class="ghost" data-i18n-title="obs.scan_title" title="Только прочитать папку и показать статус карточек (ничего не пишет)" data-i18n="obs.scan">🔍 Просканировать</button>
+      <button id="btnObsRun" class="primary" data-i18n-title="obs.run_title" title="Создать/обновить карточки для каждой папки (исходники не трогаются)">✨ Obsidianize</button>
+      <button id="btnObsOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
+      <button id="btnObsIntegration" class="ghost" data-i18n-title="obs.integration_title" title="Связать с Obsidian: установить шаблон Templater с автоматическим путём к Obsidianizer">🔗 Obsidian Integration</button>
+    </section>
+
+    <section id="obsResultSection" class="panel hidden">
+      <div class="stage-label" data-i18n="obs.cards">Карточки</div>
+      <div id="obsResult" class="obs-result"></div>
+    </section>
+    <div id="obsSplitter" class="splitter hidden" data-i18n-title="obs.splitter_title" title="Потяните, чтобы изменить размер области карточек"></div>
+  </section>
+
+  <section id="page-proc" class="tab-page">
+    <nav class="subtabs">
+      <button class="subtab active" data-sub="source" data-i18n="proc.tab_source">1. Источник</button>
+      <button class="subtab" data-sub="detected" data-i18n="proc.tab_detected">2. Обнаружено</button>
+      <button class="subtab" data-sub="enrichment" data-i18n="proc.tab_enrichment">3. Enrichment</button>
+      <button class="subtab" data-sub="ai" data-i18n="proc.tab_ai">4. AI-настройки</button>
+      <button class="subtab" data-sub="review" data-i18n="proc.tab_review">5. Обзоры папок</button>
+      <button class="subtab" data-sub="tools" data-i18n="proc.tab_tools">6. Инструменты</button>
+    </nav>
+
+    <!-- 1. Источник -->
+    <section id="sub-source" class="subtab-page active">
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.source">Источник</div>
+        <div class="row">
+          <label for="source" data-i18n="chat.source">Источник:</label>
+          <input id="source" type="text" spellcheck="false" placeholder="D:\raw">
+          <button id="btnSource" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+        </div>
+        <p class="ai-note" data-i18n="proc.source_note">Источник — ваши файлы. Obsidianizer только читает его и не изменяет.</p>
+      </section>
+
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.exclusions">Исключения</div>
+        <div class="row">
+          <label for="excludeDirs" data-i18n="proc.exclude_dirs">Каталоги:</label>
+          <input id="excludeDirs" type="text" spellcheck="false" placeholder=".git, node_modules, venv">
+        </div>
+        <div class="row">
+          <label for="excludeMasks" data-i18n="proc.exclude_masks">Маски:</label>
+          <input id="excludeMasks" type="text" spellcheck="false" placeholder="*.tmp, *.bak, *.log">
+        </div>
+        <p class="ai-note" data-i18n="proc.exclude_note">Исключённые объекты не обнаруживаются и не обрабатываются; в источнике ничего не удаляется и не перемещается.</p>
+      </section>
+
+      <section class="actions">
+        <button id="btnScan" class="primary" data-i18n="chat.scan">Сканировать</button>
+      </section>
+    </section>
+
+    <!-- 2. Обнаружено -->
+    <section id="sub-detected" class="subtab-page">
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.detected">Обнаружено</div>
+        <div id="detectSummary" class="detect-summary"></div>
+        <p class="ai-note" data-i18n="proc.detected_note">Счётчики — по всему обнаруженному источнику; список ниже — объекты, доступные для текущей обработки.</p>
+      </section>
+      <section class="panel">
+        <div class="row">
+          <button id="selectAllChats" class="pick" data-i18n="chat.filter.select_all">Все распознанные</button>
+          <button id="deselectAll" class="pick" data-i18n="chat.filter.deselect_all">Снять выбор</button>
+          <span id="scanSummary" class="dim"></span>
+        </div>
+        <div id="scanPreview" class="scan-preview hidden">
+          <div id="scanFileList" class="scan-file-list"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- 3. Enrichment -->
+    <section id="sub-enrichment" class="subtab-page">
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.outputs">Что создаёт Obsidianizer</div>
+        <div class="row">
+          <label for="target" data-i18n="chat.target">Результат обработки:</label>
+          <input id="target" type="text" spellcheck="false" placeholder="D:\processed">
+          <button id="btnTarget" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+        </div>
+        <div class="row">
+          <label for="enriched" data-i18n="chat.enriched">AI-результат:</label>
+          <input id="enriched" type="text" spellcheck="false" placeholder="D:\enriched">
+          <button id="btnEnriched" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.enrichment">Enrichment</div>
+        <div class="row opts">
+          <label class="check"><input type="checkbox" id="enrichCards" checked disabled> <span data-i18n="proc.enrich_cards">Карточки (импорт)</span></label>
+          <label class="check"><input type="checkbox" id="enrichDescriptions" checked disabled> <span data-i18n="proc.enrich_descriptions">Описания / Summary (AI)</span></label>
+          <label class="check"><input type="checkbox" id="enrichLinks" disabled> <span data-i18n="proc.enrich_links">Связи</span> <span class="soon" data-i18n="proc.soon">скоро</span></label>
+          <label class="check"><input type="checkbox" id="enrichAiAnalysis" disabled> <span data-i18n="proc.enrich_ai">AI-анализ</span> <span class="soon" data-i18n="proc.soon">скоро</span></label>
+        </div>
+        <div class="row opts">
+          <label class="check"><input type="checkbox" id="chatOnly" checked> <span data-i18n="chat.filter.chat_only">Только экспортированные чаты</span></label>
+          <label class="check"><input type="checkbox" id="dry"> <span data-i18n="chat.dry">Только просмотр</span></label>
+          <label class="check"><input type="checkbox" id="prune"> <span data-i18n="chat.prune">Удалить старые результаты</span></label>
+          <label class="check"><input type="checkbox" id="pruneAi"> <span data-i18n="chat.prune_ai">Удалять сироты из AI-результата</span></label>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button id="btnRun" class="primary"><span data-i18n="chat.run">ОБРАБОТАТЬ</span><span id="runSub" class="btn-sub" data-i18n="chat.run_sub">Только импорт</span></button>
+        <button id="btnStop" data-i18n="buttons.stop" disabled>Стоп</button>
+        <button id="btnAi" class="ghost" data-i18n-title="ai.post_title" title="AI-постобработка: processed → enriched (без повторного импорта)"><span data-i18n="ai.post">AI-постобработка</span><span class="btn-sub" data-i18n="ai.post_sub">Только повторный AI-прогон</span></button>
+      </section>
+
+      <section id="progressSection" class="panel hidden">
+        <div class="stage-label" data-i18n="chat.import">Импорт</div>
+        <div class="progress-track"><div id="bar" class="progress-fill"></div></div>
+        <div class="progress-meta">
+          <span id="progText" class="mono">0 / 0</span>
+          <span id="currentFile" class="mono dim">&nbsp;</span>
+        </div>
+      </section>
+
+      <section id="aiProgressSection" class="panel hidden">
+        <div id="aiStageLabel" class="stage-label" data-i18n="ai.post">AI-постобработка</div>
+        <div class="progress-track"><div id="aiBar" class="progress-fill ai-fill"></div></div>
+        <div class="progress-meta">
+          <span id="aiProgText" class="mono">0 / 0</span>
+          <span id="aiCurrentFile" class="mono dim">&nbsp;</span>
+        </div>
+      </section>
+    </section>
+
+    <!-- 4. AI-настройки -->
+    <section id="sub-ai" class="subtab-page">
+      <section class="panel">
+        <div class="ai-row">
+          <label class="check"><input type="checkbox" id="ai" checked> <span data-i18n="ai.post">AI-постобработка</span></label>
+        </div>
+        <div id="aiDetails" class="ai-details">
+          <div class="row">
+            <label for="model" data-i18n="ai.model">Модель (AI Enrichment):</label>
+            <div class="model-wrap">
+              <input id="model" type="text" spellcheck="false" placeholder="deepseek-r1:14b">
+              <button id="btnModelDropdown" class="drop-btn" data-i18n-title="ai.show_models" title="Показать все модели">▼</button>
+              <div id="modelDropdown" class="dropdown hidden"></div>
+            </div>
+            <button id="btnRefreshModels" class="pick" data-i18n-title="ai.refresh_models_title" title="Получить список моделей из Ollama" data-i18n="buttons.refresh">Обновить</button>
+          </div>
+          <div class="row">
+            <span class="field-label" data-i18n="ai.prompt">Промпт:</span>
+            <button id="btnPrompt" class="ghost" data-i18n-title="ai.edit_prompts_title" title="Промпты AI Enrichment (импорт, AI-постобработка, темы, обзор папок) и AI Chat" data-i18n="ai.edit_prompts">Изменить…</button>
+            <span class="ai-note" data-i18n="ai.local_model">Локальная модель через Ollama</span>
+          </div>
+          <p class="ai-note" data-i18n="proc.chat_model_note">Модель AI Chat настраивается в окне AI-чата (раздел «Инструменты»).</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- 5. Обзоры папок -->
+    <section id="sub-review" class="subtab-page">
+      <section class="panel">
+        <div class="row">
+          <label for="aiDir" data-i18n="obs.folder">Папка:</label>
+          <input id="aiDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
+          <button id="btnAiDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+        </div>
+        <div class="row opts">
+          <label class="check"><input type="checkbox" id="aiIncludeText" checked>
+            <span data-i18n="ai.include_text">Включать содержимое текстовых файлов (.txt, .md)</span></label>
+        </div>
+        <p class="ai-note"><span data-i18n="ai.note_a">Модель — модель обогащения (AI Enrichment). Результат:</span> <span class="mono">&lt;папка&gt;_обзор.md</span>
+          <span data-i18n="ai.note_b">рядом с карточкой проекта. Исходные файлы не изменяются.</span></p>
+        <p class="ai-note dim"><span data-i18n="proc.review_model">Модель AI Enrichment:</span> <span id="aiReviewModel" class="mono">–</span></p>
+      </section>
+
+      <section class="actions">
+        <button id="btnAiScan" class="ghost" data-i18n-title="ai.scan_folders_title" title="Показать список папок с карточками" data-i18n="ai.scan_folders">🔍 Показать папки</button>
+        <button id="btnAiRun" class="primary" data-i18n-title="ai.run_title" title="Сформировать обзоры выбранных папок моделью обогащения (AI Enrichment)" data-i18n="ai.run">🤖 Сформировать обзоры</button>
+        <button id="btnAiOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
+      </section>
+
+      <section id="aiFoldersSection" class="panel hidden">
+        <div class="stage-label" data-i18n="ai.folders">Папки</div>
+        <div id="aiFolderList" class="topic-list review-list"></div>
+        <div class="row opts review-opts">
+          <button id="btnAiCheckAll" class="ghost" data-i18n="buttons.select_all">Выбрать все</button>
+          <button id="btnAiCheckNone" class="ghost" data-i18n="buttons.select_none">Снять все</button>
+          <span id="aiFolderCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
+        </div>
+      </section>
+
+      <section id="aiReviewSection" class="panel hidden">
+        <div class="stage-label" data-i18n="ai.reviews">Сформированные обзоры</div>
+        <div id="aiReviewList" class="obs-result"></div>
+      </section>
+    </section>
+
+    <!-- 6. Инструменты -->
+    <section id="sub-tools" class="subtab-page">
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.tools_topics">Темы</div>
+        <div class="row">
+          <button id="btnTopic" class="pick" data-i18n-title="ai.topic_btn_title" title="Объединить несколько выбранных чатов в одну тему (enriched/topics)" data-i18n="ai.topic_btn">Объединить в тему…</button>
+          <button id="btnTopics" class="pick" data-i18n-title="ai.topics_btn_title" title="Список тем: перегенерация, переименование, удаление, чаты без темы" data-i18n="ai.topics_btn">Темы…</button>
+          <button id="btnGroupAll" class="pick" data-i18n-title="ai.group_all_title" title="Автоматически сгруппировать все обработанные чаты в темы (без выбора)" data-i18n="ai.group_all">Авто-группировка</button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.tools_chat">AI Chat</div>
+        <div class="row">
+          <button id="btnChat" class="ghost" data-i18n-title="ai.chat_title" title="Спросить локальную модель по своей коллекции" data-i18n="ai.chat">AI-чат</button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.tools_nav">Навигация</div>
+        <div class="row">
+          <button id="btnOpen" class="ghost" data-i18n-title="chat.open_result_title" title="Открыть папку результата обработки (processed)" data-i18n="chat.open_result">Открыть результат</button>
+          <button id="btnOpenEnriched" class="ghost" data-i18n-title="chat.open_enriched_title" title="Открыть AI-результат (enriched)" data-i18n="chat.open_enriched">Открыть AI-результат</button>
+        </div>
+      </section>
+    </section>
+  </section>
+
+  <section class="panel log-panel">
+    <div id="log" class="log"></div>
+  </section>
+
+  <div id="promptModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <span data-i18n="modal.prompts">Промпты</span>
+        <button id="btnPromptClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
+      </div>
+      <div class="tabs">
+        <button id="tabImport" class="tab active" data-i18n="modal.tab_import">Импорт</button>
+        <button id="tabAi" class="tab" data-i18n="ai.post">AI-постобработка</button>
+        <button id="tabTopic" class="tab" data-i18n="modal.tab_topic">Объединение в тему</button>
+        <button id="tabMap" class="tab" data-i18n="modal.tab_map">Карта тем</button>
+        <button id="tabFolders" class="tab" data-i18n="modal.tab_folders">Обзор папок</button>
+        <button id="tabChat" class="tab" data-i18n="modal.tab_chat">AI Chat</button>
+      </div>
+      <textarea id="promptText" spellcheck="false"></textarea>
+      <div class="modal-actions">
+        <button id="btnPromptReset" class="ghost" data-i18n="modal.reset_prompt">Восстановить стандартный</button>
+        <span class="spacer"></span>
+        <button id="btnPromptCancel" data-i18n="buttons.cancel">Отмена</button>
+        <button id="btnPromptSave" class="primary" data-i18n="buttons.save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topicModal" class="modal hidden">
+    <div class="modal-box topic-box">
+      <div class="modal-head">
+        <span id="topicModalHead" data-i18n="modal.topic_head">Объединить чаты в тему</span>
+        <button id="btnTopicClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
+      </div>
+      <input id="topicFilter" type="text" spellcheck="false" placeholder="Поиск по названию…" data-i18n-placeholder="modal.search_placeholder">
+      <div id="topicList" class="topic-list"></div>
+      <div class="modal-actions">
+        <span id="topicCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
+        <span class="spacer"></span>
+        <button id="btnTopicCancel" data-i18n="buttons.cancel">Отмена</button>
+        <button id="btnTopicCreate" class="primary" disabled data-i18n="modal.create_topic">Создать справку</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topicManageModal" class="modal hidden">
+    <div class="modal-box topic-manage-box">
+      <div class="modal-head">
+        <span data-i18n="modal.topics">Темы</span>
+        <button id="btnTopicManageClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
+      </div>
+      <div id="topicManageList" class="topic-list"></div>
+      <div class="topic-orphans">
+        <span id="topicOrphansCount" class="dim" data-i18n="modal.orphans0">Чаты без темы: –</span>
+        <span class="spacer"></span>
+        <button id="btnTopicOrphansCreate" class="pick" data-i18n-title="modal.orphans_create_title" title="Объединить свободные чаты в новую тему" data-i18n="modal.orphans_create">Создать тему из них…</button>
+      </div>
+      <div class="modal-actions">
+        <button id="btnTopicManageRefresh" class="ghost" data-i18n="modal.refresh_list">Обновить список</button>
+        <span class="spacer"></span>
+        <button id="btnTopicManageClose2" data-i18n="buttons.close">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="updateModal" class="modal hidden">
+    <div class="modal-box update-box">
+      <div class="modal-head">
+        <span data-i18n="update.head">Доступна новая версия</span>
+        <button id="btnUpdateClose" class="modal-close" data-i18n-title="buttons.close" title="Закрыть">×</button>
+      </div>
+      <p class="update-info">
+        <span data-i18n="update.current">Текущая:</span> <span id="updCurrent" class="version"></span><br>
+        <span data-i18n="update.latest">Новая:</span> <span id="updLatest"></span>
+      </p>
+      <p class="dim" data-i18n="update.body">Исправления и улучшения доступны на GitHub.</p>
+      <div class="modal-actions">
+        <button id="btnUpdateSkip" class="ghost" data-i18n="buttons.close">Закрыть</button>
+        <span class="spacer"></span>
+        <button id="btnUpdateOpen" class="primary" data-i18n="update.open_release">Открыть страницу релиза</button>
+      </div>
+    </div>
+  </div>
+
+  <footer id="status" class="status">
+    <span id="version" class="version">v-</span>
+    <button id="updateDot" class="update-dot hidden" data-i18n-title="update.title" title=""></button>
+    <span class="lang-switch">
+      <button id="langRu" class="lang-btn" title="Русский">RU</button>
+      <button id="langEn" class="lang-btn" title="English">EN</button>
+    </span>
+    <span id="statusText" class="status-text" data-i18n="status.ready">Готово. Выберите папки и нажмите «Обработать».</span>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
