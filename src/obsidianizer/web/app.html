@@ -88,9 +88,9 @@
     <nav class="subtabs">
       <button class="subtab active" data-sub="source" data-i18n="proc.tab_source">1. Источник</button>
       <button class="subtab" data-sub="detected" data-i18n="proc.tab_detected">2. Обнаружено</button>
-      <button class="subtab" data-sub="enrichment" data-i18n="proc.tab_enrichment">3. Enrichment</button>
-      <button class="subtab" data-sub="ai" data-i18n="proc.tab_ai">4. AI-настройки</button>
-      <button class="subtab" data-sub="review" data-i18n="proc.tab_review">5. Обзоры папок</button>
+      <button class="subtab" data-sub="review" data-i18n="proc.tab_review">3. Общий обзор</button>
+      <button class="subtab" data-sub="enrichment" data-i18n="proc.tab_enrichment">4. Enrichment</button>
+      <button class="subtab" data-sub="ai" data-i18n="proc.tab_ai">5. AI-настройки</button>
       <button class="subtab" data-sub="tools" data-i18n="proc.tab_tools">6. Инструменты</button>
     </nav>
 
@@ -131,7 +131,10 @@
         <div id="detectSummary" class="detect-summary"></div>
         <p class="ai-note" data-i18n="proc.detected_note">Счётчики — по всему обнаруженному источнику; список ниже — объекты, доступные для текущей обработки.</p>
       </section>
+      <!-- (a) Файлы для импорта: плоский выбор sel_files (TICKET-004, frozen) -->
       <section class="panel">
+        <div class="stage-label" data-i18n="proc.import_files">Файлы для импорта</div>
+        <p class="ai-note" data-i18n="proc.import_files_note">Плоский выбор файлов для импорта. Независим от дерева ниже.</p>
         <div class="row">
           <button id="selectAllChats" class="pick" data-i18n="chat.filter.select_all">Все распознанные</button>
           <button id="deselectAll" class="pick" data-i18n="chat.filter.deselect_all">Снять выбор</button>
@@ -141,9 +144,72 @@
           <div id="scanFileList" class="scan-file-list"></div>
         </div>
       </section>
+      <div id="detFilesSplitter" class="splitter hidden" data-i18n-title="proc.splitter_title" title="Потяните, чтобы изменить размер области"></div>
+      <!-- (b) Дерево для Общего обзора: выбор sel_tree (TICKET-014) -->
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.detect_tree">Дерево для Общего обзора</div>
+        <p class="ai-note" data-i18n="proc.detect_tree_note">Выбор дерева используется только «Общим обзором». Выбор файлов для импорта (выше) на него не влияет — и наоборот.</p>
+        <div class="row">
+          <button id="detSelectAll" class="pick" data-i18n="proc.det_select_all">Выбрать все</button>
+          <button id="detDeselectAll" class="pick" data-i18n="proc.det_deselect_all">Снять выбор со всех</button>
+          <button id="detInvert" class="pick" data-i18n="proc.det_invert">Инвертировать выбор</button>
+          <span id="detSummary" class="dim"></span>
+        </div>
+        <div id="detectedTree" class="det-tree"></div>
+      </section>
+      <div id="detTreeSplitter" class="splitter hidden" data-i18n-title="proc.splitter_title" title="Потяните, чтобы изменить размер области"></div>
     </section>
 
-    <!-- 3. Enrichment -->
+    <!-- 3. Общий обзор (TICKET-014: структурный обзор без LLM + сохранённый LLM-обзор папок) -->
+    <section id="sub-review" class="subtab-page">
+      <section class="panel">
+        <div class="stage-label" data-i18n="proc.tab_review">3. Общий обзор</div>
+        <p class="ai-note" data-i18n="proc.overview_note">Структурный обзор строится по дереву из раздела «Обнаружено» — без чтения содержимого файлов и без LLM.</p>
+        <div class="row">
+          <button id="btnOverviewBuild" class="primary" data-i18n="proc.overview_build">Построить структурный обзор</button>
+          <span id="overviewSummary" class="dim"></span>
+        </div>
+        <div id="overviewResult" class="obs-result"></div>
+      </section>
+
+      <section class="panel">
+        <div class="row">
+          <label for="aiDir" data-i18n="obs.folder">Папка:</label>
+          <input id="aiDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
+          <button id="btnAiDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
+        </div>
+        <div class="row opts">
+          <label class="check"><input type="checkbox" id="aiIncludeText" checked>
+            <span data-i18n="ai.include_text">Включать содержимое текстовых файлов (.txt, .md)</span></label>
+        </div>
+        <p class="ai-note"><span data-i18n="ai.note_a">Модель — модель обогащения (AI Enrichment). Результат:</span> <span class="mono">&lt;папка&gt;_обзор.md</span>
+          <span data-i18n="ai.note_b">рядом с карточкой проекта. Исходные файлы не изменяются.</span></p>
+        <p class="ai-note dim"><span data-i18n="proc.review_model">Модель AI Enrichment:</span> <span id="aiReviewModel" class="mono">–</span></p>
+      </section>
+
+      <section class="actions">
+        <button id="btnAiScan" class="ghost" data-i18n-title="ai.scan_folders_title" title="Показать список папок с карточками" data-i18n="ai.scan_folders">🔍 Показать папки</button>
+        <button id="btnAiRun" class="primary" data-i18n-title="ai.run_title" title="Сформировать обзоры выбранных папок моделью обогащения (AI Enrichment)" data-i18n="ai.run">🤖 Сформировать обзоры</button>
+        <button id="btnAiOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
+      </section>
+
+      <section id="aiFoldersSection" class="panel hidden">
+        <div class="stage-label" data-i18n="ai.folders">Папки</div>
+        <div id="aiFolderList" class="topic-list review-list"></div>
+        <div class="row opts review-opts">
+          <button id="btnAiCheckAll" class="ghost" data-i18n="buttons.select_all">Выбрать все</button>
+          <button id="btnAiCheckNone" class="ghost" data-i18n="buttons.select_none">Снять все</button>
+          <span id="aiFolderCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
+        </div>
+      </section>
+
+      <section id="aiReviewSection" class="panel hidden">
+        <div class="stage-label" data-i18n="ai.reviews">Сформированные обзоры</div>
+        <div id="aiReviewList" class="obs-result"></div>
+      </section>
+    </section>
+
+    <!-- 4. Enrichment -->
     <section id="sub-enrichment" class="subtab-page">
       <section class="panel">
         <div class="stage-label" data-i18n="proc.outputs">Что создаёт Obsidianizer</div>
@@ -200,7 +266,7 @@
       </section>
     </section>
 
-    <!-- 4. AI-настройки -->
+    <!-- 5. AI-настройки -->
     <section id="sub-ai" class="subtab-page">
       <section class="panel">
         <div class="ai-row">
@@ -223,45 +289,6 @@
           </div>
           <p class="ai-note" data-i18n="proc.chat_model_note">Модель AI Chat настраивается в окне AI-чата (раздел «Инструменты»).</p>
         </div>
-      </section>
-    </section>
-
-    <!-- 5. Обзоры папок -->
-    <section id="sub-review" class="subtab-page">
-      <section class="panel">
-        <div class="row">
-          <label for="aiDir" data-i18n="obs.folder">Папка:</label>
-          <input id="aiDir" type="text" spellcheck="false" placeholder="D:\Projects\MyProject">
-          <button id="btnAiDir" class="pick" data-i18n-title="buttons.pick_folder" title="Выбрать папку" data-i18n="buttons.pick">Выбрать</button>
-        </div>
-        <div class="row opts">
-          <label class="check"><input type="checkbox" id="aiIncludeText" checked>
-            <span data-i18n="ai.include_text">Включать содержимое текстовых файлов (.txt, .md)</span></label>
-        </div>
-        <p class="ai-note"><span data-i18n="ai.note_a">Модель — модель обогащения (AI Enrichment). Результат:</span> <span class="mono">&lt;папка&gt;_обзор.md</span>
-          <span data-i18n="ai.note_b">рядом с карточкой проекта. Исходные файлы не изменяются.</span></p>
-        <p class="ai-note dim"><span data-i18n="proc.review_model">Модель AI Enrichment:</span> <span id="aiReviewModel" class="mono">–</span></p>
-      </section>
-
-      <section class="actions">
-        <button id="btnAiScan" class="ghost" data-i18n-title="ai.scan_folders_title" title="Показать список папок с карточками" data-i18n="ai.scan_folders">🔍 Показать папки</button>
-        <button id="btnAiRun" class="primary" data-i18n-title="ai.run_title" title="Сформировать обзоры выбранных папок моделью обогащения (AI Enrichment)" data-i18n="ai.run">🤖 Сформировать обзоры</button>
-        <button id="btnAiOpen" class="ghost" data-i18n-title="buttons.open_folder_title" title="Открыть папку в проводнике" data-i18n="buttons.open_folder">Открыть папку</button>
-      </section>
-
-      <section id="aiFoldersSection" class="panel hidden">
-        <div class="stage-label" data-i18n="ai.folders">Папки</div>
-        <div id="aiFolderList" class="topic-list review-list"></div>
-        <div class="row opts review-opts">
-          <button id="btnAiCheckAll" class="ghost" data-i18n="buttons.select_all">Выбрать все</button>
-          <button id="btnAiCheckNone" class="ghost" data-i18n="buttons.select_none">Снять все</button>
-          <span id="aiFolderCount" class="dim" data-i18n="status.selected0">Выбрано: 0</span>
-        </div>
-      </section>
-
-      <section id="aiReviewSection" class="panel hidden">
-        <div class="stage-label" data-i18n="ai.reviews">Сформированные обзоры</div>
-        <div id="aiReviewList" class="obs-result"></div>
       </section>
     </section>
 

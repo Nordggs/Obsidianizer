@@ -1,4 +1,4 @@
-"""TICKET-011 — UI reorganization contracts.
+"""TICKET-011 — UI reorganization contracts (order updated by TICKET-014).
 
 Static structure checks over the real ``app.html``/``chat.html`` markup plus
 headless bridge checks (no webview window): the six processing sub-tabs, the
@@ -26,7 +26,7 @@ _VOID = {
     "input", "link", "meta", "param", "source", "track", "wbr",
 }
 
-SUBTABS = ("source", "detected", "enrichment", "ai", "review", "tools")
+SUBTABS = ("source", "detected", "review", "enrichment", "ai", "tools")
 
 
 class _Tree(HTMLParser):
@@ -107,6 +107,11 @@ def test_controls_live_in_their_sections():
     # scan preview stays inside the "Detected" section (Block A contract)
     assert "scanPreview" in _parent_ids(tree, "scanFileList")
     assert "sub-detected" in _parent_ids(tree, "scanFileList")
+    # TICKET-014: sel_tree lives beside sel_files, in its own container
+    assert "sub-detected" in _parent_ids(tree, "detectedTree")
+    assert "sub-detected" in _parent_ids(tree, "detSelectAll")
+    assert "sub-detected" in _parent_ids(tree, "detDeselectAll")
+    assert "sub-detected" in _parent_ids(tree, "detInvert")
     # Enrichment holds the run controls and the outputs
     assert "sub-enrichment" in _parent_ids(tree, "btnRun")
     assert "sub-enrichment" in _parent_ids(tree, "btnStop")
@@ -120,6 +125,9 @@ def test_controls_live_in_their_sections():
     # folder review
     assert "sub-review" in _parent_ids(tree, "btnAiScan")
     assert "sub-review" in _parent_ids(tree, "btnAiRun")
+    # TICKET-014: structural overview entry sits in the same sub-tab,
+    # LLM review controls are preserved
+    assert "sub-review" in _parent_ids(tree, "btnOverviewBuild")
     # tools
     assert "sub-tools" in _parent_ids(tree, "btnTopics")
     assert "sub-tools" in _parent_ids(tree, "btnGroupAll")
@@ -160,6 +168,14 @@ def test_js_uses_subtab_class_and_scan_aggregate():
     assert "set_exclusions" in js
     assert "renderDetected" in js
     assert 'querySelectorAll(".subtab")' in js
+    # TICKET-014: sel_tree module + scan journaling
+    assert "function renderDetTree" in js
+    assert "function detSetAll" in js
+    assert "function detInvert" in js
+    assert "function detBranch" in js
+    assert "function detShowCtx" in js
+    assert "function runOverviewBuild" in js
+    assert "overview_build" in js
     # chat model is no longer pushed from the main panel
     assert "chatModel" not in js
 
@@ -170,6 +186,29 @@ def test_chat_window_has_model_editor():
     assert "chatModelLabel" not in html
     js = CHAT_JS.read_text(encoding="utf-8")
     assert "set_chat_model" in js
+
+
+def test_tab1_scan_busy_indicator_and_delegation():
+    """Big tab-1 trees must show progress and never fail silently."""
+    js = APP_JS.read_text(encoding="utf-8")
+    for fn in (
+        "function obsBusyStart",
+        "function obsBusyStop",
+    ):
+        assert fn in js, f"missing {fn}"
+    idx = js.find("function runObsScan()")
+    assert idx >= 0
+    block = js[idx: idx + 1500]
+    assert "obsBusyStart" in block
+    assert ".catch(" in block
+    # delegated box handlers instead of per-row listeners
+    assert "box.onchange" in js
+    assert "box.onclick" in js
+    assert "box.oncontextmenu" in js
+    assert 'box.querySelectorAll("[data-obs-check]").forEach' not in js
+    assert 'box.querySelectorAll("tr[data-rel]").forEach(function (tr)' not in js
+    i18n = (WEB / "i18n.js").read_text(encoding="utf-8")
+    assert '"status.obs_scanning"' in i18n
 
 
 # ── headless bridges ────────────────────────────────────────────────────────
@@ -253,3 +292,43 @@ def test_workflow_source_scan_detected_run(tmp_path):
     report = app.run_now(app.settings)
     assert report.processed == 1
     assert (tmp_path / "processed" / "note.md").is_file()
+
+
+def test_tab1_tree_collapse_and_icons():
+    """Tab-1 rows collapse per branch and show folder icons (no table loss)."""
+    js = APP_JS.read_text(encoding="utf-8")
+    for fn in (
+        "function obsCollapseAll",
+        "obsCollapsed",
+        "obsKidRels",
+        "data-obs-toggle",
+    ):
+        assert fn in js, f"missing {fn}"
+    assert '"obs.fold_all"' in (WEB / "i18n.js").read_text(encoding="utf-8")
+
+
+def test_detected_splitters_and_unexclude():
+    """Detected has two resizable areas; tab-1 can remove user exclusions."""
+    tree = _tree()
+    assert "sub-detected" in _parent_ids(tree, "detFilesSplitter")
+    assert "sub-detected" in _parent_ids(tree, "detTreeSplitter")
+    js = APP_JS.read_text(encoding="utf-8")
+    for fn in (
+        "function initSplitter",
+        "function applySplitterHeight",
+        "function obsRemoveByName",
+        "function obsKindOf",
+        "data-obs-unexclude",
+    ):
+        assert fn in js, f"missing {fn}"
+    i18n = (WEB / "i18n.js").read_text(encoding="utf-8")
+    for key in (
+        '"proc.splitter_title"',
+        '"obs.remove_from_excludes"',
+        '"obs.rules_dirs"',
+        '"obs.rules_system"',
+        '"obs.rules_masks"',
+        '"obs.unexclude_title"',
+    ):
+        assert key in i18n, f"missing {key}"
+    assert "TICKET-004" not in i18n

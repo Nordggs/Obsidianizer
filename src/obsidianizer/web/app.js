@@ -310,11 +310,19 @@
   function doScan() {
     if (!api) return;
     // TICKET-011: persist exclusions first, so the preview reflects them.
+    // TICKET-014: the scan path is real — every step lands in the log, so it
+    // is always clear whether a scan actually happened.
+    const srcPath = $("source").value.trim();
+    renderLog(t("log.scan_started", { root: srcPath || "…" }));
+    setStatus(t("status.scan_started", { root: srcPath || "…" }), null);
     api.set_exclusions($("excludeDirs").value.trim(), $("excludeMasks").value.trim())
       .then(function () { return api.scan(); })
       .then(function (r) {
         if (!r || r.ok === false) {
-          setStatus(t("status.scan_error") + (r ? r.error : ""), "err");
+          const err = (r && r.error) || "";
+          const shown = err || "—";
+          renderLog(t("log.scan_error", { error: shown }), "err");
+          setStatus(t("status.scan_error") + shown, "err");
           return;
         }
         renderDetected(r);
@@ -347,6 +355,22 @@
         });
         $("scanPreview").classList.remove("hidden");
         updateScanSummary();
+        const a = r.aggregate || {};
+        const folders = a.folders || 0;
+        const total = a.total || 0;
+        const params = { total: total, folders: folders, files: total - folders, root: srcPath || "…" };
+        renderLog(t("log.scan_done", params), "ok");
+        setStatus(t("status.scan_done", params), "ok");
+        renderDetTree(r);
+        $("detFilesSplitter").classList.remove("hidden");
+        $("detTreeSplitter").classList.remove("hidden");
+        applySplitterHeight("scanFileList", "detFilesH");
+        applySplitterHeight("detectedTree", "detTreeH");
+      })
+      .catch(function (err) {
+        const msg = (err && err.message) || String(err || "");
+        renderLog(t("log.scan_error", { error: msg }), "err");
+        setStatus(t("status.scan_error") + msg, "err");
       });
   }
 
@@ -381,6 +405,239 @@
       });
     }
     return { selection: sel, selection_provided: hasPreview };
+  }
+
+  // ── Detected tree (TICKET-014, sel_tree for the Overview) ───────────────
+  // Independent from #scanFileList (sel_files for import, frozen above):
+  // own container #detectedTree, own state detTreeChecked, own buttons
+  // detSelectAll/detDeselectAll/detInvert. Manual checks survive rescans
+  // (merge rule: excluded wins is N/A here — the index already prunes
+  // excluded objects, so every row defaults to checked on first sight).
+
+  let detRows = [];         // flat rel list from the last scan payload
+  let detTreeChecked = {};  // rel -> bool (survives rescans)
+  let detTreeData = null;   // last nested tree NODE ({rel, kind, children[]})
+  let detScannedRoot = "";  // r.root of the last successful scan (stale guard)
+
+  // TICKET-014-PURE-START — DOM-free helpers, covered by tests/test_ticket014_js.py.
+  // Kept free of $, t, document and api so the block can be eval'd under node.
+  function detUnwrap(r) {
+    // Backend payload shape: r.tree = {root, tree: node}. Returns the node;
+    // a bare node is tolerated (unit tests, future DTOs).
+    const w = r && r.tree;
+    if (w && w.tree && typeof w.tree === "object") return w.tree;
+    if (w && typeof w.rel === "string") return w;
+    return null;
+  }
+
+  function detCollectRels(node) {
+    const rels = [];
+    (function walk(n) {
+      if (!n) return;
+      rels.push(n.rel || "");
+      (n.children || []).forEach(walk);
+    })(node);
+    const seen = {};
+    return rels.filter(function (rel) {
+      if (seen[rel]) return false;
+      seen[rel] = true;
+      return true;
+    });
+  }
+
+  function detBranchApply(rows, checked, rel, v) {
+    // rel == "" addresses the whole branch (every rel) — the empty-prefix
+    // bug of the tab-1 pattern is NOT copied here.
+    rows.forEach(function (row) {
+      if (row === rel || rel === "" || row.indexOf(rel + "/") === 0) {
+        checked[row] = (v === "invert") ? !checked[row] : v;
+      }
+    });
+    return checked;
+  }
+  // TICKET-014-PURE-END
+
+  function detMergeScan(r) {
+    const node = detUnwrap(r);
+    const rels = detCollectRels(node);
+    const seen = {};
+    detRows = rels.filter(function (rel) {
+      if (seen[rel]) return false;
+      seen[rel] = true;
+      return true;
+    });
+    detRows.forEach(function (rel) {
+      if (detTreeChecked[rel] === undefined) detTreeChecked[rel] = true;
+    });
+    // drop checks of vanished rels
+    Object.keys(detTreeChecked).forEach(function (k) {
+      if (!seen[k]) delete detTreeChecked[k];
+    });
+    detTreeData = detUnwrap(r);
+    detScannedRoot = normObsPath((r && r.root) || (r && r.tree && r.tree.root) || "");
+  }
+
+  function detCounts() {
+    let sel = 0;
+    detRows.forEach(function (rel) { if (detTreeChecked[rel]) sel++; });
+    return { total: detRows.length, selected: sel };
+  }
+
+  function detUpdateSummary() {
+    const c = detCounts();
+    const el = $("detSummary");
+    if (el) el.textContent = t("proc.det_selected", { n: c.selected }) + " / " + c.total;
+  }
+
+  function detSetAll(v) {
+    detRows.forEach(function (rel) { detTreeChecked[rel] = v; });
+    renderDetTree();
+  }
+
+  function detInvert() {
+    detRows.forEach(function (rel) { detTreeChecked[rel] = !detTreeChecked[rel]; });
+    renderDetTree();
+  }
+
+  function detBranch(rel, v) {
+    detBranchApply(detRows, detTreeChecked, rel, v);
+    renderDetTree();
+  }
+
+  function detAddToExcludes(rel) {
+    if (!api || !rel) return;
+    const base = rel.split("/").pop();
+    const cur = $("excludeDirs").value.split(",").map(function (s) { return s.trim(); })
+      .filter(function (s) { return s; });
+    if (cur.indexOf(base) === -1) cur.push(base);
+    $("excludeDirs").value = cur.join(", ");
+    api.set_exclusions($("excludeDirs").value.trim(), $("excludeMasks").value.trim())
+      .then(function () { doScan(); });
+  }
+
+  function detHideCtx() {
+    const m = $("detCtx");
+    if (m) m.classList.add("hidden");
+  }
+
+  function detShowCtx(x, y, rel) {
+    let m = $("detCtx");
+    if (!m) return;
+    m.innerHTML = "";
+    const items = [
+      ["proc.det_select_all", function () { detSetAll(true); }],
+      ["proc.det_deselect_all", function () { detSetAll(false); }],
+      ["proc.det_invert", detInvert],
+      ["proc.det_branch_select", function () { detBranch(rel, true); }],
+      ["proc.det_branch_deselect", function () { detBranch(rel, false); }],
+      ["proc.det_branch_invert", function () { detBranch(rel, "invert"); }],
+      ["proc.det_add_to_excludes", function () { detAddToExcludes(rel); }],
+    ];
+    items.forEach(function (it) {
+      const b = document.createElement("button");
+      b.className = "pick";
+      b.textContent = t(it[0]);
+      b.addEventListener("click", function () { detHideCtx(); it[1](); });
+      m.appendChild(b);
+    });
+    m.classList.remove("hidden");
+    m.style.left = x + "px";
+    m.style.top = y + "px";
+  }
+
+  function detMakeNode(node) {
+    const rel = node.rel || "";
+    const li = document.createElement("li");
+    li.setAttribute("data-det-rel", rel);
+    const isDir = node.kind === "folder";
+    const kids = node.children || [];
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!detTreeChecked[rel];
+    cb.setAttribute("data-det-check", rel);
+    cb.addEventListener("change", function () {
+      detTreeChecked[rel] = cb.checked;
+      detUpdateSummary();
+    });
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "det-name";
+    const short = rel === "" ? "·" : rel.split("/").pop();
+    nameSpan.textContent = (isDir ? "📁 " : "📄 ") + short;
+    if (node.file_type && node.file_type !== "folder") {
+      const tag = document.createElement("span");
+      tag.className = "service-tag";
+      tag.textContent = node.file_type;
+      nameSpan.appendChild(document.createTextNode(" "));
+      nameSpan.appendChild(tag);
+    }
+    if (kids.length && isDir) {
+      const det = document.createElement("details");
+      det.open = true;
+      const sum = document.createElement("summary");
+      sum.appendChild(cb);
+      sum.appendChild(nameSpan);
+      det.appendChild(sum);
+      const ul = document.createElement("ul");
+      kids.forEach(function (k) { ul.appendChild(detMakeNode(k)); });
+      det.appendChild(ul);
+      li.appendChild(det);
+    } else {
+      const lbl = document.createElement("label");
+      lbl.className = "det-leaf";
+      lbl.appendChild(cb);
+      lbl.appendChild(nameSpan);
+      li.appendChild(lbl);
+    }
+    li.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      // Nested <li> nodes bubble to their parents: stop here, otherwise the
+      // root branch ("") wins and branch ops hit the whole tree.
+      e.stopPropagation();
+      detShowCtx(e.clientX, e.clientY, rel);
+    });
+    return li;
+  }
+
+  function renderDetTree(r) {
+    const box = $("detectedTree");
+    if (!box) return;
+    if (r) detMergeScan(r);
+    box.innerHTML = "";
+    if (!detTreeData) {
+      const p = document.createElement("p");
+      p.className = "dim";
+      p.textContent = t("proc.det_empty");
+      box.appendChild(p);
+      detUpdateSummary();
+      return;
+    }
+    const ul = document.createElement("ul");
+    ul.className = "det-root";
+    ul.appendChild(detMakeNode(detTreeData));
+    box.appendChild(ul);
+    const ctx = document.createElement("div");
+    ctx.id = "detCtx";
+    ctx.className = "hidden";
+    ctx.style.position = "fixed";
+    ctx.style.zIndex = "50";
+    box.appendChild(ctx);
+    // Re-rendered on every scan/selection op — never stack the handler.
+    document.removeEventListener("click", detHideCtx);
+    document.addEventListener("click", detHideCtx);
+    detUpdateSummary();
+  }
+
+  function detSelectionFresh(path) {
+    return detRows.length > 0 && detScannedRoot !== "" &&
+      detScannedRoot === normObsPath(path);
+  }
+
+  function getTreeSelection() {
+    // Checked rels of sel_tree for the Overview builder. The scan root
+    // ("") is reported explicitly so the backend can treat it as the
+    // whole index; an empty tree means no scan ran yet.
+    const sel = detRows.filter(function (rel) { return detTreeChecked[rel]; });
+    return { selection: sel, selection_provided: detRows.length > 0 };
   }
 
   function pushAi() {
@@ -921,6 +1178,7 @@
 
   let obsRows = [];       // merged folders + excluded_dirs, deduped by rel
   let obsChecked = {};    // rel -> bool (survives rescans)
+  let obsCollapsed = {};  // rel -> bool, hidden subtree (visibility only, never selection)
   let obsRules = null;
   let obsScannedRoot = ""; // r.root of the last successful scan (stale guard)
 
@@ -971,9 +1229,12 @@
     rows.forEach(function (row) {
       if (obsChecked[row.rel] === undefined) obsChecked[row.rel] = row.checkedDefault;
     });
-    // drop checks of vanished rels
+    // drop checks and collapse flags of vanished rels
     Object.keys(obsChecked).forEach(function (k) {
       if (!byRel[k]) delete obsChecked[k];
+    });
+    Object.keys(obsCollapsed).forEach(function (k) {
+      if (!byRel[k]) delete obsCollapsed[k];
     });
     obsRows = rows;
     obsRules = r.rules || null;
@@ -1008,6 +1269,46 @@
     renderObsTable();
   }
 
+  let obsKidRels = {};  // rel -> true when it has row descendants (rebuilt per render)
+
+  function obsRebuildKids() {
+    const kids = {};
+    obsRows.forEach(function (row) {
+      if (!row.rel) return;
+      kids[""] = true;
+      let cur = row.rel;
+      for (;;) {
+        const i = cur.lastIndexOf("/");
+        if (i < 0) break;
+        cur = cur.slice(0, i);
+        kids[cur] = true;
+      }
+    });
+    obsKidRels = kids;
+  }
+
+  function obsIsHidden(rel) {
+    if (!rel) return false;
+    let cur = rel;
+    for (;;) {
+      const i = cur.lastIndexOf("/");
+      cur = i < 0 ? "" : cur.slice(0, i);
+      if (obsCollapsed[cur]) return true;
+      if (!cur) return false;
+    }
+  }
+
+  function obsCollapseAll(v) {
+    if (!v) {
+      obsCollapsed = {};
+    } else {
+      obsRows.forEach(function (row) {
+        if (obsKidRels[row.rel]) obsCollapsed[row.rel] = true;
+      });
+    }
+    renderObsTable();
+  }
+
   function obsBranch(rel, v) {
     const prefix = rel ? rel + "/" : "";
     obsRows.forEach(function (row) {
@@ -1024,9 +1325,37 @@
     const dirs = ((obsRules && obsRules.user_dirs) || []).slice();
     if (dirs.indexOf(base) === -1) dirs.push(base);
     const masks = ((obsRules && obsRules.masks) || []).slice();
+    $("excludeDirs").value = dirs.join(", ");
+    $("excludeMasks").value = masks.join(", ");
     api.set_exclusions(dirs.join(", "), masks.join(", ")).then(function () {
       runObsScan();
     });
+  }
+
+  function obsRemoveByName(base) {
+    if (!api || !base) return;
+    const dirs = ((obsRules && obsRules.user_dirs) || []).filter(function (d) { return d !== base; });
+    const masks = ((obsRules && obsRules.masks) || []).slice();
+    // Sync the Source tab fields: doScan reads them and would bring back stale values.
+    $("excludeDirs").value = dirs.join(", ");
+    $("excludeMasks").value = masks.join(", ");
+    api.set_exclusions(dirs.join(", "), masks.join(", ")).then(function () {
+      runObsScan();
+    });
+  }
+
+  function obsRemoveFromExcludes(rel) {
+    if (!api || !rel) return;
+    obsRemoveByName(rel.split("/").pop());
+  }
+
+  function obsKindOf(rel) {
+    for (var i = 0; i < obsRows.length; i++) {
+      if (obsRows[i].rel === rel) {
+        return obsRows[i].excluded ? (obsRows[i].kind || "hidden-only") : null;
+      }
+    }
+    return null;
   }
 
   function obsHideCtx() {
@@ -1047,10 +1376,18 @@
       ["obs.branch_invert", function () { obsBranch(rel, "invert"); }],
       ["obs.add_to_excludes", function () { obsAddToExcludes(rel); }],
     ];
+    // Removal is offered only for user rules: system names can never be
+    // removed (union), hidden-only rows carry no rule at all.
+    if (rel && obsKindOf(rel) === "user") {
+      items.push([
+        { key: "obs.remove_from_excludes", name: rel.split("/").pop() },
+        function () { obsRemoveFromExcludes(rel); },
+      ]);
+    }
     items.forEach(function (it) {
       const b = document.createElement("button");
       b.className = "pick";
-      b.textContent = t(it[0]);
+      b.textContent = (typeof it[0] === "string") ? t(it[0]) : t(it[0].key, it[0]);
       b.addEventListener("click", function () { obsHideCtx(); it[1](); });
       m.appendChild(b);
     });
@@ -1068,16 +1405,35 @@
   function renderObsTable() {
     const box = $("obsResult");
     const c = obsCounts();
+    obsRebuildKids();
     let html = "<div class='row' style='margin-bottom:6px'>" +
       "<span>" + escHtml(t("obs.counters", { found: c.found, selected: c.selected, excluded: c.excluded })) + "</span>" +
       "</div><div class='row' style='margin-bottom:6px'>" +
       "<button class='pick' id='obsSelAll'>" + escHtml(t("obs.select_all")) + "</button>" +
       "<button class='pick' id='obsSelNone'>" + escHtml(t("obs.deselect_all")) + "</button>" +
       "<button class='pick' id='obsSelInv'>" + escHtml(t("obs.invert")) + "</button>" +
+      "<button class='pick' id='obsFoldAll'>" + escHtml(t("obs.fold_all")) + "</button>" +
+      "<button class='pick' id='obsUnfoldAll'>" + escHtml(t("obs.unfold_all")) + "</button>" +
       "</div>";
     if (obsRules) {
-      html += "<p class='dim'>" + escHtml(t("obs.rules", {
-        dirs: (obsRules.user_dirs || []).join(", ") || "–",
+      const userDirs = obsRules.user_dirs || [];
+      const sysDirs = obsRules.system || [];
+      let chips = "<div class='row obs-rules-row'><span class='dim'>" +
+        escHtml(t("obs.rules_dirs")) + "</span>";
+      if (userDirs.length === 0) {
+        chips += "<span class='dim'>–</span>";
+      }
+      userDirs.forEach(function (d) {
+        chips += "<button class='pick obs-chip' data-obs-unexclude='" + escHtml(d) +
+          "' title='" + escHtml(t("obs.unexclude_title")) + "'>" +
+          escHtml(d) + " ×</button>";
+      });
+      if (sysDirs.length) {
+        chips += "<span class='dim'>" + escHtml(t("obs.rules_system") + ": " + sysDirs.join(", ")) + "</span>";
+      }
+      chips += "</div>";
+      html += chips;
+      html += "<p class='dim'>" + escHtml(t("obs.rules_masks", {
         masks: (obsRules.masks || []).join(", ") || "–",
       })) + "</p>";
     }
@@ -1111,10 +1467,18 @@
       const files = row.inTree ? f.files : "—";
       const subs = row.inTree ? f.subfolders : "—";
       const checked = obsChecked[row.rel] ? " checked" : "";
-      return "<tr data-rel='" + escHtml(row.rel) + "'><td><input type='checkbox' data-obs-check='" +
+      const kids = !!obsKidRels[row.rel];
+      const collapsed = !!obsCollapsed[row.rel];
+      const icon = kids ? (collapsed ? "📁 " : "📂 ") : "📁 ";
+      const toggle = kids ?
+        "<button class='obs-toggle' data-obs-toggle='" + escHtml(row.rel) + "'>" +
+        (collapsed ? "▸" : "▾") + "</button>" : "";
+      const hidden = obsIsHidden(row.rel) ? " style='display:none'" : "";
+      return "<tr data-rel='" + escHtml(row.rel) + "'" + hidden + ">" +
+        "<td>" + toggle + "</td><td><input type='checkbox' data-obs-check='" +
         escHtml(row.rel) + "'" + checked + "></td>" +
         "<td class='mono'><span style='display:inline-block;width:" + pad + "px'></span>" +
-        escHtml(row.rel || "·") + obsBadge(row.excluded ? row.kind : null) + "</td>" +
+        icon + escHtml(row.rel || "·") + obsBadge(row.excluded ? row.kind : null) + "</td>" +
         "<td>" + files + "</td>" +
         "<td>" + (cc.drafting || 0) + "</td>" +
         "<td>" + (cc.tables || 0) + "</td>" +
@@ -1124,31 +1488,51 @@
         "<td>" + subs + "</td>" +
         "<td class='" + st[1] + "'>" + statusHtml + extra + "</td></tr>" + changesHtml;
     }).join("");
-    html += "<table class='obs-table'><thead><tr><th></th>" +
+    html += "<table class='obs-table'><thead><tr><th></th><th></th>" +
       "<th>" + t("obs.th_folder") + "</th><th>" + t("obs.th_files") + "</th><th>📐</th><th>📊</th><th>📄</th><th>🖼️</th><th>📦</th><th>" + t("obs.th_subfolders") + "</th><th>" + t("obs.th_card") + "</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
     box.innerHTML = html + "<div id='obsCtx' class='hidden' style='position:fixed;z-index:50'></div>";
-    box.querySelectorAll("[data-obs-check]").forEach(function (cb) {
-      cb.addEventListener("change", function () {
-        obsChecked[cb.getAttribute("data-obs-check")] = cb.checked;
+    // Delegated handlers (one per box, reassigned on every render — no
+    // per-row listener buildup on large trees). Behaviour matches the
+    // previous per-row bindings bit-for-bit.
+    box.onchange = function (e) {
+      const cb = e.target && e.target.closest ? e.target.closest("[data-obs-check]") : null;
+      if (!cb || !box.contains(cb)) return;
+      obsChecked[cb.getAttribute("data-obs-check")] = cb.checked;
+      renderObsTable();
+    };
+    box.onclick = function (e) {
+      const un = e.target && e.target.closest ? e.target.closest("[data-obs-unexclude]") : null;
+      if (un && box.contains(un)) {
+        obsRemoveByName(un.getAttribute("data-obs-unexclude"));
+        return;
+      }
+      const tg = e.target && e.target.closest ? e.target.closest("[data-obs-toggle]") : null;
+      if (tg && box.contains(tg)) {
+        const trel = tg.getAttribute("data-obs-toggle");
+        obsCollapsed[trel] = !obsCollapsed[trel];
         renderObsTable();
-      });
-    });
-    box.querySelectorAll("tr[data-rel]").forEach(function (tr) {
-      tr.addEventListener("click", function (e) {
-        if (e.target && e.target.tagName === "INPUT") return;
-        box.querySelectorAll("tr[data-rel]").forEach(function (o) { o.classList.remove("sel"); });
-        tr.classList.add("sel");
-      });
-      tr.addEventListener("contextmenu", function (e) {
-        e.preventDefault();
-        obsShowCtx(e.clientX, e.clientY, tr.getAttribute("data-rel"));
-      });
-    });
+        return;
+      }
+      if (e.target && e.target.tagName === "INPUT") return;
+      const tr = e.target && e.target.closest ? e.target.closest("tr[data-rel]") : null;
+      if (!tr || !box.contains(tr)) return;
+      box.querySelectorAll("tr[data-rel]").forEach(function (o) { o.classList.remove("sel"); });
+      tr.classList.add("sel");
+    };
+    box.oncontextmenu = function (e) {
+      const tr = e.target && e.target.closest ? e.target.closest("tr[data-rel]") : null;
+      if (!tr || !box.contains(tr)) return;
+      e.preventDefault();
+      obsShowCtx(e.clientX, e.clientY, tr.getAttribute("data-rel"));
+    };
     const bind = function (id, fn) { const b = $(id); if (b) b.addEventListener("click", fn); };
     bind("obsSelAll", function () { obsSetAll(true); });
     bind("obsSelNone", function () { obsSetAll(false); });
     bind("obsSelInv", obsInvert);
+    bind("obsFoldAll", function () { obsCollapseAll(true); });
+    bind("obsUnfoldAll", function () { obsCollapseAll(false); });
+    document.removeEventListener("click", obsHideCtx);
     document.addEventListener("click", obsHideCtx);
     const cc2 = obsCounts();
     const runBtn = $("btnObsRun");
@@ -1160,20 +1544,21 @@
   }
 
   function renderObsScan(r) {
+    obsBusyStop();
     const box = $("obsResult");
     $("obsResultSection").classList.remove("hidden");
     $("obsSplitter").classList.remove("hidden");
     applyObsResultHeight();
     if (!r || r.ok === false) {
       box.innerHTML = "";
-      obsRows = []; obsChecked = {}; obsRules = null; obsScannedRoot = "";
+      obsRows = []; obsChecked = {}; obsCollapsed = {}; obsRules = null; obsScannedRoot = "";
       setStatus(((r && r.error) || t("status.scan_error")), "err");
       return;
     }
     if (!r.folders || (r.folders.length === 0 && !(r.excluded_dirs || []).length)) {
       box.innerHTML = '<p class="dim"></p>';
       box.firstChild.textContent = t("obs.no_files");
-      obsRows = []; obsChecked = {}; obsRules = null; obsScannedRoot = "";
+      obsRows = []; obsChecked = {}; obsCollapsed = {}; obsRules = null; obsScannedRoot = "";
       setStatus(t("status.obs_empty", { root: r.root }), "warn");
       return;
     }
@@ -1183,11 +1568,46 @@
     setStatus("Obsidianize: " + t("obs.counters", { found: cc.found, selected: cc.selected, excluded: cc.excluded }) + " · " + r.root, "ok");
   }
 
+  // Busy indicator for the tab-1 scan: status animation + locked buttons
+  // while obs_scan/render run. Stopped on every outcome (renderObsScan
+  // stops it first thing; the catch below covers rejects/throws).
+  let obsBusyTimer = null;
+
+  function obsBusyStart(path) {
+    obsBusyStop();
+    const base = t("status.obs_scanning");
+    setStatus(base, null);
+    renderLog(base + " " + path);
+    let dots = 0;
+    obsBusyTimer = setInterval(function () {
+      dots = (dots + 1) % 4;
+      setStatus(base + ".".repeat(dots), null);
+    }, 400);
+    $("btnObsScan").disabled = true;
+    const rb = $("btnObsRun");
+    if (rb) rb.disabled = true;
+  }
+
+  function obsBusyStop() {
+    if (obsBusyTimer) { clearInterval(obsBusyTimer); obsBusyTimer = null; }
+    $("btnObsScan").disabled = false;
+    // btnObsRun state is re-applied by renderObsTable on success; on
+    // failure paths below the table never runs, so unlock explicitly.
+    const rb = $("btnObsRun");
+    if (rb) rb.disabled = false;
+  }
+
   function runObsScan() {
     if (!api) return;
     const path = $("obsDir").value.trim();
     if (!path) { setStatus(t("status.pick_scan_folder"), "err"); return; }
-    api.obs_scan(path).then(renderObsScan);
+    obsBusyStart(path);
+    api.obs_scan(path).then(renderObsScan).catch(function (err) {
+      obsBusyStop();
+      const msg = t("status.scan_error") + ((err && err.message) || String(err || "") || "—");
+      setStatus(msg, "err");
+      renderLog(msg, "err");
+    });
   }
 
   let integrationRepairPending = false;
@@ -1230,48 +1650,80 @@
   }
 
   function applyObsResultHeight() {
-    const box = $("obsResult");
-    if (!box) return;
-    const saved = localStorage.getItem("obsResultH");
-    if (saved) box.style.maxHeight = saved;
+    applySplitterHeight("obsResult", "obsResultH");
   }
 
-  function initObsSplitter() {
-    const sp = $("obsSplitter");
+  // Generic vertical splitter: drag resizes boxId (maxHeight), the size
+  // persists in localStorage under storageKey. opts: {splitterId, boxId,
+  // sectionId, storageKey, minH}. Behaviour mirrors the original tab-1
+  // splitter bit-for-bit.
+  function initSplitter(opts) {
+    const sp = $(opts.splitterId);
     if (!sp) return;
+    const boxId = opts.boxId;
+    const sectionId = opts.sectionId;
+    const storageKey = opts.storageKey;
+    const minH = opts.minH || 120;
     sp.addEventListener("pointerdown", function (e) {
-      const box = $("obsResult");
-      if (!box || $("obsResultSection").classList.contains("hidden")) return;
+      const box = $(boxId);
+      const section = sectionId ? $(sectionId) : null;
+      if (!box || (section && section.classList.contains("hidden"))) return;
       e.preventDefault();
       sp.setPointerCapture(e.pointerId);
       sp.classList.add("dragging");
       document.body.classList.add("dragging-splitter");
-      sp._startY = e.clientY;
-      sp._startH = box.getBoundingClientRect().height;
     });
     sp.addEventListener("pointermove", function (e) {
       if (!sp.classList.contains("dragging")) return;
-      const box = $("obsResult");
+      const box = $(boxId);
       if (!box) return;
-      // absolute cursor position relative to the table top — immune to
+      // absolute cursor position relative to the box top — immune to
       // container scrolling / scroll anchoring while dragging
       const top = box.getBoundingClientRect().top;
       const max = Math.max(window.innerHeight * 0.8, 240);
-      const h = Math.min(Math.max(e.clientY - top, 120), max);
+      const h = Math.min(Math.max(e.clientY - top, minH), max);
       box.style.maxHeight = h + "px";
     });
     function endDrag() {
       if (!sp.classList.contains("dragging")) return;
       sp.classList.remove("dragging");
       document.body.classList.remove("dragging-splitter");
-      const box = $("obsResult");
+      const box = $(boxId);
       if (box) {
         const h = box.getBoundingClientRect().height;
-        if (h > 0) localStorage.setItem("obsResultH", Math.round(h) + "px");
+        if (h > 0) localStorage.setItem(storageKey, Math.round(h) + "px");
       }
     }
     sp.addEventListener("pointerup", endDrag);
     sp.addEventListener("pointercancel", endDrag);
+  }
+
+  function applySplitterHeight(boxId, storageKey) {
+    const box = $(boxId);
+    if (!box) return;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) box.style.maxHeight = saved;
+  }
+
+  function initObsSplitter() {
+    initSplitter({
+      splitterId: "obsSplitter",
+      boxId: "obsResult",
+      sectionId: "obsResultSection",
+      storageKey: "obsResultH",
+    });
+    initSplitter({
+      splitterId: "detFilesSplitter",
+      boxId: "scanFileList",
+      sectionId: "sub-detected",
+      storageKey: "detFilesH",
+    });
+    initSplitter({
+      splitterId: "detTreeSplitter",
+      boxId: "detectedTree",
+      sectionId: "sub-detected",
+      storageKey: "detTreeH",
+    });
   }
 
 
@@ -1450,6 +1902,59 @@
       cb.checked = checked;
     });
     updateReviewCount();
+  }
+
+  // ── Structural overview (TICKET-014, no LLM) ─────────────────────────────
+
+  function runOverviewBuild() {
+    if (!api) return;
+    const box = $("overviewResult");
+    const srcPath = $("source").value.trim();
+    // Frontend stale-guard: the sel_tree choice belongs to the last scanned
+    // root only (the backend re-checks with stale_scan regardless).
+    if (!detSelectionFresh(srcPath)) {
+      const stale = t("proc.overview_stale");
+      setStatus(stale, "err");
+      renderLog(stale, "err");
+      return;
+    }
+    const sel = getTreeSelection();
+    if (!sel.selection_provided) {
+      setStatus(t("proc.overview_need_scan"), "err");
+      return;
+    }
+    // An explicitly emptied tree falls back to the whole index (with a note);
+    // the backend contract stays strict (empty + provided => empty_selection).
+    const payload = (sel.selection.length === 0)
+      ? { selection: [], selection_provided: false }
+      : sel;
+    if (sel.selection.length === 0) renderLog(t("proc.overview_no_selection"));
+    setStatus(t("status.overview_started"), null);
+    api.overview_build(payload).then(function (r) {
+      if (!r || r.ok === false) {
+        const err = (r && r.error) || "";
+        const key = err === "no_scan" ? "proc.overview_need_scan"
+          : err === "stale_scan" ? "proc.overview_stale" : null;
+        const msg = key ? t(key) : t("proc.overview_failed", { error: err });
+        setStatus(msg, "err");
+        renderLog(msg, "err");
+        return;
+      }
+      const done = t("proc.overview_done", { file: r.file });
+      setStatus(done, "ok");
+      renderLog("✓ " + done, "ok");
+      if (box) {
+        box.innerHTML = "";
+        const line = document.createElement("div");
+        line.className = "log-line ok";
+        line.textContent = "✓ " + r.file + " · " + t("proc.det_selected", { n: (r.rels || []).length });
+        box.appendChild(line);
+      }
+    }).catch(function (err) {
+      const msg = t("proc.overview_failed", { error: (err && err.message) || String(err || "") });
+      setStatus(msg, "err");
+      renderLog(msg, "err");
+    });
   }
 
   // ── AI assistant chat window (dedicated pywebview window) ─────────────────
@@ -1691,6 +2196,11 @@
     $("selectAllChats").addEventListener("click", selectAllChats);
     $("deselectAll").addEventListener("click", deselectAll);
     $("scanFileList").addEventListener("change", updateScanSummary);
+    // TICKET-014: sel_tree controls (independent from the import selection).
+    $("detSelectAll").addEventListener("click", function () { detSetAll(true); });
+    $("detDeselectAll").addEventListener("click", function () { detSetAll(false); });
+    $("detInvert").addEventListener("click", detInvert);
+    $("btnOverviewBuild").addEventListener("click", runOverviewBuild);
     $("btnRefreshModels").addEventListener("click", refreshModels);
     $("btnModelDropdown").addEventListener("click", toggleModelDropdown);
     document.addEventListener("click", function (e) {

@@ -197,25 +197,29 @@
               "(каталоги/маски). Исключённые объекты не обнаруживаются и не " +
               "обрабатываются; в источнике ничего не удаляется и не перемещается.</li>" +
               "<li><b>2. Обнаружено</b> — что найдено: счётчики по типам (чаты, " +
-              "документы, изображения, CAD, таблицы, папки) по всему источнику и " +
-              "список объектов, доступных для текущей обработки (выбор галочками).</li>" +
-              "<li><b>3. Enrichment</b> — единый поток обогащения: <b>ОБРАБОТАТЬ</b> " +
+              "документы, изображения, CAD, таблицы, папки) по всему источнику, " +
+              "плоский список файлов для импорта (выбор галочками) и дерево " +
+              "каталогов для Общего обзора (свой независимый выбор, раскрытие " +
+              "веток, контекстное меню: выбрать/снять/инвертировать, исключения).</li>" +
+              "<li><b>3. Общий обзор</b> — структурная карточка выбранного дерева " +
+              "(без LLM): структура, описания каталогов, таблицы файлов. Ниже — " +
+              "LLM-обзоры папок моделью AI Enrichment → " +
+              "<b>&lt;папка&gt;_обзор.md</b> рядом с карточкой. Источники не " +
+              "изменяются.</li>" +
+              "<li><b>4. Enrichment</b> — единый поток обогащения: <b>ОБРАБОТАТЬ</b> " +
               "(импорт, при желании AI) и <b>AI-постобработка</b> (повторный AI-прогон). " +
               "Здесь же выходы: <b>Результат</b> (processed) и <b>AI-результат</b> " +
               "(enriched) — их создаёт Obsidianizer. Связи и AI-анализ — задел на " +
               "будущее (пока недоступны).</li>" +
-              "<li><b>4. AI-настройки</b> — модель и промпты <b>AI Enrichment</b> " +
+              "<li><b>5. AI-настройки</b> — модель и промпты <b>AI Enrichment</b> " +
               "(импорт, постобработка, темы, обзоры папок). Модель <b>AI Chat</b> " +
               "настраивается в окне чата.</li>" +
-              "<li><b>5. Обзоры папок</b> — анализ папок моделью AI Enrichment → " +
-              "<b>&lt;папка&gt;_обзор.md</b> рядом с карточкой. Источники не " +
-              "изменяются.</li>" +
               "<li><b>6. Инструменты</b> — <b>Темы</b> (объединить/список/" +
               "авто-группировка), <b>AI Chat</b>, <b>Навигация</b> (открыть " +
               "результат / AI-результат).</li>" +
               "</ul>" +
               "<p>Основной сценарий: Источник → <b>Сканировать</b> → Обнаружено " +
-              "(выбор) → Enrichment → <b>ОБРАБОТАТЬ</b> → результат.</p>",
+              "(дерево, выбор) → Общий обзор → Enrichment → <b>ОБРАБОТАТЬ</b> → результат.</p>",
           },
           en: {
             title: "🧩 Processing — the workspace",
@@ -227,25 +231,28 @@
               "<b>exclusions</b> (directories/masks). Excluded objects are not " +
               "discovered or processed; nothing in the source is deleted or moved.</li>" +
               "<li><b>2. Detected</b> — what was found: counters by type (chats, " +
-              "documents, images, CAD, tables, folders) over the whole source, plus " +
-              "the list of objects available for the current operation (checkbox " +
-              "selection).</li>" +
-              "<li><b>3. Enrichment</b> — one enrichment flow: <b>PROCESS</b> " +
+              "documents, images, CAD, tables, folders) over the whole source, " +
+              "a flat file list for import (checkbox selection) and a folder " +
+              "tree for the Overview (independent selection, expandable " +
+              "branches, context menu: select/deselect/invert, exclusions).</li>" +
+              "<li><b>3. Overview</b> — a structural card of the selected tree " +
+              "(no LLM): structure, folder descriptions, file tables. Below — " +
+              "LLM folder reviews by the AI Enrichment model → " +
+              "<b>&lt;folder&gt;_обзор.md</b> next to the card. Sources are " +
+              "not modified.</li>" +
+              "<li><b>4. Enrichment</b> — one enrichment flow: <b>PROCESS</b> " +
               "(import, optionally AI) and <b>AI post-processing</b> (re-run AI). " +
               "Outputs live here too: <b>Result</b> (processed) and <b>AI result</b> " +
               "(enriched) — created by Obsidianizer. Relations and AI analysis are " +
               "future work (not available yet).</li>" +
-              "<li><b>4. AI settings</b> — model and prompts for <b>AI Enrichment</b> " +
+              "<li><b>5. AI settings</b> — model and prompts for <b>AI Enrichment</b> " +
               "(import, post-processing, topics, folder review). The <b>AI Chat</b> " +
               "model is configured in the chat window.</li>" +
-              "<li><b>5. Folder review</b> — analyze folders with the AI Enrichment " +
-              "model → <b>&lt;folder&gt;_обзор.md</b> next to the card. Sources are " +
-              "not modified.</li>" +
               "<li><b>6. Tools</b> — <b>Topics</b> (build/list/auto-group), " +
               "<b>AI Chat</b>, <b>Navigation</b> (open result / AI result).</li>" +
               "</ul>" +
-              "<p>Main scenario: Source → <b>Scan</b> → Detected (select) → " +
-              "Enrichment → <b>PROCESS</b> → result.</p>",
+              "<p>Main scenario: Source → <b>Scan</b> → Detected (tree, select) → " +
+              "Overview → Enrichment → <b>PROCESS</b> → result.</p>",
           },
         },
       };

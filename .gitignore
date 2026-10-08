@@ -36,6 +36,8 @@ _context/
 .obsidianizer-manifest.json
 build_new/
 dist_new/
+build-onefile/
+dist-onefile/
 release/
 *.zip
 

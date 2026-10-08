@@ -1,4 +1,4 @@
-# Архитектура — Obsidianizer v0.7.2
+# Архитектура — Obsidianizer v0.7.3
 
 ## Обзор
 

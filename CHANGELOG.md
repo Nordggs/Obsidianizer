@@ -1,5 +1,43 @@
 # Obsidianizer
 
+## [0.7.3] - 2026-10-08
+
+### Added
+- **Processing detection tree and structural overview (TICKET-014)** - the
+  Processing tab is now a controlled flow: Source -> Detected -> Overview ->
+  Enrichment -> AI -> Tools. A new independent detection tree
+  (`#detectedTree`, select all / deselect / invert, context menu with branch
+  operations, root-as-whole) lives beside the frozen file selection, and the
+  backend exposes `scan_tree()` (a read-only SourceIndex projection) plus
+  `overview_build({selection, selection_provided})` with explicit
+  `no_scan`/`stale_scan`/`empty_selection`/`bad_output` guards. New
+  `overview.py` builds a pure, deterministic, LLM-free structural overview
+  (known directory patterns, content-based fallback for unknown folders,
+  file tables, `[[wiki]]` links for files, plain code spans for folders)
+  written atomically to `enriched/overview/`. "Folder overview" is renamed
+  to "Overall overview".
+
+### Changed
+- **Resizable detection areas and exclusions on tab 1** - a generic splitter
+  plus two persistent splitters (files/tree) in Detected; tab 1 can remove
+  user exclusions via the context menu (system rules shown greyed) and its
+  Source fields are synced both ways.
+
+### Fixed
+- **Tab-1 scan on large trees** - a busy indicator (`obsBusyStart`/`obsBusyStop`,
+  status animation, locked buttons, stopped on every outcome) and delegated
+  checkbox handlers replace per-row listeners; content hashes are computed
+  lazily, so missing cards skip file reads.
+- **Detection tree context menu** - `stopPropagation` makes branch operations
+  hit the clicked branch instead of the root; the tab-1 table gained
+  per-branch collapse (survives rerenders), folder icons and
+  collapse-all/expand-all.
+
+### Tests
+- 641 tests green, including the new `tests/test_ticket014_overview.py`
+  (builder + guard matrix) and the executable JS smoke
+  `tests/test_ticket014_js.py`.
+
 ## [0.7.2] - 2026-10-05
 
 ### Added

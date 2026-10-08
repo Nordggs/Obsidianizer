@@ -650,7 +650,10 @@ class UIApp:
 
                 # Content hashes once per folder: reused by the status check
                 # and the diff so every file is read at most one time.
-                content_hashes = _compute_content_hashes(folder)
+                # Lazy: folders without a card are always "missing" (which
+                # needs no hashes), so their files are never read here.
+                has_card = card_p.is_file()
+                content_hashes = _compute_content_hashes(folder) if has_card else {}
                 status = card_status(
                     card_p,
                     folder,
@@ -1332,6 +1335,10 @@ class UIApp:
                 # additive alias of ``aggregate.total``.
                 "aggregate": agg,
                 "detected_total": agg["total"],
+                # TICKET-014 (additive): nested detection tree projected
+                # from the same SourceIndex (no second walk); the frontend
+                # renders ``#detectedTree`` (sel_tree) from it.
+                "tree": self._source_tree_payload(),
             }
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
@@ -1364,6 +1371,169 @@ class UIApp:
             if key:
                 agg[key] += 1
         return agg
+
+    def _source_tree_payload(self) -> dict | None:
+        """Nested detection-tree projection over ``_last_source_index``.
+
+        TICKET-014: pure projection of the existing index
+        (``parent_source_id`` links via ``children_of``) — no second
+        filesystem walk. ``children_of`` already sorts by ``casefold``,
+        so the payload is deterministic. Returns ``None`` when there is
+        no fresh scan.
+        """
+
+        from .source_index import make_source_id
+
+        index = self._last_source_index
+        if index is None:
+            return None
+        root = index.items.get(make_source_id(index.namespace, ""))
+        if root is None:
+            return None
+
+        def _node(item) -> dict:
+            return {
+                "rel": item.rel_posix,
+                "kind": item.kind.value,
+                "file_type": item.file_type,
+                "children": [_node(k) for k in index.children_of(item.source_id)],
+            }
+
+        return {"root": index.root, "tree": _node(root)}
+
+    def scan_tree(self) -> dict:
+        """Return the nested detection tree of the last scan (TICKET-014).
+
+        Shape: ``{ok, root, tree: {rel, kind, file_type, children[]}}``.
+        ``rel == ""`` is the scan root. Excluded objects are already absent
+        (pruned at index level). ``no_scan`` when called before ``scan()``.
+        """
+        try:
+            payload = self._source_tree_payload()
+            if payload is None:
+                return {"ok": False, "error": "no_scan"}
+            return {"ok": True, **payload}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
+
+    def _source_index_fresh(self) -> bool:
+        """Stale-guard: the last SourceIndex belongs to the current source.
+
+        TICKET-014: mirrors the tab-1 ``obsScannedRoot`` idea on the backend —
+        a changed ``settings.source`` (or a rotated namespace) without a
+        rescan must not silently apply foreign rels.
+        """
+
+        index = self._last_source_index
+        if index is None:
+            return False
+        try:
+            from .config import ensure_source_namespace
+
+            namespace, _ = ensure_source_namespace(self.settings, persist=False)
+        except Exception:  # noqa: BLE001
+            return False
+        try:
+            current_root = str(self.settings.source.resolve())
+        except Exception:  # noqa: BLE001
+            return False
+        return index.root == current_root and index.namespace == namespace
+
+    def overview_build(self, opts: dict | None = None) -> dict:
+        """Build the structural overview card from the ``sel_tree`` choice.
+
+        TICKET-014 contract: ``overview_build({selection, selection_provided})``.
+        ``selection`` holds tree rels (``""`` = the scan root = whole index);
+        ``selection_provided == False`` also means the whole index. Each
+        selected folder matches itself plus its ``rel + "/"`` subtree.
+        The card is written atomically into ``<enriched>/overview/`` — never
+        into the source (guard-checked). No LLM is involved.
+        ``rels`` echoes the exact filtered choice; ``folders`` counts the
+        folder skeleton the card shows (choice + parent chains up to the
+        root, see ``overview.structural_closure``), ``files`` counts the
+        chosen files.
+        Errors: ``no_scan`` without a fresh scan, ``stale_scan`` when
+        ``settings.source`` changed after the scan, ``empty_selection``
+        when the filter keeps nothing, ``bad_output`` when the output dir
+        overlaps the source.
+        """
+        try:
+            from .source_index import Kind
+
+            if self._last_source_index is None:
+                return {"ok": False, "error": "no_scan"}
+            if not self._source_index_fresh():
+                return {"ok": False, "error": "stale_scan"}
+            index = self._last_source_index
+            opts = opts or {}
+            provided = bool(opts.get("selection_provided", False))
+            raw = opts.get("selection") or []
+
+            def _norm(rel) -> str:
+                return str(rel or "").replace("\\", "/").strip("/")
+
+            selection = [_norm(s) for s in raw if isinstance(s, str)]
+            whole = (not provided) or ("" in selection)
+
+            if whole:
+                kept = list(index.items.values())
+            else:
+                kept = [
+                    item
+                    for item in index.items.values()
+                    if any(
+                        item.rel_posix == s or item.rel_posix.startswith(s + "/")
+                        for s in selection
+                    )
+                ]
+            if not kept:
+                return {"ok": False, "error": "empty_selection"}
+            rels = sorted(
+                (item.rel_posix for item in kept), key=lambda r: (r != "", r.casefold())
+            )
+
+            from .overview import (
+                build_overview,
+                overview_output_dir,
+                render_overview_markdown,
+                structural_closure,
+                write_overview,
+            )
+
+            enriched_root = self.settings.enriched.resolve()
+            outdir = overview_output_dir(enriched_root)
+            try:
+                from .guard import check as guard_check
+
+                guard_check(self.settings.source.resolve(), outdir)
+            except Exception as exc:  # noqa: BLE001 - overlap refuses the run
+                return {"ok": False, "error": f"bad_output: {exc}"}
+            ov = build_overview(index, rels)
+            card = write_overview(
+                outdir, Path(index.root).name or "root", render_overview_markdown(ov)
+            )
+            skeleton = structural_closure(rels)
+            by_rel = {item.rel_posix: item for item in index.items.values()}
+            folders = sum(
+                1
+                for r in skeleton
+                if (item := by_rel.get(r)) is not None and item.kind == Kind.FOLDER
+            )
+            files = sum(
+                1
+                for item in kept
+                if item.kind != Kind.FOLDER
+            )
+            return {
+                "ok": True,
+                "root": index.root,
+                "file": str(card),
+                "rels": rels,
+                "folders": folders,
+                "files": files,
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
 
     def list_chats(self) -> dict:
         """List the processed chats available for topic merging.
