@@ -1,4 +1,4 @@
-# Architecture — Obsidianizer v0.7.3
+# Architecture - Obsidianizer v0.7.4
 
 ## Overview
 

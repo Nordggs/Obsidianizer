@@ -1,5 +1,26 @@
 # Obsidianizer
 
+## [0.7.4] - 2026-10-14
+
+### Fixed
+- **Critical protection of Comments (TICKET-015)** - no supported card
+  regeneration scenario silently destroys user `Comments` anymore. File
+  comment keys are unified on the card-basis canonical (`f.name`, stable
+  between full-tree and Templater `rel=""` scans); legacy scan-basis keys
+  migrate without loss; an empty table cell clears FM only on a freshly
+  rendered card (manifest notes-hash match) — a stale empty cell restores
+  instead of erasing. Unreadable/corrupt card or notes FM refuses the
+  folder update (`summary.failed`, source untouched, reason logged) before
+  any write. Release-gated by
+  `pytest tests/test_ticket015_comments_protection.py`.
+
+### Tests
+- 671 tests green, including the new `tests/test_ticket015_comments_protection.py`
+  (T015-01…T015-10, B1/B3, real victim-vault recovery incl. the fresh-manifest
+  render-miss case, strict-contract cases, F4 observation tests) alongside
+  `tests/test_ticket014_overview.py` (builder + guard matrix) and the
+  executable JS smoke `tests/test_ticket014_js.py`.
+
 ## [0.7.3] - 2026-10-08
 
 ### Added

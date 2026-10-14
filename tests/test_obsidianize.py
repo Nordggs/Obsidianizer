@@ -1835,22 +1835,54 @@ def test_sync_comments_empty_clears_fm(tmp_path):
     root = _make_equipment(tmp_path)
     scan = scan_tree(root)[""]
 
-    # Card with empty comment (user cleared it)
-    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": ""}
-    card = build_card(scan, None, ObsidianizeConfig(template="classic"), file_comments=fc)
-    card_path = root / "Оборудование.md"
-    card_path.write_text(card, encoding="utf-8")
-
     # Notes has old comment
     notes_path = notes_file_path(scan)
     old_fm = '---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: "старый"\n---\n\n# Заметки\n'
     notes_path.write_text(old_fm, encoding="utf-8")
 
+    # Card DISPLAYED that FM value (snapshot proves it), then the user
+    # cleared the cell (TICKET-015 v7: proven display + empty = clearing).
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": "старый"}
+    card = build_card(
+        scan, None, ObsidianizeConfig(template="classic"),
+        notes_prev=old_fm, file_comments=fc,
+    )
+    card = card.replace(
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  | старый |",
+        "| 📊 [[Товар_2шт_Счёт_на_оплату_№_0000001.xlsx]] | XLSX | Excel | сегодня | 1 B |  |  |",
+    )
+    card_path = root / "Оборудование.md"
+    card_path.write_text(card, encoding="utf-8")
+
     _sync_comments_to_notes(notes_path, card, scan)
 
     props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
-    # Empty cell = user deleted → FM should have ""
+    # Proven display + empty cell = user deleted → FM should have ""
     assert props["file_comments"]["Товар_2шт_Счёт_на_оплату_№_0000001.xlsx"] == ""
+
+
+def test_sync_comments_empty_render_miss_preserves_fm(tmp_path):
+    """TICKET-015 F1 v7: card snapshot proves the card showed EMPTY while FM
+    holds a value (render miss, even with a fresh notes-hash) → the empty
+    cell must NOT clear FM; the rebuild restores the display."""
+    root = _make_equipment(tmp_path)
+    scan = scan_tree(root)[""]
+
+    notes_path = notes_file_path(scan)
+    old_fm = '---\nfile_comments:\n  Товар_2шт_Счёт_на_оплату_№_0000001.xlsx: "старый"\n---\n\n# Заметки\n'
+    notes_path.write_text(old_fm, encoding="utf-8")
+
+    # Card rendered from the CURRENT FM but displaying empty (buggy render):
+    # fresh notes-hash, snapshot h("").
+    fc = {"Товар_2шт_Счёт_на_оплату_№_0000001.xlsx": ""}
+    card = build_card(
+        scan, None, ObsidianizeConfig(template="classic"),
+        notes_prev=old_fm, file_comments=fc,
+    )
+    _sync_comments_to_notes(notes_path, card, scan)
+
+    props = parse_frontmatter(notes_path.read_text(encoding="utf-8"))
+    assert props["file_comments"]["Товар_2шт_Счёт_на_оплату_№_0000001.xlsx"] == "старый"
 
 
 def test_sync_comments_no_notes_file(tmp_path):

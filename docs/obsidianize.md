@@ -81,7 +81,7 @@ columns: 4
 ![[Folder_заметки]]                          (embedded; user-owned file)
 
 <footer class="repo-meta">Updated DD.MM.YYYY HH:mm · N файлов · M папок · SIZE</footer>
-<!-- obsidianizer-manifest: {"base": …, "files": {…}, "folders": […], "notes": "…"} -->
+<!-- obsidianizer-manifest: {"base": …, "files": {…}, "folders": […], "notes": "…", "fc": {…}, "fdc": {…}} -->
 ```
 
 Section semantics:
@@ -295,6 +295,19 @@ Without the snippet the cards stay plain Markdown — nothing breaks.
 - `--rebuild` forces regeneration of our cards even when they are up to
   date (old-structure migration). Unlike `--force` it never touches foreign
   notes: they stay a conflict.
+- `Comments` are never silently destroyed: an empty table cell clears the
+  notes frontmatter only when the card manifest proves the card displayed
+  exactly that value (deliberate clear); any other empty cell is treated
+  as a render miss — FM is preserved and the divergent card is rebuilt so
+  the display heals (this also heals cards rewritten empty by the pre-fix
+  renderer, even with a fresh manifest). On a card predating the snapshot
+  fields, the first clear only rebuilds the card; repeat the clear to
+  apply it. A folder whose card or notes
+  frontmatter is unreadable/corrupt is refused (`failed`, source untouched,
+  reason logged) before any write. Note: the strict frontmatter check uses
+  PyYAML, which is stricter than Obsidian — a note Obsidian opens fine may
+  be reported `failed` until its frontmatter is strict-YAML-valid (a safe
+  refusal, never a silent rewrite).
 
 ## Technical notes
 
@@ -306,7 +319,11 @@ everything is keyed in the **card-folder basis**:
   subfolders, review presence) — identical for the same folder scanned from
   any root.
 - The manifest stores card-relative file keys plus a `base` field (the card
-  folder's rel from the update root, for diagnostics).
+  folder's rel from the update root, for diagnostics), and `fc`/`fdc`
+  snapshots — hashes of the `Comments` values the card displayed (proof
+  that an emptied cell was a deliberate clear; cards predating the
+  snapshots are treated as unproven and never cleared silently — the
+  first clear only rebuilds the card, the repeated clear applies).
 - `card_diff` aligns legacy manifests (no `base`) with a deterministic
   prefix rule: if any stored key carries the scan-root prefix, the prefix is
   stripped from every key — no heuristics.

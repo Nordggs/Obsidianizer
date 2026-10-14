@@ -544,6 +544,76 @@ def parse_frontmatter(content: str) -> dict:
         return _parse_frontmatter_legacy(block)
 
 
+def parse_frontmatter_strict(content: str) -> tuple[dict, str]:
+    """Strict frontmatter inspection for the TICKET-015 safe-refusal path.
+
+    Returns ``(props, status)`` with ``status`` in
+    ``{"absent", "valid", "corrupt"}``:
+
+    - ``absent`` — no ``---`` block as the first significant line (BOM and
+      leading blank lines skipped, CRLF tolerated): ``props`` is ``{}``.
+      A missing block is the normal case (e.g. a fresh notes file), NOT
+      a refusal reason by itself.
+    - ``valid`` — block found, closed, and ``yaml.safe_load`` succeeded
+      without the legacy fallback (empty block or ``None`` result counts
+      as ``valid`` with ``props={}``).
+    - ``corrupt`` — block opened but not closed, ``safe_load`` failed
+      (INCLUDING cases the tolerant legacy parser could partially read —
+      fallback success must never count as trust), or the result is not
+      a dict.  Callers must refuse to overwrite the file before any write.
+
+    The legacy-tolerant :func:`parse_frontmatter` is intentionally NOT used
+    here: it masks damage as ``{}``/partial data, which would license a
+    rewrite of the whole user frontmatter (A3).  Bodies starting with
+    ``---`` (horizontal rule / code fence) with no FM intent may report
+    ``corrupt`` — acceptable for cards/notes where FM, when present, is
+    always first.
+
+    Known limitation (F4): ``yaml.safe_load`` (PyYAML 1.1) is stricter
+    than Obsidian's frontmatter parser, so a note that Obsidian opens
+    fine may report ``corrupt`` here and land in ``summary.failed`` until
+    its FM is made strict-YAML-valid.  This fail-safe direction (a
+    never-updated card instead of a silently rewritten FM) is deliberate
+    for a P0 data-integrity ticket.
+    """
+
+    text = content.lstrip("\ufeff")
+    # Universal line split keeps CRLF/BOM handling explicit below.
+    lines = text.splitlines()
+    idx = 0
+    while idx < len(lines) and not lines[idx].strip():
+        idx += 1
+    if idx >= len(lines):
+        return {}, "absent"
+    first = lines[idx].strip()
+    if first != "---" and not first.startswith("--- "):
+        return {}, "absent"
+    # FM block opened at idx — find the closing delimiter.
+    end = None
+    for j in range(idx + 1, len(lines)):
+        if lines[j].strip() in ("---", "..."):
+            end = j
+            break
+    if end is None:
+        return {}, "corrupt"
+    block = "\n".join(lines[idx + 1 : end])
+    if not block.strip():
+        return {}, "valid"
+    try:
+        props = yaml.safe_load(block)
+    except yaml.YAMLError:
+        return {}, "corrupt"
+    if props is None:
+        return {}, "valid"
+    if not isinstance(props, dict):
+        return {}, "corrupt"
+    props = {
+        (k if isinstance(k, str) else ("" if k is None else str(k))): v
+        for k, v in props.items()
+    }
+    return _normalize_fm_types(props), "valid"
+
+
 def _parse_frontmatter_legacy(block: str) -> dict:
     """Tolerant line-by-line YAML parser — handles values PyYAML rejects.
 
@@ -678,13 +748,37 @@ def extract_comments(content: str) -> dict[str, str]:
     return comments
 
 
-def extract_user_comments(content: str) -> dict[str, str]:
+def extract_user_comments(
+    content: str,
+    folder_files: list | None = None,
+) -> dict[str, str]:
     """Extract user-editable Comments column (last column) from the Files table.
 
-    Key = canonical relative path (link target from wikilink = ``f.rel``).
+    Keys are canonical card-basis paths (see :func:`_card_rel_key`), so a
+    full-tree scan and a Templater single-card scan (``rel=""`` basis) share
+    the same key for the same file.  ``folder_files`` (``folder.files``)
+    resolves a bare ``[[name]]`` link target — and legacy ``[[rel|name]]``
+    targets — to that canonical key; without it the raw link target is kept
+    (backward compatible with existing callers/tests).
     Unescapes ``\\|`` → ``|`` so stored values are the original user text.
+    Table parsing never raises: undecodable rows are skipped, never a
+    refusal reason (B2 — ambiguity excluded by unique names per folder).
     """
 
+    # Canonical card-basis key for a direct file is its file name
+    # (``_card_rel_key(folder, f.rel) == f.name`` by construction), stable
+    # across scan bases (full tree vs Templater ``rel=""``).
+    name_to_canon: dict[str, str] = {}
+    rel_to_canon: dict[str, str] = {}
+    if folder_files:
+        for f in folder_files:
+            rel = getattr(f, "rel", None)
+            name = getattr(f, "name", None)
+            if name is None:
+                continue
+            name_to_canon[str(name)] = str(name)
+            if rel is not None:
+                rel_to_canon[str(rel)] = str(name)
     comments: dict[str, str] = {}
     in_files = False
     for line in content.splitlines():
@@ -702,12 +796,21 @@ def extract_user_comments(content: str) -> dict[str, str]:
             if not m:
                 continue
             link_target = m.group(1).strip()
+            display = (m.group(2) or m.group(1)).strip()
             if link_target.startswith(".."):
                 continue
             cells = _split_table_cells(line)
             if len(cells) >= 7:
                 comment = cells[-1].strip().replace("\x00", "|").replace("\\\\", "\\").replace("\\|", "|")
-                comments[link_target] = comment
+                key = link_target
+                if folder_files:
+                    if link_target in rel_to_canon:
+                        key = rel_to_canon[link_target]
+                    elif link_target in name_to_canon:
+                        key = name_to_canon[link_target]
+                    elif display in name_to_canon:
+                        key = name_to_canon[display]
+                comments[key] = comment
     return comments
 
 
@@ -842,18 +945,43 @@ def _sync_comments_to_notes(
     notes_path: Path,
     prev: str | None,
     folder: FolderScan,
-) -> None:
+) -> bool:
     """Extract Comments from card table, merge with notes FM, write back.
 
     Called ALWAYS (even when card is skipped) to preserve user edits.
     Table values win over frontmatter (user edits the table).
+
+    Canonical file keys are card-basis (``f.name`` — identical for a full
+    scan and a Templater ``rel=""`` scan; equals ``_card_rel_key`` for
+    direct files).  This intentionally deviates from PLAN v6 letter
+    (``f.rel``), recorded as PLAN v7: a scan-basis canonical diverges
+    between bases and re-breaks Templater interop.  Legacy scan-basis keys
+    (``f.rel``) found in old frontmatter migrate to canonical; legacy keys
+    with no matching file (B3) are preserved untouched.
+
+    Clearing rule (C2 + v7 intention anchor): an empty cell clears FM only
+    when the card manifest proves the card DISPLAYED exactly the FM value
+    (``fc``/``fdc`` snapshot hash == live FM value hash) — i.e. the user
+    saw the value and then emptied the cell.  Otherwise the empty cell is
+    a render miss (including the fully fresh post-bug state, where the
+    manifest notes-hash already matches) — FM is preserved and the rebuild
+    restores the display.  Missing snapshot (old manifests) always means
+    "not proven" → preserve.  Error direction is data-safe by
+    construction.
+
+    Returns True on success (including no-op); False means the notes FM is
+    ``corrupt`` or unreadable — the caller must refuse the whole folder
+    update (``failed``) WITHOUT writing card or notes.
     """
     if not notes_path.exists():
-        return
+        return True
     try:
         notes_content = notes_path.read_text(encoding="utf-8")
     except OSError:
-        return
+        return False
+    _, notes_status = parse_frontmatter_strict(notes_content)
+    if notes_status == "corrupt":
+        return False
     notes_props = parse_frontmatter(notes_content)
     raw_fc = notes_props.get("file_comments") or {}
     raw_fdc = notes_props.get("folder_comments") or {}
@@ -862,24 +990,110 @@ def _sync_comments_to_notes(
     if not isinstance(raw_fdc, dict):
         raw_fdc = {}
 
-    table_fc = extract_user_comments(prev) if prev else {}
+    table_fc = extract_user_comments(prev, folder.files) if prev else {}
     name_to_rel = {s: _join_rel(folder.rel, s) for s in folder.subfolders}
     table_fdc = extract_folder_comments(prev, name_to_rel) if prev else {}
 
-    # Empty table value = user cleared (only for files already in FM).
+    # Intention anchor (v7): the manifest ``fc``/``fdc`` snapshot records
+    # WHAT THE CARD DISPLAYED (per-key hashes).  An empty cell clears FM
+    # only when the snapshot proves the card showed exactly the live FM
+    # value (deliberate clear).  Any other empty (render miss — including
+    # the fully fresh post-bug state — or an old manifest without snapshot)
+    # preserves FM and lets the rebuild restore the display.
+    try:
+        _manifest = _parse_manifest(prev) if prev else None
+    except Exception:
+        _manifest = None
+    _snap_fc = (_manifest or {}).get("fc") if isinstance(_manifest, dict) else None
+    _snap_fdc = (_manifest or {}).get("fdc") if isinstance(_manifest, dict) else None
+    if not isinstance(_snap_fc, dict):
+        _snap_fc = {}
+    if not isinstance(_snap_fdc, dict):
+        _snap_fdc = {}
+
+    def _displayed(key: str, live, snap: dict) -> bool:
+        try:
+            return bool(live) and snap.get(key) == _comment_hash(live)
+        except Exception:
+            return False
+
+    # Empty table value = user cleared (only for files already in FM AND
+    # only when the snapshot proves the card displayed that FM value).
     # For new files with no FM history, skip empty entries (no noise).
     # If table value is a truncated version of the FM value (ends with …),
     # keep the FM original — the table is a display, not the source of truth.
     merged_fc = {**raw_fc}
+    known_files = {f.name for f in folder.files}
+    rel_alias = {f.rel: f.name for f in folder.files if f.rel != f.name}
+    for f in folder.files:
+        canon = f.name
+        legacy_keys = [k for k in (f.rel,) if k != canon and k in raw_fc]
+        table_v = table_fc.get(canon)
+        if table_v is None:
+            # File absent from the table (should not happen) — never invent.
+            continue
+        if canon in raw_fc:
+            # (a) canonical history exists.
+            existing = raw_fc.get(canon)
+            if table_v:
+                if existing and table_v != existing and table_v == _truncate_comment(existing):
+                    pass  # truncated display → preserve FM
+                else:
+                    merged_fc[canon] = table_v
+                    for lk in legacy_keys:
+                        merged_fc.pop(lk, None)  # D1: drop legacy twin
+            else:
+                if _displayed(canon, existing, _snap_fc):
+                    merged_fc[canon] = table_v  # deliberate clear proven
+                    for lk in legacy_keys:
+                        merged_fc.pop(lk, None)
+                # else render miss (even when fresh): preserve, rebuild restores
+        elif legacy_keys:
+            # (б)/(б′) canonical history missing, legacy present.
+            legacy_val = raw_fc.get(legacy_keys[0])
+            if table_v:
+                # (б′) non-empty cell wins over legacy (D2).
+                if legacy_val and table_v != legacy_val and table_v == _truncate_comment(legacy_val):
+                    merged_fc[canon] = legacy_val
+                else:
+                    merged_fc[canon] = table_v
+                for lk in legacy_keys:
+                    merged_fc.pop(lk, None)
+            else:
+                if _displayed(canon, legacy_val, _snap_fc):
+                    # Card showed the legacy value (via fallback) and the
+                    # user cleared it → record the clearing, drop legacy.
+                    merged_fc[canon] = ""
+                    for lk in legacy_keys:
+                        merged_fc.pop(lk, None)
+                else:
+                    # (б) render miss = recovery, NOT clearing (C2/F1).
+                    if legacy_val:
+                        merged_fc[canon] = legacy_val
+                    for lk in legacy_keys:
+                        merged_fc.pop(lk, None)
+        else:
+            if table_v:
+                existing = raw_fc.get(canon)
+                if existing and table_v != existing and table_v == _truncate_comment(existing):
+                    continue
+                merged_fc[canon] = table_v
+    # Legacy keys with no matching file (B3) stay untouched via merged copy.
+    # Stale scan-basis aliases of DELETED files are also preserved, never
+    # silently dropped: only aliases of CURRENT files migrate above.
     for k, v in table_fc.items():
+        if k in known_files or k in rel_alias:
+            continue
         if v or k in raw_fc:
             existing = raw_fc.get(k)
             if existing and v != existing and v == _truncate_comment(existing):
-                continue  # table value is truncated → preserve FM
+                continue
             merged_fc[k] = v
     merged_fdc = {**raw_fdc}
     for k, v in table_fdc.items():
         if v or k in raw_fdc:
+            if not v and k in raw_fdc and not _displayed(k, raw_fdc.get(k), _snap_fdc):
+                continue  # unproven empty folder cell: preserve, never clear
             existing = raw_fdc.get(k)
             if existing and v != existing and v == _truncate_comment(existing):
                 continue
@@ -889,7 +1103,11 @@ def _sync_comments_to_notes(
         notes_props["file_comments"] = merged_fc
         notes_props["folder_comments"] = merged_fdc
         body = _strip_frontmatter(notes_content).lstrip("\n")
-        write_atomic(notes_path, _notes_frontmatter(notes_props) + "\n\n" + body)
+        try:
+            write_atomic(notes_path, _notes_frontmatter(notes_props) + "\n\n" + body)
+        except OSError:
+            return False
+    return True
 
 
 def _ensure_notes_file(folder: FolderScan, prev: str | None) -> bool:
@@ -1182,7 +1400,7 @@ def _render_dashboard(
     )
     # Hidden change-detection manifest (never rendered by Obsidian)
     manifest = json.dumps(
-        _manifest_payload(folder, notes_prev, content_hashes),
+        _manifest_payload(folder, notes_prev, content_hashes, raw_fc, raw_fdc),
         ensure_ascii=False,
         sort_keys=True,
     )
@@ -1275,7 +1493,12 @@ def _files_table(
         file_type = f.ext.lstrip('.').upper() if f.ext else "—"
         opener = OPENERS.get(f.ext, "—")
         auto = auto_comments.get(f.name, "")
-        user = _truncate_comment(_escape_pipe(file_comments.get(f.rel, "")))
+        # Canonical card-basis key is the file name (stable across scan
+        # bases); legacy scan-basis ``f.rel`` accepted read-only fallback.
+        user_raw = file_comments.get(f.name, "")
+        if not user_raw and f.rel != f.name:
+            user_raw = file_comments.get(f.rel, "")
+        user = _truncate_comment(_escape_pipe(user_raw))
         lines.append(
             f"| {icon} [[{f.name}]] | {file_type} | {opener}"
             f" | {format_rel_date(f.mtime_ns)}"
@@ -1502,19 +1725,91 @@ def _notes_user_hash(notes_prev: str | None) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
 
+def _comment_hash(value) -> str:
+    """Short stable hash of a rendered comment value (manifest snapshot).
+
+    ``None`` counts as ``""``.  Hashes (not texts) are stored so the
+    manifest stays small; equality with the live FM value proves the card
+    displayed exactly what FM holds now.
+    """
+
+    return hashlib.sha1(str(value or "").encode("utf-8")).hexdigest()[:12]
+
+
+def _cell_expected(live_raw: str) -> str:
+    """Value the Files/Folders table cell shows for a raw FM comment.
+
+    Mirrors the exact render→extract pipeline (escape → truncate → the
+    unescape chain of :func:`extract_user_comments`), so a rebuilt card
+    always compares equal — the coherence check below has a fixed point
+    and can never force a rebuild loop.
+    """
+
+    return (
+        _truncate_comment(_escape_pipe(live_raw or ""))
+        .replace("\x00", "|")
+        .replace("\\\\", "\\")
+        .replace("\\|", "|")
+    )
+
+
+def _display_coherent(
+    prev: str,
+    folder: FolderScan,
+    live_fc: dict,
+    live_fdc: dict,
+) -> bool:
+    """True when the card's Comments cells already show the live FM values.
+
+    Compares per canonical key, so a render miss (card shows ``""`` while
+    FM holds text — even with a fully fresh manifest) is detected and the
+    caller rebuilds instead of skipping.  Healing a divergent display is
+    what restores affected vaults; coherent cards still skip untouched.
+    """
+
+    try:
+        table_fc = extract_user_comments(prev, folder.files)
+    except Exception:
+        return False
+    try:
+        name_to_rel = {s: _join_rel(folder.rel, s) for s in folder.subfolders}
+        table_fdc = extract_folder_comments(prev, name_to_rel)
+    except Exception:
+        return False
+    for f in folder.files:
+        raw = live_fc.get(f.name, "")
+        if not raw and f.rel != f.name:
+            raw = live_fc.get(f.rel, "")
+        if table_fc.get(f.name) != _cell_expected(raw):
+            return False
+    for s in folder.subfolders:
+        key = _join_rel(folder.rel, s)
+        if table_fdc.get(key) != _cell_expected(live_fdc.get(key, "")):
+            return False
+    return True
+
+
 def _manifest_payload(
     folder: FolderScan,
     notes_prev: str | None,
     content_hashes: dict[str, str] | None = None,
+    file_comments: dict | None = None,
+    folder_comments: dict | None = None,
 ) -> dict:
     # ``base`` pins the basis the file keys were written against (the rel of
     # the card folder from the update root), so card_diff can always align
     # legacy/future manifests scanned from a different root. Every file
     # entry carries the content hash: card_diff decides "changed" by hash,
     # never by mtime (see folder_fingerprint).
+    # ``fc``/``fdc`` snapshot WHAT THE CARD DISPLAYED (per-key hashes of the
+    # rendered comment values, canonical card-basis keys).  TICKET-015 v7:
+    # an empty table cell clears FM only when the snapshot proves the card
+    # showed exactly the FM value (deliberate clear); otherwise the empty
+    # cell is a render miss and FM is preserved.  Missing snapshot (old
+    # manifests) always means "not proven" → preserve (data-safe).
     if content_hashes is None:
         content_hashes = _compute_content_hashes(folder)
-    return {
+    payload = {
         "base": folder.rel,
         "files": {
             _card_rel_key(folder, f.rel): {
@@ -1526,6 +1821,20 @@ def _manifest_payload(
         "folders": list(folder.subfolders),
         "notes": _notes_user_hash(notes_prev),
     }
+    if file_comments is not None:
+        payload["fc"] = {
+            f.name: _comment_hash(
+                file_comments.get(f.name, "")
+                or (file_comments.get(f.rel, "") if f.rel != f.name else "")
+            )
+            for f in folder.files
+        }
+    if folder_comments is not None:
+        payload["fdc"] = {
+            _join_rel(folder.rel, s): _comment_hash(folder_comments.get(_join_rel(folder.rel, s), ""))
+            for s in folder.subfolders
+        }
+    return payload
 
 
 def _parse_manifest(content: str) -> dict | None:
@@ -1715,7 +2024,9 @@ def _process_folder(
 ) -> tuple[str, str | None]:
     """Process a single folder's card; returns ``(action, conflict_path)``.
 
-    ``action`` is one of ``created`` / ``updated`` / ``skipped`` / ``conflict``.
+    ``action`` is one of ``created`` / ``updated`` / ``skipped`` /
+    ``conflict`` / ``failed`` (``failed`` = safe refusal: existing user
+    content unreadable/unreliable, nothing was overwritten).
     Raises on any unexpected error — :func:`update_cards` isolates, logs and
     continues with the remaining folders.
     """
@@ -1731,18 +2042,36 @@ def _process_folder(
         except OSError:
             return None
 
+    notes_unreadable = notes_p.exists()
     prev: str | None = None
+    card_unreadable = False
     if card.exists():
         try:
             prev = card.read_text(encoding="utf-8")
         except OSError:
             prev = None
+            card_unreadable = True
+    if card_unreadable:
+        logger.error("Obsidianize: карточка %s не читается — пропуск без записи", card)
+        return "failed", None
     # Notes are read BEFORE the status check: changed user data must
     # mark the card stale even when no project file has changed.
     notes_prev = _read_notes()
     # Content hashes once per folder: reused by the status check and the
     # card build so every file is read at most one time per run.
     content_hashes = _compute_content_hashes(folder)
+
+    # Safe refusal (TICKET-015) BEFORE any branch that could write or
+    # misclassify: corrupt FM is failed with diagnostics, never a silent
+    # conflict counter; absent FM keeps the legacy conflict path.
+    if notes_unreadable and notes_prev is None:
+        logger.error("Obsidianize: заметки %s не читаются — пропуск без записи", notes_p)
+        return "failed", None
+    if prev is not None:
+        _, _cs0 = parse_frontmatter_strict(prev)
+        if _cs0 == "corrupt":
+            logger.error("Obsidianize: повреждён frontmatter карточки %s — пропуск без записи", card)
+            return "failed", None
 
     _card_skipped = False
     if prev is not None and card_is_ours(prev):
@@ -1768,6 +2097,15 @@ def _process_folder(
         # Adopted: the foreign note became our notes file; build fresh.
         prev = None
 
+    # Safe refusal (TICKET-015): when existing user content cannot be
+    # read reliably, refuse BEFORE any write — source stays untouched,
+    # the rel lands in summary.failed with a logged reason.
+    if notes_prev is not None:
+        _, _ns = parse_frontmatter_strict(notes_prev)
+        if _ns == "corrupt":
+            logger.error("Obsidianize: повреждён frontmatter заметок %s — пропуск без записи", notes_p)
+            return "failed", None
+
     # Order-of-operations safety: the notes file (the user-owned layer,
     # including migrated frontmatter/manual block) is written BEFORE the
     # card, so a crash in between can never lose user data.
@@ -1777,11 +2115,32 @@ def _process_folder(
 
         # Sync: extract Comments from card table → notes frontmatter.
         # Runs ALWAYS (even when card will be skipped) to preserve user edits.
-        _sync_comments_to_notes(notes_p, prev, folder)
+        if not _sync_comments_to_notes(notes_p, prev, folder):
+            logger.error("Obsidianize: sync комментариев %s не удался — пропуск без записи", folder.rel or ".")
+            return "failed", None
         notes_prev = _read_notes()  # re-read with synced comments
 
-    if _card_skipped:
-        return "skipped", None
+    if _card_skipped and prev is not None:
+        # Coherence gate (v7): status "ok" does not cover the Comments
+        # display.  When the cells show anything but the live FM values
+        # (render miss — even with a fresh manifest), rebuild instead of
+        # skipping so the display heals.  Coherent cards still skip.
+        try:
+            _live = parse_frontmatter(notes_prev) if notes_prev else {}
+            _lfc = _live.get("file_comments") or {}
+            _lfdc = _live.get("folder_comments") or {}
+            if not isinstance(_lfc, dict):
+                _lfc = {}
+            if not isinstance(_lfdc, dict):
+                _lfdc = {}
+            if _display_coherent(prev, folder, _lfc, _lfdc):
+                return "skipped", None
+            logger.info(
+                "Obsidianize: Comments на карточке %s расходятся с заметками — перерисовка",
+                folder.rel or ".",
+            )
+        except Exception:
+            logger.exception("Obsidianize: проверка Comments %s не удалась", folder.rel or ".")
 
     text = build_card(
         folder, prev, cfg, parent_rel, stats, notes_prev, content_hashes
@@ -1885,7 +2244,7 @@ def update_cards(
                 if on_progress is not None:
                     on_progress(rel, "failed")
                 continue
-            _account_summary(summary, action, conflict_path, dry_run)
+            _account_summary(summary, action, conflict_path or rel, dry_run, rel)
             if on_progress is not None:
                 on_progress(rel, action)
         return summary
@@ -1902,7 +2261,7 @@ def update_cards(
                 on_progress(rel, "failed")
             continue
 
-        _account_summary(summary, action, conflict_path, dry_run)
+        _account_summary(summary, action, conflict_path or rel, dry_run, rel)
         if on_progress is not None:
             on_progress(rel, action)
     return summary
@@ -1929,8 +2288,11 @@ def _account_summary(
     action: str,
     conflict_path: str | None,
     dry_run: bool,
+    rel: str = "",
 ) -> None:
-    if action == "conflict":
+    if action == "failed":
+        summary.failed.append(conflict_path or rel or ".")
+    elif action == "conflict":
         summary.conflicts.append(conflict_path or "")
     elif action == "skipped":
         summary.skipped += 1
